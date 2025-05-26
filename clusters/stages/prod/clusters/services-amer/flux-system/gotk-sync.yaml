@@ -20,8 +20,8 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  path: ./clusters/fleet-infra
+  path: ./clusters/stages/prod/clusters/services-amer
   prune: true
   sourceRef:
     kind: GitRepository
-    name: flux-system
+    name: flux-system 
