@@ -263,4 +263,10 @@ git merge develop
 - **Kubernetes Compatibility**: Supports Kubernetes 1.20+
 - **Environments**: Development (develop branch), Production (main branch)
 
-This multi-environment setup provides a robust GitOps foundation with proper separation between development and production while maintaining consistency and automation across environments. 
+This multi-environment setup provides a robust GitOps foundation with proper separation between development and production while maintaining consistency and automation across environments.
+
+## Quick Reference
+
+- **📋 [Workflow Guide](docs/WORKFLOW.md)**: Detailed environment workflow and safety guidelines
+- **🔧 Scripts**: Use `scripts/flux-bootstrap.sh <env>` for environment setup
+- **🛡️ Safety**: Pre-commit hooks prevent cross-environment mistakes 
