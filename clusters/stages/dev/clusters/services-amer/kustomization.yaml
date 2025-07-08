@@ -5,7 +5,7 @@ resources:
   - ../../../../../base
 configMapGenerator:
   - name: cluster-vars
-    behavior: merge
+    behavior: replace
     envs:
       - environment.env
     options:
