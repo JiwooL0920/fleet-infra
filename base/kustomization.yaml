@@ -2,7 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../apps/base/cnpg
-  - ../apps/base/external-secrets-operator
   - ../apps/base/localstack
   - ../apps/base/n8n
   - ../apps/base/traefik
