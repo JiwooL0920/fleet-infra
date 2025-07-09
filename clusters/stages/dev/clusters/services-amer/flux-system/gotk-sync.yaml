@@ -7,8 +7,9 @@ metadata:
 spec:
   interval: 1m0s
   ref:
-    branch: main
+    branch: develop
   url: https://github.com/JiwooL0920/fleet-infra
+---
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -23,5 +24,5 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  timeout: 3m0s
+  timeout: 2m0s
   wait: true

@@ -3,11 +3,6 @@ kind: Kustomization
 resources:
   - flux-system
   - ../../base
-configMapGenerator:
-  - name: cluster-vars
-    behavior: merge
-    envs:
-      - environment.env
-    options:
-      disableNameSuffixHash: true
-    namespace: flux-system
+
+patchesStrategicMerge:
+  - cluster-vars-patch.yaml
