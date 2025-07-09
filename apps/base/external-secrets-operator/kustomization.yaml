@@ -4,6 +4,5 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrelease.yaml
-  # Temporarily disabled due to webhook timeout
-  # - secretstore.yaml
-  # - n8n-external-secret.yaml
+  - secretstore.yaml
+  - n8n-external-secret.yaml

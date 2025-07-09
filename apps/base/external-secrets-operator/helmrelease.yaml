@@ -41,6 +41,4 @@ spec:
       AWS_ACCESS_KEY_ID: ""
       AWS_SECRET_ACCESS_KEY: ""
     webhook:
-      create: true
-      failurePolicy: Ignore
-      timeoutSeconds: 30
+      create: false
