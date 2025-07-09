@@ -2,10 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - flux-system
-  - ../../../../../base
+  - ../../base
 configMapGenerator:
   - name: cluster-vars
-    behavior: replace
+    behavior: merge
     envs:
       - environment.env
     options:
