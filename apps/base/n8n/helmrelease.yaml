@@ -48,20 +48,16 @@ spec:
       #     password: password
 
     # Ingress configuration
-    # ingress:
-    #   enabled: true
-    #   className: "nginx"
-    #   annotations:
-    #     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    #   hosts:
-    #     - host: n8n.yourdomain.com
-    #       paths:
-    #         - path: /
-    #           pathType: Prefix
-    #   tls:
-    #     - secretName: n8n-tls
-    #       hosts:
-    #         - n8n.yourdomain.com
+    ingress:
+      enabled: true
+      className: "traefik"
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: web
+      hosts:
+        - host: n8n.local
+          paths:
+            - path: /
+              pathType: Prefix
 
     # Persistence configuration
     persistence:

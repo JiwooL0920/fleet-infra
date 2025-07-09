@@ -1,0 +1,107 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: traefik
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://helm.traefik.io/traefik
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: traefik
+  targetNamespace: traefik
+  install:
+    createNamespace: true
+  chart:
+    spec:
+      chart: traefik
+      version: 25.0.0
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+        namespace: flux-system
+      interval: 1m
+  values:
+    deployment:
+      replicas: 1
+    
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+    
+    # Enable dashboard for local development
+    api:
+      dashboard: true
+      insecure: true
+    
+    # Use ClusterIP service
+    service:
+      type: ClusterIP
+    
+    # Configure ports
+    ports:
+      web:
+        port: 8000
+        expose: true
+        exposedPort: 80
+      websecure:
+        port: 8443
+        expose: true
+        exposedPort: 443
+      traefik:
+        port: 9000
+        expose: true
+        exposedPort: 9000
+    
+    # Configure providers
+    providers:
+      kubernetesCRD:
+        enabled: true
+        allowCrossNamespace: true
+      kubernetesIngress:
+        enabled: true
+        allowExternalNameServices: true
+    
+    logs:
+      access:
+        enabled: true
+        format: "json"
+        fields:
+          general:
+            defaultmode: keep
+          headers:
+            defaultmode: drop
+            names:
+              User-Agent: keep
+              X-Forwarded-For: keep
+              X-Request-Id: keep
+              Referer: keep
+              Authorization: redact
+              Cookie: redact
+              Proxy-Authorization: redact
+    
+    # Global arguments
+    globalArguments:
+      - "--global.checknewversion=false"
+      - "--global.sendanonymoususage=false"
+    
+    # Additional arguments for local development
+    additionalArguments:
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--entrypoints.web.address=:8000"
+      - "--entrypoints.websecure.address=:8443"
+      - "--api.dashboard=true"
+      - "--ping=true"
+      - "--providers.kubernetesingress=true"
+      - "--providers.kubernetescrd=true"
