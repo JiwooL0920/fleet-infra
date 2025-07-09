@@ -8,6 +8,6 @@ secretGenerator:
   - name: n8n-postgres-credentials
     namespace: n8n
     envs:
-      - ../../.env
+      - .env
     options:
       disableNameSuffixHash: true
