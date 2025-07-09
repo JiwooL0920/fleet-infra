@@ -1,0 +1,46 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: external-secrets
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://charts.external-secrets.io
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: external-secrets
+  namespace: external-secrets-operator
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: external-secrets
+      version: "0.10.0"
+      sourceRef:
+        kind: HelmRepository
+        name: external-secrets
+        namespace: flux-system
+      interval: 12h
+  values:
+    installCRDs: true
+    replicaCount: 1
+    serviceMonitor:
+      enabled: false
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    env:
+      AWS_ENDPOINT_URL: http://localstack.localstack.svc.cluster.local:4566
+      AWS_ACCESS_KEY_ID: ""
+      AWS_SECRET_ACCESS_KEY: ""
+    webhook:
+      create: true
+      failurePolicy: Ignore
+      timeoutSeconds: 30
