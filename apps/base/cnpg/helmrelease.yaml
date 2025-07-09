@@ -35,9 +35,9 @@ spec:
   values:
     # Enable monitoring
     monitoring:
-      enabled: true
+      enabled: false
       podMonitor:
-        enabled: true
+        enabled: false
     
     # Resource limits for the operator
     resources:
@@ -134,9 +134,9 @@ spec:
       
       # Monitoring configuration
       monitoring:
-        enabled: true
+        enabled: false
         podMonitor:
-          enabled: true
+          enabled: false
     
     # Backup configuration
     backups:
