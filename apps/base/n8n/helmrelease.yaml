@@ -55,7 +55,7 @@ spec:
         traefik.ingress.kubernetes.io/router.entrypoints: web
       hosts:
         - host: n8n.local
-          paths: []
+          paths: ["/"]
 
     # Persistence configuration
     persistence:
