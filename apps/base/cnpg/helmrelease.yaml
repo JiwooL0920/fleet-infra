@@ -143,18 +143,28 @@ spec:
     # Backup configuration
     backups:
       enabled: true
-      retention: "7d"
-      schedule: "0 2 * * *"
       provider: s3
+      # Override default S3 endpoint to use localstack
+      endpointURL: "http://localstack.localstack.svc.cluster.local:4566"
+      # S3 bucket path
+      destinationPath: "s3://cnpg-backup/"
+      # Retention policy for backups
+      retentionPolicy: "30d"
+      # S3 configuration
       s3:
         bucket: "cnpg-backup"
         region: "us-east-1"
-        endpoint: "http://localstack.localstack.svc.cluster.local:4566"
         accessKey: "localstack"
         secretKey: "localstack"
         # LocalStack specific options
         forcePathStyle: true
         disableSSL: true
+      # Scheduled backup configuration
+      scheduledBackups:
+        - name: daily-backup
+          schedule: "0 2 * * *"  # Daily at 2:00 AM
+          backupOwnerReference: self
+          method: barmanObjectStore
     
     # Database and user configuration
     database:
