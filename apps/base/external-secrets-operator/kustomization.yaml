@@ -4,5 +4,3 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrelease.yaml
-  - secretstore.yaml
-  - n8n-external-secret.yaml

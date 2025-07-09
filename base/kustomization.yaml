@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - ../apps/base/cnpg
   - ../apps/base/external-secrets-operator
+  - ../apps/base/external-secrets-resources
   - ../apps/base/localstack
   - ../apps/base/n8n
   - ../apps/base/traefik
