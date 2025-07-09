@@ -56,12 +56,13 @@ spec:
       hosts:
         - host: n8n.local
           paths:
-            - path: /
+            - path: "/"
               pathType: Prefix
-              service:
-                name: n8n
-                port:
-                  number: 80
+              backend:
+                service:
+                  name: n8n
+                  port:
+                    number: 80
 
     # Persistence configuration
     persistence:
