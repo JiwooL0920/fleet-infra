@@ -137,6 +137,8 @@ spec:
         enabled: false
         podMonitor:
           enabled: false
+        prometheusRule:
+          enabled: false
     
     # Backup configuration
     backups:
