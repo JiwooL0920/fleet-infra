@@ -1,0 +1,189 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: cnpg
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://cloudnative-pg.github.io/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: cloudnative-pg
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: cloudnative-pg
+  targetNamespace: cnpg-system
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: cloudnative-pg
+      version: 0.22.1
+      sourceRef:
+        kind: HelmRepository
+        name: cnpg
+        namespace: flux-system
+      interval: 1m
+  values:
+    # Enable monitoring
+    monitoring:
+      enabled: true
+      podMonitor:
+        enabled: true
+    
+    # Resource limits for the operator
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+    
+    # Enable CRDs
+    crds:
+      create: true
+    
+    # Webhook configuration
+    webhook:
+      port: 9443
+      mutatingWebhook:
+        create: true
+      validatingWebhook:
+        create: true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cnpg-cluster-credentials
+  namespace: cnpg-system
+type: Opaque
+stringData:
+  username: appuser
+  password: appuser-password
+  superuser-username: postgres
+  superuser-password: superuser-password
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: postgresql-cluster
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: postgresql-cluster
+  targetNamespace: cnpg-system
+  dependsOn:
+    - name: cloudnative-pg
+      namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: cluster
+      version: 0.0.12
+      sourceRef:
+        kind: HelmRepository
+        name: cnpg
+        namespace: flux-system
+      interval: 1m
+  values:
+    # Cluster configuration
+    type: postgresql
+    
+    # PostgreSQL version
+    version:
+      postgresql: "16"
+    
+    # Cluster mode (standalone, replica, recovery)
+    mode: standalone
+    
+    # Cluster specifications
+    cluster:
+      instances: 3
+      
+      # PostgreSQL configuration
+      postgresql:
+        parameters:
+          max_connections: "200"
+          shared_buffers: "256MB"
+          effective_cache_size: "1GB"
+          maintenance_work_mem: "64MB"
+          checkpoint_completion_target: "0.9"
+          wal_buffers: "16MB"
+          default_statistics_target: "100"
+          random_page_cost: "1.1"
+          effective_io_concurrency: "200"
+          work_mem: "4MB"
+          min_wal_size: "1GB"
+          max_wal_size: "4GB"
+      
+      # Resource configuration
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "500m"
+        limits:
+          memory: "1Gi"
+          cpu: "1000m"
+      
+      # Storage configuration
+      storage:
+        size: "5Gi"
+        storageClass: "standard"
+      
+      # Monitoring configuration
+      monitoring:
+        enabled: true
+        podMonitor:
+          enabled: true
+    
+    # Backup configuration
+    backups:
+      enabled: false
+      # Uncomment and configure if you want automated backups
+      # retention: "7d"
+      # schedule: "0 2 * * *"
+      # provider: s3
+      # s3:
+      #   bucket: "my-cnpg-backups"
+      #   region: "us-west-2"
+      #   accessKey: ""
+      #   secretKey: ""
+    
+    # Database and user configuration
+    database:
+      name: appdb
+      owner: appuser
+      secret:
+        name: cnpg-cluster-credentials
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      
+    # Bootstrap configuration
+    bootstrap:
+      initdb:
+        database: appdb
+        owner: appuser
+        secret:
+          name: cnpg-cluster-credentials
+        # Create additional databases using post-init SQL
+        postInitSQL:
+          - CREATE DATABASE temporal OWNER appuser;
+          - CREATE DATABASE temporal_visibility OWNER appuser;
+          - GRANT ALL PRIVILEGES ON DATABASE temporal TO appuser;
+          - GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO appuser;
