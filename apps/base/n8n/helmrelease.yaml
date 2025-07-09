@@ -58,6 +58,10 @@ spec:
           paths:
             - path: /
               pathType: Prefix
+              service:
+                name: n8n
+                port:
+                  number: 80
 
     # Persistence configuration
     persistence:
