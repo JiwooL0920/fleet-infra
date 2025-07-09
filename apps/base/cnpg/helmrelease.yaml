@@ -60,18 +60,6 @@ spec:
       validatingWebhook:
         create: true
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cnpg-cluster-credentials
-  namespace: cnpg-system
-type: Opaque
-stringData:
-  username: appuser
-  password: appuser-password
-  superuser-username: postgres
-  superuser-password: superuser-password
----
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
 metadata:
@@ -167,8 +155,6 @@ spec:
     database:
       name: appdb
       owner: appuser
-      secret:
-        name: cnpg-cluster-credentials
     
     # Service configuration
     service:
