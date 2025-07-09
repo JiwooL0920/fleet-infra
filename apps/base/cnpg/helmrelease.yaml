@@ -162,7 +162,7 @@ spec:
       # Scheduled backup configuration
       scheduledBackups:
         - name: daily-backup
-          schedule: "* * * * *"  # Every minute for testing
+          schedule: "0 2 * * *"  # Daily at 2:00 AM
           backupOwnerReference: self
           method: barmanObjectStore
     
