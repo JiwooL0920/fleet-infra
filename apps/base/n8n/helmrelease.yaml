@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m
-  url: https://8gears.container-registry.com/chartrepo/library
+  url: https://n8n-io.github.io/n8n-helm-chart
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
