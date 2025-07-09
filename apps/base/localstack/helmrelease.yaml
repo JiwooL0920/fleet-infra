@@ -50,15 +50,3 @@ spec:
         memory: "1Gi"
         cpu: "500m"
 
-    # This service creates a DNS alias within the cluster that points to the host machine.
-    # This allows pods to access services running on the host, such as a local
-    # LocalStack instance for development, using the hostname 'localstack-host'.
-    additionalManifests:
-      - apiVersion: v1
-        kind: Service
-        metadata:
-          name: localstack-host
-          namespace: localstack
-        spec:
-          type: ExternalName
-          externalName: host.docker.internal
