@@ -32,15 +32,15 @@ spec:
   values:
     # Minimal LocalStack configuration
     debug: true
-    
+
     # Enable basic services
-    services: "s3,dynamodb,sqs,sns,lambda"
-    
+    services: "s3,sm,dynamodb,sqs,sns,lambda"
+
     # Service configuration
     service:
       type: ClusterIP
       port: 4566
-    
+
     # Resource limits
     resources:
       limits:
