@@ -1,0 +1,128 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: localstack
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://localstack.github.io/helm-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: localstack
+  namespace: localstack
+spec:
+  interval: 1m
+  chart:
+    spec:
+      chart: localstack
+      version: 0.6.24
+      sourceRef:
+        kind: HelmRepository
+        name: localstack
+        namespace: flux-system
+      interval: 1m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # LocalStack configuration
+    localstack:
+      # Enable debug mode for development
+      debug: true
+      
+      # Services to enable (pro features require license)
+      services: "s3,dynamodb,sqs,sns,lambda,apigateway,cloudformation,ssm,secretsmanager,events,logs,iam,sts,ec2,ecs,ecr,rds,elasticache,es,kinesis,firehose,cloudwatch,route53,acm,kms,stepfunctions"
+      
+      # Persistence for data
+      persistence:
+        enabled: true
+        size: 5Gi
+        storageClass: "standard"
+        
+      # Environment variables
+      extraEnvVars:
+        - name: DEBUG
+          value: "1"
+        - name: LOCALSTACK_API_KEY
+          value: "" # Add your pro license key here if needed
+        - name: DOCKER_HOST
+          value: "unix:///var/run/docker.sock"
+        - name: LAMBDA_EXECUTOR
+          value: "local"
+        - name: LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT
+          value: "60"
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 4566
+      targetPort: 4566
+      annotations: {}
+    
+    # Ingress configuration
+    ingress:
+      enabled: true
+      className: "traefik"
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: web
+      hosts:
+        - host: localstack.local
+          paths:
+            - path: /
+              pathType: Prefix
+    
+    # Resource limits
+    resources:
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+    
+    # Security context
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    
+    # Pod security context
+    podSecurityContext:
+      fsGroup: 1000
+    
+    # Node selector for development
+    nodeSelector: {}
+    
+    # Tolerations
+    tolerations: []
+    
+    # Affinity
+    affinity: {}
+    
+    # Additional volumes if needed
+    extraVolumes: []
+    extraVolumeMounts: []
+    
+    # Probes
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 4566
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 4566
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
