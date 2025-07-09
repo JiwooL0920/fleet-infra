@@ -4,15 +4,3 @@ metadata:
   name: cnpg-system
   labels:
     name: cnpg-system
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cnpg-cluster-credentials
-  namespace: cnpg-system
-type: Opaque
-stringData:
-  username: appuser
-  password: appuser-password
-  superuser-username: postgres
-  superuser-password: superuser-password

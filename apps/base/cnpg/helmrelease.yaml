@@ -167,8 +167,6 @@ spec:
       initdb:
         database: appdb
         owner: appuser
-        secret:
-          name: cnpg-cluster-credentials
         # Create additional databases using post-init SQL
         postInitSQL:
           - CREATE DATABASE temporal OWNER appuser;

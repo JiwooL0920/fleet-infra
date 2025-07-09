@@ -32,20 +32,47 @@ spec:
     remediation:
       retries: 3
   values:
-    # n8n configuration
-    n8n:
-      # Set the encryption key for n8n
-      # encryptionKey: "your-encryption-key-here"
-
-      # Database configuration (optional - uses SQLite by default)
-      # database:
-      #   type: postgresdb
-      #   postgresdb:
-      #     host: postgres-service
-      #     port: 5432
-      #     database: n8n
-      #     user: n8n
-      #     password: password
+    # N8N main application configuration
+    main:
+      # N8N configuration converted to environment variables
+      config:
+        n8n:
+          encryption_key: "n8n-encryption-key-change-me"
+        db:
+          type: postgresdb
+      
+      # Database configuration from secrets
+      extraEnv:
+        DB_POSTGRESDB_HOST:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_HOST
+        DB_POSTGRESDB_PORT:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_PORT
+        DB_POSTGRESDB_DATABASE:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_DATABASE
+        DB_POSTGRESDB_USER:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_USERNAME
+        DB_POSTGRESDB_PASSWORD:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_PASSWORD
+      
+      # Persistence configuration - disabled since using PostgreSQL
+      persistence:
+        enabled: false
+        type: emptyDir
 
     # Ingress configuration
     ingress:
@@ -56,12 +83,6 @@ spec:
       hosts:
         - host: n8n.local
           paths: ["/"]
-
-    # Persistence configuration
-    persistence:
-      enabled: true
-      size: 1Gi
-      # storageClass: "default"
 
     # Service configuration
     service:
