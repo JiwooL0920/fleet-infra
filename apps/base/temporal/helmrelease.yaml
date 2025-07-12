@@ -40,7 +40,12 @@ spec:
       grafana:
         enabled: false
       serviceMonitor:
-        enabled: true
+        enabled: false
+    # Disable root-level monitoring components
+    prometheus:
+      enabled: false
+    grafana:
+      enabled: false
     server:
       extraArgs:
         - "--blobsRetentionDays=7"
