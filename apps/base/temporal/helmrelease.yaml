@@ -60,7 +60,7 @@ spec:
           default:
             driver: "sql"
             sql:
-              driver: "postgres"
+              driver: "postgres12_pgx"
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
               database: "app"
@@ -70,7 +70,7 @@ spec:
           visibility:
             driver: "sql"
             sql:
-              driver: "postgres"
+              driver: "postgres12_pgx"
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
               database: "app"
