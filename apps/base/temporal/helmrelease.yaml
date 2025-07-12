@@ -55,6 +55,13 @@ spec:
         - "--blobsRetentionDays=7"
       metrics:
         scope: production
+    schema:
+      createDatabase:
+        enabled: false
+      setupDatabase:
+        enabled: true
+      updateDatabase:
+        enabled: true
       config:
         persistence:
           default:
