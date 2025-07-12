@@ -10,3 +10,8 @@ help:
 port-forward:
 	@echo "Starting port forwarding for all services..."
 	@./scripts/port-forward.sh
+
+
+flux-status:
+	@echo "Checking Flux status..."
+	@kubectl get kustomization flux-system -n flux-system -o yaml | yq '.status.conditions'

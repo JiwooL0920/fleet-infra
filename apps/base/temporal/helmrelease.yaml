@@ -15,6 +15,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: temporal
 spec:
+  interval: 10m
   releaseName: temporal-server
   targetNamespace: temporal
   chart:
