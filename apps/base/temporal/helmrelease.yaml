@@ -1,0 +1,62 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: temporal
+  namespace: temporal
+spec:
+  interval: 10m
+  url: https://charts.temporal.io
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: temporal-server
+  namespace: temporal
+  labels:
+    app.kubernetes.io/part-of: temporal
+spec:
+  releaseName: temporal-server
+  targetNamespace: temporal
+  chart:
+    spec:
+      chart: temporal
+      sourceRef:
+        kind: HelmRepository
+        name: temporal
+        namespace: temporal
+      version: "0.1.0"
+  values:
+    cassandra:
+      enabled: false
+    elasticsearch:
+      enabled: false
+    postgresql:
+      enabled: false
+      host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+      port: 5432
+      user: "temporal"
+      databases:
+        default: "temporal"
+        visibility: "temporal_visibility"
+    monitoring:
+      prometheus:
+        enabled: false
+      grafana:
+        enabled: false
+      serviceMonitor:
+        enabled: true
+    server:
+      extraArgs:
+        - "--blobsRetentionDays=7"
+      metrics:
+        scope: production
+    temporal:
+      frontend:
+        replicas: 2
+      history:
+        replicas: 2
+      matching:
+        replicas: 2
+      worker:
+        replicas: 2
+
