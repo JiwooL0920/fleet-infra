@@ -5,6 +5,7 @@ resources:
   - ../apps/base/kube-prometheus-stack
   - ../apps/base/localstack
   - ../apps/base/n8n
+  - ../apps/base/temporal
   - ../apps/base/traefik
   - ../apps/base/weave-gitops
   - services
