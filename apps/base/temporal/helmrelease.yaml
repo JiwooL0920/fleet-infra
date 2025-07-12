@@ -30,6 +30,9 @@ spec:
   values:
     cassandra:
       enabled: false
+      config:
+        hosts: ["127.0.0.1"]
+        port: 9042
     elasticsearch:
       enabled: false
     postgresql:
