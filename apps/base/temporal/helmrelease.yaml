@@ -30,19 +30,10 @@ spec:
   values:
     cassandra:
       enabled: false
-      config:
-        hosts: ["127.0.0.1"]
-        port: 9042
     elasticsearch:
       enabled: false
     postgresql:
       enabled: false
-      host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
-      port: 5432
-      user: "app"
-      databases:
-        default: "temporal"
-        visibility: "temporal_visibility"
     monitoring:
       prometheus:
         enabled: false
@@ -55,6 +46,28 @@ spec:
         - "--blobsRetentionDays=7"
       metrics:
         scope: production
+      config:
+        persistence:
+          default:
+            driver: "sql"
+            sql:
+              driver: "postgres12_pgx"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "temporal"
+              user: "app"
+              existingSecret: "temporal-postgresql-secret"
+              secretName: "temporal-postgresql-secret"
+          visibility:
+            driver: "sql"
+            sql:
+              driver: "postgres12_pgx"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "temporal_visibility"
+              user: "app"
+              existingSecret: "temporal-postgresql-secret"
+              secretName: "temporal-postgresql-secret"
     schema:
       createDatabase:
         enabled: false
