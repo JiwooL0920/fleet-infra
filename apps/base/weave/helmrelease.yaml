@@ -42,7 +42,7 @@ spec:
       create: true
       username: admin
       # Default password hash for 'admin' - you should change this
-      passwordHash: "$2a$10$OS5NJmPNEb13UgTOSKnMxOWoJUF600/LdBoyZLNfXBXaKAkm6ZjVG"
+      passwordHash: "$2y$05$o/2x.PmGVS6L0OpLwk3XmOqyMaFpzh2J2FqtsGbarWv95oR0luQFK"
 
     # Service configuration
     service:
