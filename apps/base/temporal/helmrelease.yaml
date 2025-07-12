@@ -41,8 +41,8 @@ spec:
       port: 5432
       user: "app"
       databases:
-        default: "app"
-        visibility: "app"
+        default: "temporal"
+        visibility: "temporal_visibility"
     monitoring:
       prometheus:
         enabled: false
@@ -57,7 +57,7 @@ spec:
         scope: production
     schema:
       createDatabase:
-        enabled: false
+        enabled: true
       setupDatabase:
         enabled: true
       updateDatabase:
@@ -70,7 +70,7 @@ spec:
               driver: "postgres12_pgx"
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
-              database: "app"
+              database: "temporal"
               user: "app"
               existingSecret: "temporal-postgresql-secret"
               secretName: "temporal-postgresql-secret"
@@ -80,7 +80,7 @@ spec:
               driver: "postgres12_pgx"
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
-              database: "app"
+              database: "temporal_visibility"
               user: "app"
               existingSecret: "temporal-postgresql-secret"
               secretName: "temporal-postgresql-secret"
