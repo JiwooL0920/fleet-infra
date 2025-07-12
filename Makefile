@@ -12,6 +12,3 @@ port-forward:
 	@./scripts/port-forward.sh
 
 
-flux-status:
-	@echo "Checking Flux status..."
-	@kubectl get kustomization flux-system -n flux-system -o yaml | yq '.status.conditions'

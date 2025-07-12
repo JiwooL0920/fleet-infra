@@ -34,6 +34,11 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus-node-exp
 echo "Port forwarding Weave GitOps on port 9001..."
 kubectl port-forward -n weave-gitops svc/weave-gitops 9001:9001 &
 
+# --- temporal ---
+# [8090] Temporal UI
+echo "Port forwarding Temporal UI on port 8090..."
+kubectl port-forward -n temporal svc/temporal-server-web 8090:8080 &
+
 echo "All port forwards started. Press Ctrl+C to stop all."
 
 # Wait for all background processes
