@@ -26,7 +26,7 @@ spec:
         kind: HelmRepository
         name: temporal
         namespace: temporal
-      version: "0.1.0"
+      version: "0.64.0"
   values:
     cassandra:
       enabled: false
