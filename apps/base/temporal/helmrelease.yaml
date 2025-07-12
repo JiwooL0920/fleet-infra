@@ -36,10 +36,10 @@ spec:
       enabled: false
       host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
       port: 5432
-      user: "temporal"
+      user: "app"
       databases:
-        default: "temporal"
-        visibility: "temporal_visibility"
+        default: "app"
+        visibility: "app"
     monitoring:
       prometheus:
         enabled: false
@@ -52,6 +52,28 @@ spec:
         - "--blobsRetentionDays=7"
       metrics:
         scope: production
+      config:
+        persistence:
+          default:
+            driver: "sql"
+            sql:
+              driver: "postgres"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "app"
+              user: "app"
+              existingSecret: "temporal-postgresql-secret"
+              secretName: "temporal-postgresql-secret"
+          visibility:
+            driver: "sql"
+            sql:
+              driver: "postgres"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "app"
+              user: "app"
+              existingSecret: "temporal-postgresql-secret"
+              secretName: "temporal-postgresql-secret"
     temporal:
       frontend:
         replicas: 2
