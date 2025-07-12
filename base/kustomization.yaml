@@ -5,6 +5,7 @@ resources:
   - ../apps/base/localstack
   - ../apps/base/n8n
   - ../apps/base/traefik
+  - ../apps/base/weave
   - services
 
 configMapGenerator:
