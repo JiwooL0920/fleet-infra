@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - secret-job.yaml
   - helmrelease.yaml
 
 namespace: temporal

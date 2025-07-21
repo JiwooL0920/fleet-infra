@@ -16,6 +16,9 @@ metadata:
   namespace: n8n
 spec:
   interval: 5m
+  dependsOn:
+    - name: postgresql-cluster
+      namespace: flux-system
   chart:
     spec:
       chart: ./charts/n8n
@@ -26,9 +29,11 @@ spec:
         namespace: flux-system
       interval: 5m
   install:
+    timeout: 10m
     remediation:
       retries: 3
   upgrade:
+    timeout: 10m
     remediation:
       retries: 3
   values:
@@ -97,3 +102,22 @@ spec:
       requests:
         memory: "256Mi"
         cpu: "250m"
+
+    # Health checks
+    probes:
+      liveness:
+        httpGet:
+          path: /healthz
+          port: http
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readiness:
+        httpGet:
+          path: /healthz
+          port: http
+        initialDelaySeconds: 30
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 3
