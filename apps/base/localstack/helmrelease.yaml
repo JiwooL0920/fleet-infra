@@ -50,3 +50,21 @@ spec:
         memory: "1Gi"
         cpu: "500m"
 
+    # Health check configuration
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 4566
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 4566
+      initialDelaySeconds: 15
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+
