@@ -16,8 +16,19 @@ metadata:
     app.kubernetes.io/part-of: temporal
 spec:
   interval: 10m
+  dependsOn:
+    - name: postgresql-cluster
+      namespace: flux-system
   releaseName: temporal-server
   targetNamespace: temporal
+  install:
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
   chart:
     spec:
       chart: temporal
@@ -75,7 +86,7 @@ spec:
               secretName: "temporal-postgresql-secret"
     schema:
       createDatabase:
-        enabled: false
+        enabled: true
       setupDatabase:
         enabled: true
       updateDatabase:
