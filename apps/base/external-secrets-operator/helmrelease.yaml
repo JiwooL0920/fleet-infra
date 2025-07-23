@@ -37,3 +37,7 @@ spec:
       interval: 5m
   values:
     installCRDs: true
+    controller:
+      env:
+        - name: AWS_SECRETSMANAGER_ENDPOINT
+          value: http://localstack-localstack.localstack.svc.cluster.local:4566
