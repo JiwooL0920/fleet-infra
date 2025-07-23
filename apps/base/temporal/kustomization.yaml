@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - secret-job.yaml
+  - externalsecret.yaml
   - helmrelease.yaml
