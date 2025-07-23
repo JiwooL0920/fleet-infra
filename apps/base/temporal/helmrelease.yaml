@@ -60,6 +60,11 @@ spec:
       metrics:
         scope: production
       config:
+        namespaces:
+          create: true
+          namespace:
+            - name: default
+              retention: 3d
         persistence:
           default:
             driver: "sql"
@@ -115,11 +120,4 @@ spec:
         replicas: 2
       worker:
         replicas: 2
-    
-    # Create default Temporal namespace
-    namespaces:
-      create: true
-      namespace:
-        - name: default
-          retention: 3d
 
