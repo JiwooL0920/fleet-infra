@@ -17,7 +17,7 @@ spec:
   chart:
     spec:
       chart: localstack
-      version: 0.6.25
+      version: 0.6.24
       sourceRef:
         kind: HelmRepository
         name: localstack
@@ -50,27 +50,18 @@ spec:
         memory: "1Gi"
         cpu: "500m"
 
-    # Fix duplicate httpGet issue by properly overriding probe config
+    # Proper probe configuration format for LocalStack chart
     livenessProbe:
-      httpGet:
-        path: /health
-        port: 4566
-        scheme: HTTP
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
+      successThreshold: 1
       failureThreshold: 3
 
     readinessProbe:
-      httpGet:
-        path: /health
-        port: 4566
-        scheme: HTTP
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
+      successThreshold: 1
       failureThreshold: 3
-
-    # Disable startup probe to avoid conflicts
-    startupProbe: {}
 
