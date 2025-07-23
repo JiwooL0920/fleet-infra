@@ -166,11 +166,6 @@ spec:
           backupOwnerReference: self
           method: barmanObjectStore
 
-    # Database and user configuration
-    database:
-      name: appdb
-      owner: app
-
     # Service configuration
     service:
       type: ClusterIP
@@ -178,7 +173,7 @@ spec:
     # Bootstrap configuration
     bootstrap:
       initdb:
-        database: appdb
+        database: app
         owner: app
         postInitSQL:
           - CREATE DATABASE temporal OWNER app;
