@@ -41,7 +41,7 @@ spec:
       type: ClusterIP
       port: 4566
 
-    # Resource limits
+    # Resource limits (important for Kubernetes stability)
     resources:
       limits:
         memory: "2Gi"
@@ -50,21 +50,27 @@ spec:
         memory: "1Gi"
         cpu: "500m"
 
-    # Health check configuration
+    # Fix duplicate httpGet issue by properly overriding probe config
     livenessProbe:
       httpGet:
         path: /health
         port: 4566
+        scheme: HTTP
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 3
+
     readinessProbe:
       httpGet:
         path: /health
         port: 4566
-      initialDelaySeconds: 15
-      periodSeconds: 5
-      timeoutSeconds: 3
+        scheme: HTTP
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
       failureThreshold: 3
+
+    # Disable startup probe to avoid conflicts
+    startupProbe: {}
 
