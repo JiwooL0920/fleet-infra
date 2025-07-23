@@ -179,7 +179,7 @@ spec:
         database: appdb
         owner: app
         postInitSQL:
-          - ALTER USER app CREATEDB;
+          - ALTER USER app SUPERUSER;
     
     # Service configuration
     service:
