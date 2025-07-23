@@ -16,9 +16,6 @@ metadata:
     app.kubernetes.io/part-of: temporal
 spec:
   interval: 10m
-  dependsOn:
-    - name: cloudnative-pg
-      namespace: flux-system
   releaseName: temporal-server
   targetNamespace: temporal
   install:
