@@ -37,21 +37,20 @@ spec:
       interval: 5m
   values:
     installCRDs: true
-    controller:
-      env:
-        - name: AWS_REGION
-          value: us-east-1
-        - name: AWS_DEFAULT_REGION
-          value: us-east-1
-        - name: AWS_ACCESS_KEY_ID
-          value: test
-        - name: AWS_SECRET_ACCESS_KEY
-          value: test
-        - name: AWS_SDK_LOAD_CONFIG
-          value: "false"
-        - name: AWS_EC2_METADATA_DISABLED
-          value: "true"
-        - name: AWS_SECRETSMANAGER_ENDPOINT
-          value: http://localstack-localstack.localstack.svc.cluster.local:4566
-        - name: AWS_STS_ENDPOINT
-          value: http://localstack-localstack.localstack.svc.cluster.local:4566
+    extraEnv:
+      - name: AWS_REGION
+        value: us-east-1
+      - name: AWS_DEFAULT_REGION
+        value: us-east-1
+      - name: AWS_ACCESS_KEY_ID
+        value: test
+      - name: AWS_SECRET_ACCESS_KEY
+        value: test
+      - name: AWS_SDK_LOAD_CONFIG
+        value: "false"
+      - name: AWS_EC2_METADATA_DISABLED
+        value: "true"
+      - name: AWS_SECRETSMANAGER_ENDPOINT
+        value: http://localstack-localstack.localstack.svc.cluster.local:4566
+      - name: AWS_STS_ENDPOINT
+        value: http://localstack-localstack.localstack.svc.cluster.local:4566
