@@ -5,7 +5,7 @@ resources:
   # Infrastructure and foundational services first
   - traefik.yaml
   - localstack.yaml
-  - cnpg.yaml
+  - cloudnative-pg.yaml
   # Monitoring stack
   - kube-prometheus-stack.yaml
   # Application services (depend on PostgreSQL)
