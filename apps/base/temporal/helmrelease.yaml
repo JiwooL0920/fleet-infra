@@ -2,7 +2,7 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: temporal
-  namespace: temporal
+  namespace: flux-system
 spec:
   interval: 10m
   url: https://go.temporal.io/helm-charts
@@ -11,7 +11,7 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: temporal-server
-  namespace: temporal
+  namespace: flux-system
   labels:
     app.kubernetes.io/part-of: temporal
 spec:
@@ -36,7 +36,7 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: temporal
-        namespace: temporal
+        namespace: flux-system
       version: "0.64.0"
   values:
     cassandra:

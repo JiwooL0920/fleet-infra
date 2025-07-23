@@ -34,6 +34,11 @@ kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus-node-exp
 echo "Port forwarding Weave GitOps on port 9001..."
 kubectl port-forward -n weave-gitops svc/weave-gitops 9001:9001 &
 
+# --- postgresql ---
+# [5432] PostgreSQL
+echo "Port forwarding PostgreSQL on port 5432..."
+kubectl port-forward -n cnpg-system svc/postgresql-cluster-rw 5432:5432 &
+
 # --- temporal ---
 # [8090] Temporal UI
 echo "Port forwarding Temporal UI on port 8090..."
