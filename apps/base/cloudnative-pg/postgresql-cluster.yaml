@@ -15,7 +15,6 @@ spec:
   # Storage configuration
   storage:
     size: 10Gi
-    storageClass: ${STORAGE_CLASS:-}
   
   # Resource limits and requests
   resources:
