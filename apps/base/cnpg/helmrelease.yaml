@@ -185,8 +185,3 @@ spec:
     service:
       type: ClusterIP
       
-    # Bootstrap configuration
-    bootstrap:
-      initdb:
-        database: appdb
-        owner: app
