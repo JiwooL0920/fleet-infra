@@ -86,7 +86,7 @@ spec:
               secretName: "temporal-postgresql-secret"
     schema:
       createDatabase:
-        enabled: false
+        enabled: true
       setupDatabase:
         enabled: true
       updateDatabase:

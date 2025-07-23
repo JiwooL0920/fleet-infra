@@ -175,8 +175,6 @@ spec:
       initdb:
         database: app
         owner: app
+        # Ensure app user has createdb privileges for Temporal database creation
         postInitSQL:
-          - CREATE DATABASE temporal OWNER app;
-          - CREATE DATABASE temporal_visibility OWNER app;
-          - GRANT ALL PRIVILEGES ON DATABASE temporal TO app;
-          - GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO app;
+          - ALTER USER app CREATEDB;

@@ -202,3 +202,41 @@ When restarting Colima, services now start in proper dependency order:
 2. Dependencies are automatically handled by Flux `dependsOn` clauses
 3. Extended timeouts (10-15m) allow for slower startups
 4. Health checks prevent services from starting before dependencies are ready
+
+## GitOps Safety and Cross-Environment Protection
+
+### Pre-commit Hooks
+```bash
+# Install pre-commit hook to prevent cross-environment mistakes
+ln -s ../../scripts/pre-commit-check.sh .git/hooks/pre-commit
+```
+
+The pre-commit hook automatically:
+- Prevents editing production files when on `develop` branch
+- Warns when committing directly to `main` branch
+- Ensures proper branch-environment alignment
+
+### Local Testing and Validation
+```bash
+# Validate all changes before committing
+./scripts/test-flux-changes.sh
+
+# Check kustomizations and HelmReleases
+# Validates syntax and detects common issues like:
+# - Duplicate resource names
+# - Missing namespaces
+# - Invalid YAML syntax
+```
+
+### Environment-Specific Configuration
+- **cluster-vars-patch.yaml**: Environment-specific overrides for base configurations
+- **environment.env**: Base environment variables that can be overridden per environment
+- Use patches rather than duplicating entire configurations
+
+### Makefile Targets
+```bash
+# Available make targets
+make help           # Show available targets
+make port-forward   # Start port forwarding for all services
+make verify-startup # Verify service startup order and health
+```
