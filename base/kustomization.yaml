@@ -3,16 +3,16 @@ kind: Kustomization
 # Resources ordered by dependency
 resources:
   # Infrastructure and foundational services first
-  - ../apps/base/traefik
-  - ../apps/base/localstack
-  - ../apps/base/cnpg
+  - traefik.yaml
+  - localstack.yaml
+  - cnpg.yaml
   # Monitoring stack
-  - ../apps/base/kube-prometheus-stack
+  - kube-prometheus-stack.yaml
   # Application services (depend on PostgreSQL)
-  - ../apps/base/n8n
-  - ../apps/base/temporal
+  - n8n.yaml
+  - temporal.yaml
   # Management tools
-  - ../apps/base/weave-gitops
+  - weave-gitops.yaml
   - services
 
 configMapGenerator:
