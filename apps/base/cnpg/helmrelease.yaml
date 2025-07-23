@@ -173,6 +173,14 @@ spec:
       name: appdb
       owner: app
     
+    # Grant CREATEDB to the app user
+    bootstrap:
+      initdb:
+        database: appdb
+        owner: app
+        postInitSQL:
+          - ALTER USER app CREATEDB;
+    
     # Service configuration
     service:
       type: ClusterIP
@@ -182,10 +190,3 @@ spec:
       initdb:
         database: appdb
         owner: app
-        # Grant CREATEDB privileges to app user and create temporal databases
-        postInitSQL:
-          - ALTER USER app CREATEDB;
-          - CREATE DATABASE temporal OWNER app;
-          - CREATE DATABASE temporal_visibility OWNER app;
-          - GRANT ALL PRIVILEGES ON DATABASE temporal TO app;
-          - GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO app;
