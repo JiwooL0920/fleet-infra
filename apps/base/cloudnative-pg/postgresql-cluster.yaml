@@ -52,7 +52,6 @@ spec:
   
   # Monitoring configuration
   monitoring:
-    enabled: true
     enablePodMonitor: true
     
   # Service configuration
