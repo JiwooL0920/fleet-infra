@@ -182,8 +182,9 @@ spec:
       initdb:
         database: appdb
         owner: app
-        # Create additional databases using post-init SQL
+        # Grant CREATEDB privileges to app user and create temporal databases
         postInitSQL:
+          - ALTER USER app CREATEDB;
           - CREATE DATABASE temporal OWNER app;
           - CREATE DATABASE temporal_visibility OWNER app;
           - GRANT ALL PRIVILEGES ON DATABASE temporal TO app;
