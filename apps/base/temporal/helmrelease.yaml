@@ -71,7 +71,7 @@ spec:
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
               database: "temporal"
-              user: "app"
+              user: "appuser"
               existingSecret: "temporal-postgresql-secret"
               secretName: "temporal-postgresql-secret"
           visibility:
@@ -81,12 +81,12 @@ spec:
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
               database: "temporal_visibility"
-              user: "app"
+              user: "appuser"
               existingSecret: "temporal-postgresql-secret"
               secretName: "temporal-postgresql-secret"
     schema:
       createDatabase:
-        enabled: true
+        enabled: false
       setupDatabase:
         enabled: true
       updateDatabase:
@@ -100,7 +100,7 @@ spec:
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
               database: "temporal"
-              user: "app"
+              user: "appuser"
               existingSecret: "temporal-postgresql-secret"
               secretName: "temporal-postgresql-secret"
           visibility:
@@ -110,7 +110,7 @@ spec:
               host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
               port: 5432
               database: "temporal_visibility"
-              user: "app"
+              user: "appuser"
               existingSecret: "temporal-postgresql-secret"
               secretName: "temporal-postgresql-secret"
     temporal:

@@ -38,7 +38,7 @@ spec:
       enabled: false
       podMonitor:
         enabled: false
-    
+
     # Resource limits for the operator
     resources:
       limits:
@@ -47,11 +47,11 @@ spec:
       requests:
         memory: "256Mi"
         cpu: "100m"
-    
+
     # Enable CRDs
     crds:
       create: true
-    
+
     # Webhook configuration
     webhook:
       port: 9443
@@ -73,11 +73,9 @@ spec:
     - name: cloudnative-pg
       namespace: flux-system
   install:
-    timeout: 15m
     remediation:
       retries: 3
   upgrade:
-    timeout: 15m
     remediation:
       retries: 3
   chart:
@@ -92,18 +90,18 @@ spec:
   values:
     # Cluster configuration
     type: postgresql
-    
+
     # PostgreSQL version
     version:
       postgresql: "16"
-    
+
     # Cluster mode (standalone, replica, recovery)
     mode: standalone
-    
+
     # Cluster specifications
     cluster:
       instances: 3
-      
+
       # PostgreSQL configuration
       postgresql:
         parameters:
@@ -119,7 +117,7 @@ spec:
           work_mem: "4MB"
           min_wal_size: "1GB"
           max_wal_size: "4GB"
-      
+
       # Resource configuration
       resources:
         requests:
@@ -128,12 +126,12 @@ spec:
         limits:
           memory: "1Gi"
           cpu: "1000m"
-      
+
       # Storage configuration
       storage:
         size: "5Gi"
         storageClass: "standard"
-      
+
       # Monitoring configuration
       monitoring:
         enabled: false
@@ -141,7 +139,7 @@ spec:
           enabled: false
         prometheusRule:
           enabled: false
-    
+
     # Backup configuration
     backups:
       enabled: true
@@ -164,24 +162,27 @@ spec:
       # Scheduled backup configuration
       scheduledBackups:
         - name: daily-backup
-          schedule: "0 0 2 * * *"  # Daily at 2:00 AM UTC (second minute hour day month weekday)
+          schedule: "0 0 2 * * *" # Daily at 2:00 AM UTC (second minute hour day month weekday)
           backupOwnerReference: self
           method: barmanObjectStore
-    
+
     # Database and user configuration
     database:
       name: appdb
-      owner: app
-    
-    # Grant CREATEDB to the app user
-    bootstrap:
-      initdb:
-        database: appdb
-        owner: app
-        postInitSQL:
-          - ALTER USER app SUPERUSER;
-    
+      owner: appuser
+
     # Service configuration
     service:
       type: ClusterIP
-      
+
+    # Bootstrap configuration
+    bootstrap:
+      initdb:
+        database: appdb
+        owner: appuser
+        # Create additional databases using post-init SQL
+        postInitSQL:
+          - CREATE DATABASE temporal OWNER appuser;
+          - CREATE DATABASE temporal_visibility OWNER appuser;
+          - GRANT ALL PRIVILEGES ON DATABASE temporal TO appuser;
+          - GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO appuser
