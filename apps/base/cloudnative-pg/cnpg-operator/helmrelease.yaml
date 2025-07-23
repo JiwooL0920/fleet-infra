@@ -17,9 +17,6 @@ spec:
   interval: 5m
   releaseName: cnpg-operator
   targetNamespace: cnpg-system
-  dependsOn:
-    - name: localstack
-      namespace: flux-system
   install:
     createNamespace: true
     timeout: 10m

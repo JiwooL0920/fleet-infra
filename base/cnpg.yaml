@@ -15,7 +15,6 @@ spec:
   timeout: 15m0s
   dependsOn:
     - name: traefik
-    - name: localstack
   postBuild:
     substituteFrom:
       - kind: ConfigMap
