@@ -2,6 +2,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - n8n-db.yaml
-  - temporal-db.yaml
-  - app-db.yaml
+  - app.yaml
+  - n8n.yaml
+  - temporal.yaml

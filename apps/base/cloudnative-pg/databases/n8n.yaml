@@ -2,7 +2,7 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Database
 metadata:
-  name: n8n-db
+  name: n8n
   namespace: cnpg-system
 spec:
   name: n8n

@@ -2,7 +2,7 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Database
 metadata:
-  name: temporal-db
+  name: temporal
   namespace: cnpg-system
 spec:
   name: temporal
@@ -13,7 +13,7 @@ spec:
 apiVersion: postgresql.cnpg.io/v1
 kind: Database
 metadata:
-  name: temporal-visibility-db
+  name: temporal-visibility
   namespace: cnpg-system
 spec:
   name: temporal_visibility
