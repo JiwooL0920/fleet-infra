@@ -169,7 +169,7 @@ spec:
     # Database and user configuration
     database:
       name: appdb
-      owner: appuser
+      owner: app
 
     # Service configuration
     service:
@@ -179,10 +179,9 @@ spec:
     bootstrap:
       initdb:
         database: appdb
-        owner: appuser
-        # Create additional databases using post-init SQL
+        owner: app
         postInitSQL:
-          - CREATE DATABASE temporal OWNER appuser;
-          - CREATE DATABASE temporal_visibility OWNER appuser;
-          - GRANT ALL PRIVILEGES ON DATABASE temporal TO appuser;
-          - GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO appuser
+          - CREATE DATABASE temporal OWNER app;
+          - CREATE DATABASE temporal_visibility OWNER app;
+          - GRANT ALL PRIVILEGES ON DATABASE temporal TO app;
+          - GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO app;
