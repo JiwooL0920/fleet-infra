@@ -6,6 +6,7 @@ resources:
   - traefik.yaml
   - localstack.yaml
   - cnpg-operator.yaml
+  - external-secrets-operator.yaml
   - cloudnative-pg.yaml
   # Monitoring stack
   - kube-prometheus-stack.yaml
