@@ -14,7 +14,7 @@ spec:
   wait: true
   timeout: 10m0s
   dependsOn:
-    - name: cnpg
+    - name: cloudnative-pg
     - name: traefik
   postBuild:
     substituteFrom:
