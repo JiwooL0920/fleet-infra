@@ -17,7 +17,7 @@ metadata:
 spec:
   interval: 10m
   dependsOn:
-    - name: postgresql-cluster
+    - name: cloudnative-pg
       namespace: flux-system
   releaseName: temporal-server
   targetNamespace: temporal
@@ -72,8 +72,7 @@ spec:
               port: 5432
               database: "temporal"
               user: "app"
-              existingSecret: "temporal-postgresql-secret"
-              secretName: "temporal-postgresql-secret"
+              existingSecret: "postgresql-cluster-app"
           visibility:
             driver: "sql"
             sql:
@@ -82,11 +81,10 @@ spec:
               port: 5432
               database: "temporal_visibility"
               user: "app"
-              existingSecret: "temporal-postgresql-secret"
-              secretName: "temporal-postgresql-secret"
+              existingSecret: "postgresql-cluster-app"
     schema:
       createDatabase:
-        enabled: true
+        enabled: false
       setupDatabase:
         enabled: true
       updateDatabase:
@@ -101,8 +99,7 @@ spec:
               port: 5432
               database: "temporal"
               user: "app"
-              existingSecret: "temporal-postgresql-secret"
-              secretName: "temporal-postgresql-secret"
+              existingSecret: "postgresql-cluster-app"
           visibility:
             driver: "sql"
             sql:
@@ -111,8 +108,7 @@ spec:
               port: 5432
               database: "temporal_visibility"
               user: "app"
-              existingSecret: "temporal-postgresql-secret"
-              secretName: "temporal-postgresql-secret"
+              existingSecret: "postgresql-cluster-app"
     temporal:
       frontend:
         replicas: 2
