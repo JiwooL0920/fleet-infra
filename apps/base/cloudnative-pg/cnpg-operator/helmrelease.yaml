@@ -1,0 +1,83 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: cnpg
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://cloudnative-pg.github.io/charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cnpg-operator
+  namespace: flux-system
+spec:
+  interval: 5m
+  releaseName: cnpg-operator
+  targetNamespace: cnpg-system
+  dependsOn:
+    - name: localstack
+      namespace: flux-system
+  install:
+    createNamespace: true
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: cloudnative-pg
+      version: "0.22.1"
+      sourceRef:
+        kind: HelmRepository
+        name: cnpg
+        namespace: flux-system
+      interval: 5m
+  values:
+    # Operator configuration
+    replicaCount: 1
+    
+    # Image configuration
+    image:
+      repository: ghcr.io/cloudnative-pg/cloudnative-pg
+      tag: "1.26.0"
+      pullPolicy: Always
+    
+    # Resources for operator
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    
+    # Monitoring
+    monitoring:
+      enabled: true
+      podMonitor:
+        enabled: true
+    
+    # Additional configuration
+    config:
+      create: true
+      name: cnpg-controller-manager-config
+      data:
+        ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES: 'true'
+        INHERITED_LABELS: environment,workload,app
+        INHERITED_ANNOTATIONS: categories
+    
+    # Service account
+    serviceAccount:
+      create: true
+      name: cnpg-manager
+    
+    # Node selector and tolerations if needed
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}

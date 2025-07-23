@@ -10,7 +10,7 @@ resources:
   - kube-prometheus-stack.yaml
   # Application services (depend on PostgreSQL)
   - n8n.yaml
-  - temporal.yaml
+  # - temporal.yaml  # Temporarily disabled while rebuilding CNPG
   # Management tools
   - weave-gitops.yaml
   - services

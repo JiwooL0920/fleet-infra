@@ -1,0 +1,62 @@
+---
+# PostgreSQL Cluster
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgresql-cluster
+  namespace: cnpg-system
+spec:
+  instances: 3
+  
+  # PostgreSQL image
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  
+  
+  # Storage configuration
+  storage:
+    size: 10Gi
+    storageClass: ${STORAGE_CLASS:-}
+  
+  # Resource limits and requests
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: 500m
+    limits:
+      memory: "2Gi"
+      cpu: 1000m
+  
+  # PostgreSQL configuration
+  postgresql:
+    parameters:
+      # Memory settings
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      work_mem: "4MB"
+      maintenance_work_mem: "64MB"
+      
+      # Connection settings
+      max_connections: "200"
+      
+      # WAL settings
+      wal_level: replica
+      max_wal_senders: "10"
+      max_replication_slots: "10"
+      
+      # Logging
+      log_min_messages: "warning"
+      log_statement: "none"
+      
+      # Checkpoint settings
+      checkpoint_completion_target: "0.9"
+  
+  # Monitoring configuration
+  monitoring:
+    enabled: true
+    enablePodMonitor: true
+    
+  # Service configuration
+  managed:
+    services:
+      # Disable default read services to reduce complexity
+      disabledDefaultServices: ["ro", "r"]
