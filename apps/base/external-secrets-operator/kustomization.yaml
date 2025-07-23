@@ -4,3 +4,4 @@ resources:
   - helmrelease.yaml
   - secret.yaml
   - clustersecretstore.yaml
+  - pushsecret-cnpg-app.yaml
