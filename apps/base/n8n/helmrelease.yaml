@@ -35,6 +35,9 @@ spec:
     remediation:
       retries: 3
   values:
+    # Override the default name to avoid n8n-n8n
+    nameOverride: n8n
+    
     # N8N main application configuration
     main:
       # N8N configuration converted to environment variables
