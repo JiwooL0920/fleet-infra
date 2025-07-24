@@ -18,7 +18,7 @@ spec:
   interval: 5m
   targetNamespace: n8n
   dependsOn:
-    - name: postgresql-cluster
+    - name: cloudnative-pg
       namespace: flux-system
   chart:
     spec:
