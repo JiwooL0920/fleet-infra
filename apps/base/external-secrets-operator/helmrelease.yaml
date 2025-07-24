@@ -51,6 +51,6 @@ spec:
       - name: AWS_EC2_METADATA_DISABLED
         value: "true"
       - name: AWS_SECRETSMANAGER_ENDPOINT
-        value: http://localstack-localstack.localstack.svc.cluster.local:4566
+        value: http://localstack.localstack.svc.cluster.local:4566
       - name: AWS_STS_ENDPOINT
-        value: http://localstack-localstack.localstack.svc.cluster.local:4566
+        value: http://localstack.localstack.svc.cluster.local:4566

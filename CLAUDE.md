@@ -62,6 +62,9 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 # Test Flux changes
 ./scripts/test-flux-changes.sh
 
+# Update Flux repository configuration
+./scripts/flux-update-repo.sh
+
 # Verify service startup order and health
 make verify-startup
 # OR
@@ -85,6 +88,8 @@ make verify-startup
 
 #### Application Stack
 - **CloudNative PostgreSQL**: 3-node HA cluster with automated backups
+- **CNPG Operator**: CloudNative PostgreSQL operator for managing PostgreSQL clusters
+- **External Secrets Operator**: Manages external secrets integration and synchronization
 - **N8N**: Workflow automation engine with PostgreSQL backend (depends on PostgreSQL)
 - **Temporal**: Workflow orchestration platform (depends on PostgreSQL) 
 - **Traefik**: Ingress controller and load balancer
@@ -93,11 +98,14 @@ make verify-startup
 - **Weave GitOps**: GitOps dashboard and management
 
 #### Service Dependencies (startup order)
-1. **LocalStack** (foundational service)
-2. **CloudNative PG Operator** 
-3. **PostgreSQL Cluster** (depends on operator + LocalStack)
-4. **N8N, Temporal** (depend on PostgreSQL)
-5. **Other services** (Traefik, monitoring, etc.)
+1. **Traefik** (ingress and foundational networking)
+2. **LocalStack** (AWS services emulation)
+3. **CNPG Operator** (PostgreSQL operator)
+4. **External Secrets Operator** (secrets management)
+5. **PostgreSQL Cluster** (depends on operator + LocalStack)
+6. **Kube-Prometheus-Stack** (monitoring stack)
+7. **N8N, Temporal** (depend on PostgreSQL)
+8. **Weave GitOps** (GitOps management)
 
 #### Database Architecture
 - PostgreSQL 16 with CloudNative PG operator
@@ -109,29 +117,44 @@ make verify-startup
 ### Directory Structure Logic
 
 ```
-apps/base/           # Base application configurations (Helm releases)
-├── cnpg/           # PostgreSQL cluster and operator
-├── n8n/            # Workflow automation
-├── temporal/       # Workflow orchestration
-├── traefik/        # Ingress controller
-└── ...
+apps/base/                    # Base application configurations (Helm releases)
+├── cloudnative-pg/          # PostgreSQL cluster configurations
+│   ├── databases/           # Database creation configs (n8n.yaml, temporal.yaml)
+│   ├── kustomization.yaml
+│   └── postgresql-cluster.yaml
+├── cnpg-operator/           # CloudNative PostgreSQL operator
+├── external-secrets-operator/ # External secrets management
+├── kube-prometheus-stack/   # Monitoring stack (Grafana, Prometheus)
+├── localstack/             # Local AWS services emulation
+├── n8n/                    # Workflow automation engine
+├── temporal/               # Workflow orchestration platform
+├── traefik/                # Ingress controller and load balancer
+└── weave-gitops/           # GitOps dashboard and management
 
-base/               # Base Kustomization aggregating all apps
-├── kustomization.yaml
-├── environment.env # Base environment variables
-└── services/       # Service-specific configurations
+base/                       # Base Kustomization aggregating all apps
+├── kustomization.yaml      # Main kustomization with resource order
+├── environment.env         # Base environment variables
+├── services/               # Service-specific configurations
+└── *.yaml                  # Individual service kustomizations
 
-clusters/stages/    # Environment-specific configurations
-├── dev/            # Development environment
+clusters/stages/            # Environment-specific configurations
+├── dev/                    # Development environment
+│   ├── base/               # Base dev configurations
+│   │   ├── cluster-vars-patch.yaml
+│   │   └── kustomization.yaml
 │   └── clusters/services-amer/
-│       ├── flux-system/     # Flux controllers (tracks develop branch)
+│       ├── flux-system/    # Flux controllers (tracks develop branch)
+│       ├── cluster-vars-patch.yaml
 │       └── kustomization.yaml
-└── prod/           # Production environment (similar structure, tracks main branch)
+└── prod/                   # Production environment (similar structure, tracks main branch)
 
-scripts/            # Automation scripts
-├── flux-bootstrap.sh    # Environment-aware bootstrap
-├── port-forward.sh      # Service port forwarding
-└── ...
+scripts/                    # Automation scripts
+├── flux-bootstrap.sh       # Environment-aware bootstrap
+├── flux-update-repo.sh     # Repository update utilities
+├── port-forward.sh         # Service port forwarding
+├── pre-commit-check.sh     # Git safety checks
+├── test-flux-changes.sh    # Flux validation testing
+└── verify-startup.sh       # Service health verification
 ```
 
 ### Branch and Environment Mapping
@@ -193,8 +216,10 @@ scripts/            # Automation scripts
 - Always test changes in development environment first
 - Use the bootstrap script for setting up new environments
 - Monitor Flux reconciliation status when making changes
-- PostgreSQL databases are created automatically via post-init SQL
+- PostgreSQL databases are created automatically via database configs in `apps/base/cloudnative-pg/databases/`
 - All applications use PostgreSQL from the shared 3-node cluster
+- External Secrets Operator manages secret synchronization between external systems and Kubernetes
+- Resource deployment order is controlled by the `base/kustomization.yaml` file
 
 ### After Colima Restart
 When restarting Colima, services now start in proper dependency order:
