@@ -31,6 +31,9 @@ spec:
     remediation:
       retries: 3
   values:
+    # avoid localstack-localstack
+    fullnameOverride: "localstack"
+
     # Minimal LocalStack configuration
     debug: true
 
@@ -65,4 +68,3 @@ spec:
       timeoutSeconds: 5
       successThreshold: 1
       failureThreshold: 3
-
