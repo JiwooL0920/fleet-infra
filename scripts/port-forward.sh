@@ -2,49 +2,65 @@
 
 echo "Starting port forwards..."
 
-# --- localstack ---
-# [4566] LocalStack
-echo "Port forwarding LocalStack on port 4566..."
-kubectl port-forward -n localstack svc/localstack 4566:4566 &
+# Function to check if a service exists
+check_service() {
+    local namespace=$1
+    local service=$2
+    kubectl get svc -n "$namespace" "$service" &>/dev/null
+}
 
-# --- n8n---
-# [5678] n8n
-echo "Port forwarding n8n on port 5678..."
-kubectl port-forward -n n8n svc/n8n 5678:80 &
+# Function to start port forward with error handling
+start_port_forward() {
+    local namespace=$1
+    local service=$2
+    local local_port=$3
+    local remote_port=$4
+    local description=$5
+    
+    if check_service "$namespace" "$service"; then
+        echo "Port forwarding $description on port $local_port..."
+        kubectl port-forward -n "$namespace" "svc/$service" "$local_port:$remote_port" &
+    else
+        echo "Skipping $description - service $service not found in namespace $namespace"
+    fi
+}
+
+# --- localstack ---
+start_port_forward "localstack" "localstack-localstack" "4566" "4566" "LocalStack"
+
+# --- n8n (optional - may not be deployed) ---
+start_port_forward "n8n" "n8n" "5678" "80" "n8n"
 
 # --- kube-prometheus-stack ---
-# [3030] Grafana
-echo "Port forwarding Grafana on port 3030..."
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3030:80 &
-
-# [9090] Prometheus
-echo "Port forwarding Prometheus on port 9090..."
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090 &
-
-# [9093] Alertmanager
-echo "Port forwarding Alertmanager on port 9093..."
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-alertmanager 9093:9093 &
-
-# [9100] Node Exporter
-echo "Port forwarding Node Exporter on port 9100..."
-kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus-node-exporter 9100:9100 &
+start_port_forward "monitoring" "monitoring-kube-prometheus-stack-grafana" "3030" "80" "Grafana"
+start_port_forward "monitoring" "monitoring-kube-prometheus-prometheus" "9090" "9090" "Prometheus"
+start_port_forward "monitoring" "monitoring-kube-prometheus-alertmanager" "9093" "9093" "Alertmanager"
+start_port_forward "monitoring" "monitoring-kube-prometheus-stack-prometheus-node-exporter" "9100" "9100" "Node Exporter"
 
 # --- weave-gitops ---
-# [9001] Weave GitOps
-echo "Port forwarding Weave GitOps on port 9001..."
-kubectl port-forward -n weave-gitops svc/weave-gitops 9001:9001 &
+start_port_forward "weave-gitops" "weave-gitops" "9001" "9001" "Weave GitOps"
 
 # --- postgresql ---
-# [5432] PostgreSQL
-echo "Port forwarding PostgreSQL on port 5432..."
-kubectl port-forward -n cnpg-system svc/postgresql-cluster-rw 5432:5432 &
+start_port_forward "cnpg-system" "postgresql-cluster-rw" "5432" "5432" "PostgreSQL"
 
 # --- temporal ---
-# [8090] Temporal UI
-echo "Port forwarding Temporal UI on port 8090..."
-kubectl port-forward -n temporal svc/temporal-server-web 8090:8080 &
+start_port_forward "temporal" "temporal-server-web" "8090" "8080" "Temporal UI"
 
-echo "All port forwards started. Press Ctrl+C to stop all."
+echo ""
+echo "Port forwards started successfully!"
+echo ""
+echo "Available services:"
+echo "  LocalStack:    http://localhost:4566"
+echo "  n8n:           http://localhost:5678"
+echo "  Grafana:       http://localhost:3030"
+echo "  Prometheus:    http://localhost:9090"
+echo "  Alertmanager:  http://localhost:9093"
+echo "  Node Exporter: http://localhost:9100"
+echo "  Weave GitOps:  http://localhost:9001"
+echo "  PostgreSQL:    localhost:5432"
+echo "  Temporal UI:   http://localhost:8090"
+echo ""
+echo "Press Ctrl+C to stop all port forwards."
 
 # Wait for all background processes
 wait
