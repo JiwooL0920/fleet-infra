@@ -14,6 +14,7 @@ resources:
   - n8n.yaml
   - temporal.yaml
   # Management tools
+  - pgadmin4.yaml
   - weave-gitops.yaml
   - services
 

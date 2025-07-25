@@ -1,0 +1,93 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: runix
+  namespace: flux-system
+spec:
+  interval: 10m
+  url: https://helm.runix.net
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: pgadmin4
+  namespace: flux-system
+spec:
+  interval: 10m
+  releaseName: pgadmin4
+  targetNamespace: pgadmin4
+  install:
+    createNamespace: true
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: pgadmin4
+      version: "1.47.0"
+      sourceRef:
+        kind: HelmRepository
+        name: runix
+        namespace: flux-system
+      interval: 10m
+  values:
+    # pgAdmin4 configuration
+    env:
+      email: "admin@example.com"
+      password: "admin123"
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
+      PGADMIN_CONFIG_LOGIN_BANNER: "PostgreSQL Administration - Fleet Infrastructure"
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: "20"
+    
+    # Use external secret for credentials
+    existingSecret: "pgadmin4-credentials"
+    secretKeys:
+      pgadminPasswordKey: password
+      pgadminEmailKey: email
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 80
+      targetPort: 80
+    
+    # Ingress configuration
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: web
+      hosts:
+        - host: pgadmin4.local
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+    
+    # Persistence
+    persistentVolume:
+      enabled: true
+      size: 1Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+    
+    # Resource limits
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    
+    # Security configuration
+    securityContext:
+      runAsUser: 5050
+      runAsGroup: 5050
+      fsGroup: 5050
+      runAsNonRoot: true

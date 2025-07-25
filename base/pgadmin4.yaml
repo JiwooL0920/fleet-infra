@@ -1,0 +1,28 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: pgadmin4
+  namespace: flux-system
+spec:
+  interval: 10m
+  timeout: 15m
+  retryInterval: 2m
+  path: "./apps/base/pgadmin4"
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  dependsOn:
+    - name: cloudnative-pg
+    - name: external-secrets-operator
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+      kind: HelmRelease
+      name: pgadmin4
+      namespace: pgadmin4
+  postBuild:
+    substitute:
+      cluster_name: ${cluster_name}
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

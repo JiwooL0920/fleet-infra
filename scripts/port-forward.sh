@@ -46,6 +46,9 @@ start_port_forward "cnpg-system" "postgresql-cluster-rw" "5432" "5432" "PostgreS
 # --- temporal ---
 start_port_forward "temporal" "temporal-server-web" "8090" "8080" "Temporal UI"
 
+# --- pgadmin4 ---
+start_port_forward "pgadmin4" "pgadmin4" "8080" "80" "pgAdmin4"
+
 echo ""
 echo "Port forwards started successfully!"
 echo ""
@@ -59,6 +62,7 @@ echo "  Node Exporter: http://localhost:9100"
 echo "  Weave GitOps:  http://localhost:9001"
 echo "  PostgreSQL:    localhost:5432"
 echo "  Temporal UI:   http://localhost:8090"
+echo "  pgAdmin4:      http://localhost:8080"
 echo ""
 echo "Press Ctrl+C to stop all port forwards."
 

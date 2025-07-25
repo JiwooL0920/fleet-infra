@@ -91,7 +91,8 @@ make verify-startup
 - **CNPG Operator**: CloudNative PostgreSQL operator for managing PostgreSQL clusters
 - **External Secrets Operator**: Manages external secrets integration and synchronization
 - **N8N**: Workflow automation engine with PostgreSQL backend (depends on PostgreSQL)
-- **Temporal**: Workflow orchestration platform (depends on PostgreSQL) 
+- **Temporal**: Workflow orchestration platform (depends on PostgreSQL)
+- **pgAdmin4**: Web-based PostgreSQL database administration tool (depends on PostgreSQL)
 - **Traefik**: Ingress controller and load balancer
 - **Kube-Prometheus-Stack**: Monitoring with Grafana, Prometheus, Alertmanager
 - **LocalStack**: Local AWS services emulation (required for PostgreSQL backups)
@@ -104,7 +105,7 @@ make verify-startup
 4. **External Secrets Operator** (secrets management)
 5. **PostgreSQL Cluster** (depends on operator + LocalStack)
 6. **Kube-Prometheus-Stack** (monitoring stack)
-7. **N8N, Temporal** (depend on PostgreSQL)
+7. **N8N, Temporal, pgAdmin4** (depend on PostgreSQL)
 8. **Weave GitOps** (GitOps management)
 
 #### Database Architecture
@@ -127,6 +128,7 @@ apps/base/                    # Base application configurations (Helm releases)
 ├── kube-prometheus-stack/   # Monitoring stack (Grafana, Prometheus)
 ├── localstack/             # Local AWS services emulation
 ├── n8n/                    # Workflow automation engine
+├── pgadmin4/               # PostgreSQL database administration tool
 ├── temporal/               # Workflow orchestration platform
 ├── traefik/                # Ingress controller and load balancer
 └── weave-gitops/           # GitOps dashboard and management
@@ -170,6 +172,7 @@ scripts/                    # Automation scripts
 - Node Exporter: 9100
 - Weave GitOps: 9001
 - Temporal UI: 8090
+- pgAdmin4: 8080
 
 ## Key Development Workflows
 
