@@ -66,7 +66,7 @@ start_port_forward "pgadmin4" "pgadmin4" "8080" "80" "pgAdmin4"
 start_port_forward "redis" "redis" "6379" "6379" "Redis"
 
 # --- redisinsight ---
-start_port_forward "redisinsight" "redisinsight" "8001" "80" "RedisInsight"
+start_port_forward "redisinsight" "redisinsight" "8001" "8080" "RedisInsight"
 
 echo ""
 echo "Port forwards started successfully!"
