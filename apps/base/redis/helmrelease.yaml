@@ -30,6 +30,9 @@ spec:
     # Enable Redis Sentinel architecture
     architecture: replication
     
+    # Override default naming
+    fullnameOverride: "redis"
+    
     # Authentication configuration
     auth:
       enabled: true
