@@ -40,6 +40,11 @@ spec:
       type: ClusterIP
       port: 8080
       targetPort: 5540
+      ports:
+        - name: http
+          port: 8080
+          targetPort: 5540
+          protocol: TCP
     
     resources:
       requests:
