@@ -48,18 +48,3 @@ spec:
       limits:
         memory: "512Mi"
         cpu: "500m"
-    
-    # Health check probes - target correct port 5540
-    livenessProbe:
-      httpGet:
-        path: /
-        port: 5540
-      initialDelaySeconds: 30
-      periodSeconds: 10
-    
-    readinessProbe:
-      httpGet:
-        path: /
-        port: 5540
-      initialDelaySeconds: 5
-      periodSeconds: 5
