@@ -62,6 +62,12 @@ start_port_forward "temporal" "temporal-server-web" "8090" "8080" "Temporal UI"
 # --- pgadmin4 ---
 start_port_forward "pgadmin4" "pgadmin4" "8080" "80" "pgAdmin4"
 
+# --- redis ---
+start_port_forward "redis" "redis" "6379" "6379" "Redis"
+
+# --- redisinsight ---
+start_port_forward "redisinsight" "redisinsight" "8001" "80" "RedisInsight"
+
 echo ""
 echo "Port forwards started successfully!"
 echo ""
@@ -76,6 +82,8 @@ echo "  Weave GitOps:  http://localhost:9001"
 echo "  PostgreSQL:    localhost:5432"
 echo "  Temporal UI:   http://localhost:8090"
 echo "  pgAdmin4:      http://localhost:8080"
+echo "  Redis:         localhost:6379"
+echo "  RedisInsight:  http://localhost:8001"
 echo ""
 echo "Press Ctrl+C to stop all port forwards."
 

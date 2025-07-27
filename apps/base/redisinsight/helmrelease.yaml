@@ -29,17 +29,17 @@ spec:
     # Override default naming
     fullnameOverride: "redisinsight"
     
+    replicaCount: 1
+    
     image:
       repository: redis/redisinsight
-      tag: "2.58"
+      tag: "latest"
       pullPolicy: IfNotPresent
     
     service:
       type: ClusterIP
-      port: 8080
-    
-    ingress:
-      enabled: false
+      port: 80
+      targetPort: 8080
     
     resources:
       requests:
@@ -48,7 +48,3 @@ spec:
       limits:
         memory: "512Mi"
         cpu: "500m"
-    
-    persistence:
-      enabled: true
-      size: "1Gi"
