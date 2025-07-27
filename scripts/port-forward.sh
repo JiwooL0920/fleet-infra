@@ -9,6 +9,17 @@ check_service() {
     kubectl get svc -n "$namespace" "$service" &>/dev/null
 }
 
+# Function to kill processes using a specific port
+kill_port() {
+    local port=$1
+    local pids=$(lsof -ti:$port 2>/dev/null)
+    if [ ! -z "$pids" ]; then
+        echo "Killing existing processes on port $port..."
+        echo $pids | xargs kill -9 2>/dev/null
+        sleep 1
+    fi
+}
+
 # Function to start port forward with error handling
 start_port_forward() {
     local namespace=$1
@@ -18,6 +29,8 @@ start_port_forward() {
     local description=$5
     
     if check_service "$namespace" "$service"; then
+        # Kill any existing processes on this port
+        kill_port "$local_port"
         echo "Port forwarding $description on port $local_port..."
         kubectl port-forward -n "$namespace" "svc/$service" "$local_port:$remote_port" &
     else
@@ -26,7 +39,7 @@ start_port_forward() {
 }
 
 # --- localstack ---
-start_port_forward "localstack" "localstack-localstack" "4566" "4566" "LocalStack"
+start_port_forward "localstack" "localstack" "4566" "4566" "LocalStack"
 
 # --- n8n (optional - may not be deployed) ---
 start_port_forward "n8n" "n8n" "5678" "80" "n8n"

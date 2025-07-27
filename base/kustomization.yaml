@@ -13,6 +13,8 @@ resources:
   # Application services (depend on PostgreSQL)
   - n8n.yaml
   - temporal.yaml
+  # Cache and storage
+  - redis.yaml
   # Management tools
   - pgadmin4.yaml
   - weave-gitops.yaml
