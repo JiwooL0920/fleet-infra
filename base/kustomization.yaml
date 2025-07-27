@@ -15,6 +15,7 @@ resources:
   - temporal.yaml
   # Cache and storage
   - redis.yaml
+  - redisinsight.yaml
   # Management tools
   - pgadmin4.yaml
   - weave-gitops.yaml

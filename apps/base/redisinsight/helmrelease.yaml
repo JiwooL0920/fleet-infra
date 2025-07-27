@@ -1,0 +1,54 @@
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: mrnim94
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://mrnim94.github.io/redisinsight
+
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: redisinsight
+  namespace: flux-system 
+spec:
+  targetNamespace: redisinsight
+  interval: 30m
+  chart:
+    spec:
+      chart: redisinsight
+      reconcileStrategy: Revision
+      version: "1.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: mrnim94
+        namespace: flux-system
+  values:
+    # Override default naming
+    fullnameOverride: "redisinsight"
+    
+    image:
+      repository: redis/redisinsight
+      tag: "2.58"
+      pullPolicy: IfNotPresent
+    
+    service:
+      type: ClusterIP
+      port: 8080
+    
+    ingress:
+      enabled: false
+    
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    
+    persistence:
+      enabled: true
+      size: "1Gi"
