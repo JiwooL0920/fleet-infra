@@ -39,7 +39,7 @@ spec:
     service:
       type: ClusterIP
       port: 8080
-      targetPort: 8080
+      targetPort: 5540
     
     resources:
       requests:
@@ -48,3 +48,18 @@ spec:
       limits:
         memory: "512Mi"
         cpu: "500m"
+    
+    # Health check probes - target correct port 5540
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 5540
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 5540
+      initialDelaySeconds: 5
+      periodSeconds: 5
