@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
   - helmrelease.yaml
   - secret.yaml
-  - clustersecretstore.yaml
-  - pushsecret-cnpg-app.yaml
+  # CRD-dependent resources moved to separate kustomization
+  # - clustersecretstore.yaml
+  # - pushsecret-cnpg-app.yaml

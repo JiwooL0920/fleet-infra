@@ -7,6 +7,7 @@ resources:
   - localstack.yaml
   - cnpg-operator.yaml
   - external-secrets-operator.yaml
+  - external-secrets-config.yaml
   - cloudnative-pg.yaml
   # Monitoring stack
   - kube-prometheus-stack.yaml
