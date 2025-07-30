@@ -2,24 +2,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Resources ordered by dependency
 resources:
-  # Infrastructure and foundational services first
-  - traefik.yaml
-  - localstack.yaml
-  - cnpg-operator.yaml
-  - external-secrets-operator.yaml
-  - external-secrets-config.yaml
-  - cloudnative-pg.yaml
-  # Monitoring stack
-  - kube-prometheus-stack.yaml
-  # Application services (depend on PostgreSQL)
-  - n8n.yaml
-  - temporal.yaml
-  # Cache and storage
-  - redis.yaml
-  - redisinsight.yaml
-  # Management tools
-  - pgadmin4.yaml
-  - weave-gitops.yaml
+  # Infrastructure layer first
+  - infrastructure.yaml
+  # Database layer second (depends on infrastructure)
+  - database.yaml
+  # Application layer last (depends on database)
+  - apps.yaml
+  # Services configuration
   - services
 
 configMapGenerator:

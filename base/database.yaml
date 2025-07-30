@@ -2,20 +2,19 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: n8n
+  name: database
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/n8n
+  path: ./database/base
   prune: true
   wait: true
-  timeout: 5m0s
+  timeout: 15m0s
   dependsOn:
-    - name: cloudnative-pg
-    - name: traefik
+    - name: infrastructure
   postBuild:
     substituteFrom:
       - kind: ConfigMap

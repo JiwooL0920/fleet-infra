@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Database services - data layer
+resources:
+  # PostgreSQL operator
+  - cnpg-operator
+  # PostgreSQL cluster and database definitions
+  - cloudnative-pg
+  # Redis cache cluster
+  - redis
+  # Database management tools
+  - redisinsight
+  - pgadmin4
