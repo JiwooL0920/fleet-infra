@@ -2,17 +2,19 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure-base
+  name: infrastructure-services
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./infrastructure/base-services
+  path: ./infrastructure/services
   prune: true
   wait: true
-  timeout: 10m0s
+  timeout: 8m0s
+  dependsOn:
+    - name: infrastructure-core
   postBuild:
     substituteFrom:
       - kind: ConfigMap

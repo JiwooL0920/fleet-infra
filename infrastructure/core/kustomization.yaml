@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Infrastructure core - critical path services
+resources:
+  # Local AWS services emulation (must be first for secrets)
+  - localstack
+  # Secrets management operator (needs LocalStack endpoint)
+  - external-secrets-operator

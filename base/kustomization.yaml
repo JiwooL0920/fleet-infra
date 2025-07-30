@@ -2,9 +2,11 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Resources ordered by dependency
 resources:
-  # Infrastructure base services (LocalStack, ESO, Traefik, etc.)
-  - infrastructure-base.yaml
-  # Infrastructure config (ClusterSecretStore - needs base services running)
+  # Infrastructure core (critical path: LocalStack + ESO)
+  - infrastructure-core.yaml
+  # Infrastructure services (parallel: Traefik, Monitoring, Weave GitOps)
+  - infrastructure-services.yaml
+  # Infrastructure config (ClusterSecretStore - needs core services running)
   - infrastructure-config.yaml
   # Database operators (depends on infrastructure config)
   - database-operators.yaml
