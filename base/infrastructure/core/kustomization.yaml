@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Infrastructure Core - Wave 1 (Foundation)
+# These must be healthy before anything else can deploy
+resources:
+  # Core networking and ingress
+  - traefik.yaml
+  
+  # Local AWS services for development/testing
+  - localstack.yaml

@@ -2,20 +2,20 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: n8n
+  name: weave-gitops
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/n8n
+  path: ./apps/base/weave-gitops
   prune: true
   wait: true
   timeout: 5m0s
+  # Category-based dependency: monitoring depends on infrastructure-core being ready
   dependsOn:
-    - name: cloudnative-pg
-    - name: traefik
+    - name: infrastructure-core
   postBuild:
     substituteFrom:
       - kind: ConfigMap

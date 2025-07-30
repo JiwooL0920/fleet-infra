@@ -1,4 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: []
-# Add your service manifests here
+
+# Application Services - Wave 4c (Parallel - Depends on Operators + Database)
+# Business logic applications that use database services
+resources:
+  # Workflow automation engine
+  - n8n.yaml
+  
+  # Workflow orchestration platform
+  - temporal.yaml

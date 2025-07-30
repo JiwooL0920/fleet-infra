@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Infrastructure Operators - Wave 2 (Depends on Core)
+# Kubernetes operators that manage other resources
+resources:
+  # Database operator
+  - cnpg-operator.yaml
+  
+  # Secrets management operator
+  - external-secrets-operator.yaml

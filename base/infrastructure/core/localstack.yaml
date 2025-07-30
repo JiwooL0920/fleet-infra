@@ -2,17 +2,20 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: weave-gitops
+  name: localstack
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/weave-gitops
+  path: ./apps/base/localstack
   prune: true
   wait: true
   timeout: 5m0s
+  # Part of infrastructure-core category - depends on traefik within same category
+  dependsOn:
+    - name: traefik
   postBuild:
     substituteFrom:
       - kind: ConfigMap

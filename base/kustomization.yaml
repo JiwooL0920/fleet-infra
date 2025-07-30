@@ -1,26 +1,27 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Resources ordered by dependency
+
+# Enterprise-grade FluxCD structure with optimized parallelization
+# Components are organized in dependency waves for maximum efficiency
+
 resources:
-  # Infrastructure and foundational services first
-  - traefik.yaml
-  - localstack.yaml
-  - cnpg-operator.yaml
-  - external-secrets-operator.yaml
-  - external-secrets-config.yaml
-  - cloudnative-pg.yaml
-  # Monitoring stack
-  - kube-prometheus-stack.yaml
-  # Application services (depend on PostgreSQL)
-  - n8n.yaml
-  - temporal.yaml
-  # Cache and storage
-  - redis.yaml
-  - redisinsight.yaml
-  # Management tools
-  - pgadmin4.yaml
-  - weave-gitops.yaml
-  - services
+  # Wave 1: Infrastructure Core (Foundation - Sequential)
+  - infrastructure/core
+  
+  # Wave 2: Infrastructure Operators (Depends on Core - Sequential)
+  - infrastructure/operators
+  
+  # Wave 3: Infrastructure Configuration (Depends on Operators - Sequential)
+  - infrastructure/config
+  
+  # Wave 4: Parallel Deployment (All depend on Config being ready)
+  # These can deploy simultaneously for faster startup
+  - infrastructure/monitoring  # Monitoring and GitOps tools
+  - database/workloads        # Database services
+  - services                  # Application services
+  
+  # Wave 5: Database UI (Depends on Database Workloads - Sequential)
+  - database/ui
 
 configMapGenerator:
   - name: cluster-vars

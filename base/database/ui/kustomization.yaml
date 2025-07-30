@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Database UI Tools - Wave 5 (Depends on Database Workloads)
+# Management interfaces for database services
+resources:
+  # PostgreSQL database administration tool
+  - pgadmin4.yaml
+  
+  # Redis management and monitoring tool
+  - redisinsight.yaml

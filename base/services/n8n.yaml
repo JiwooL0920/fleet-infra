@@ -2,19 +2,20 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: localstack
+  name: n8n
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/localstack
+  path: ./apps/base/n8n
   prune: true
   wait: true
   timeout: 5m0s
+  # Category-based dependency: services depend on infrastructure config being ready
   dependsOn:
-    - name: traefik
+    - name: infrastructure-config
   postBuild:
     substituteFrom:
       - kind: ConfigMap

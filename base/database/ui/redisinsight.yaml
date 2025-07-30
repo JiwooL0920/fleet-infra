@@ -2,19 +2,20 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: cloudnative-pg
+  name: redisinsight
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/cloudnative-pg
+  path: ./apps/base/redisinsight
   prune: true
   wait: true
-  timeout: 15m0s
+  timeout: 5m0s
+  # Category-based dependency: database UI depends on database workloads being ready
   dependsOn:
-    - name: cnpg-operator
+    - name: database-workloads
   postBuild:
     substituteFrom:
       - kind: ConfigMap

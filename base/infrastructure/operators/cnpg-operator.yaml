@@ -2,21 +2,17 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: redis
+  name: cnpg-operator
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/redis
+  path: ./apps/base/cnpg-operator
   prune: true
   wait: true
-  timeout: 5m0s
+  timeout: 15m
+  # Category-based dependency: operators depend on infrastructure-core being ready
   dependsOn:
-    - name: external-secrets-operator
-    - name: traefik
-  postBuild:
-    substituteFrom:
-      - kind: ConfigMap
-        name: cluster-vars
+    - name: infrastructure-core
