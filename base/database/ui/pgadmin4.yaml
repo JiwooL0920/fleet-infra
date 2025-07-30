@@ -22,7 +22,7 @@ spec:
       namespace: pgadmin4
   postBuild:
     substitute:
-      cluster_name: ${cluster_name}
+      cluster_name: ${CLUSTER_NAME}
     substituteFrom:
       - kind: ConfigMap
         name: cluster-vars
