@@ -1,0 +1,125 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: temporal
+  namespace: flux-system
+spec:
+  interval: 10m
+  url: https://go.temporal.io/helm-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: temporal-server
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/part-of: temporal
+spec:
+  interval: 10m
+  releaseName: temporal-server
+  targetNamespace: temporal
+  install:
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: temporal
+      interval: 10m
+      sourceRef:
+        kind: HelmRepository
+        name: temporal
+        namespace: flux-system
+      version: "0.64.0"
+  values:
+    cassandra:
+      enabled: false
+    elasticsearch:
+      enabled: false
+    postgresql:
+      enabled: false
+    monitoring:
+      prometheus:
+        enabled: false
+      grafana:
+        enabled: false
+      serviceMonitor:
+        enabled: false
+    # Disable root-level monitoring components
+    prometheus:
+      enabled: false
+    grafana:
+      enabled: false
+    server:
+      extraArgs:
+        - "--blobsRetentionDays=7"
+      metrics:
+        scope: production
+      config:
+        persistence:
+          default:
+            driver: "sql"
+            sql:
+              driver: "postgres12_pgx"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "temporal"
+              user: "app"
+              existingSecret: "postgresql-cluster-app"
+          visibility:
+            driver: "sql"
+            sql:
+              driver: "postgres12_pgx"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "temporal_visibility"
+              user: "app"
+              existingSecret: "postgresql-cluster-app"
+    schema:
+      createDatabase:
+        enabled: false
+      setupDatabase:
+        enabled: true
+      updateDatabase:
+        enabled: true
+      config:
+        persistence:
+          default:
+            driver: "sql"
+            sql:
+              driver: "postgres12_pgx"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "temporal"
+              user: "app"
+              existingSecret: "postgresql-cluster-app"
+          visibility:
+            driver: "sql"
+            sql:
+              driver: "postgres12_pgx"
+              host: "postgresql-cluster-rw.cnpg-system.svc.cluster.local"
+              port: 5432
+              database: "temporal_visibility"
+              user: "app"
+              existingSecret: "postgresql-cluster-app"
+    temporal:
+      frontend:
+        replicas: 2
+      history:
+        replicas: 2
+      matching:
+        replicas: 2
+      worker:
+        replicas: 2
+    
+    # Create default Temporal namespace
+    namespaces:
+      create: true
+      namespace:
+        - name: default
+          retention: 3d
+

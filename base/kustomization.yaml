@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Resources ordered by dependency
+resources:
+  # Infrastructure and foundational services first
+  - traefik.yaml
+  - localstack.yaml
+  - cnpg-operator.yaml
+  - external-secrets-operator.yaml
+  - external-secrets-config.yaml
+  - cloudnative-pg.yaml
+  # Monitoring stack
+  - kube-prometheus-stack.yaml
+  # Application services (depend on PostgreSQL)
+  - n8n.yaml
+  - temporal.yaml
+  # Cache and storage
+  - redis.yaml
+  - redisinsight.yaml
+  # Management tools
+  - pgadmin4.yaml
+  - weave-gitops.yaml
+  - services
+
+configMapGenerator:
+  - name: cluster-vars
+    envs:
+      - environment.env
+    options:
+      disableNameSuffixHash: true
+    namespace: flux-system

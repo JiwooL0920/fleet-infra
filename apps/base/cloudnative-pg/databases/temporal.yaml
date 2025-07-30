@@ -1,0 +1,22 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: temporal
+  namespace: cnpg-system
+spec:
+  name: temporal
+  owner: app
+  cluster:
+    name: postgresql-cluster
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: temporal-visibility
+  namespace: cnpg-system
+spec:
+  name: temporal_visibility
+  owner: app
+  cluster:
+    name: postgresql-cluster

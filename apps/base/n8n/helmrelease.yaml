@@ -1,0 +1,124 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: n8n-helm-chart
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://github.com/8gears/n8n-helm-chart
+  ref:
+    tag: "1.0.10"
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: n8n
+  namespace: flux-system
+spec:
+  interval: 5m
+  targetNamespace: n8n
+  chart:
+    spec:
+      chart: ./charts/n8n
+      version: "1.0.10"
+      sourceRef:
+        kind: GitRepository
+        name: n8n-helm-chart
+        namespace: flux-system
+      interval: 5m
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  values:
+    # Override the default name to avoid n8n-n8n
+    fullnameOverride: n8n
+    
+    # N8N main application configuration
+    main:
+      # N8N configuration converted to environment variables
+      config:
+        n8n:
+          encryption_key: "n8n-encryption-key-change-me"
+        db:
+          type: postgresdb
+      
+      # Database configuration from secrets
+      extraEnv:
+        DB_POSTGRESDB_HOST:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_HOST
+        DB_POSTGRESDB_PORT:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_PORT
+        DB_POSTGRESDB_DATABASE:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_DATABASE
+        DB_POSTGRESDB_USER:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_USERNAME
+        DB_POSTGRESDB_PASSWORD:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-postgres-credentials
+              key: POSTGRES_PASSWORD
+      
+      # Persistence configuration - disabled since using PostgreSQL
+      persistence:
+        enabled: false
+        type: emptyDir
+
+    # Ingress configuration
+    ingress:
+      enabled: true
+      className: "traefik"
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: web
+      hosts:
+        - host: n8n.local
+          paths: ["/"]
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 5678
+
+    # Resource limits
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+
+    # Health checks
+    probes:
+      liveness:
+        httpGet:
+          path: /healthz
+          port: http
+        initialDelaySeconds: 60
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readiness:
+        httpGet:
+          path: /healthz
+          port: http
+        initialDelaySeconds: 30
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 3

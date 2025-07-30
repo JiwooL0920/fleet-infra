@@ -1,0 +1,116 @@
+# Weave GitOps Git Repository
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: weave-gitops
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/weaveworks/weave-gitops
+  ref:
+    branch: main
+---
+# Weave GitOps HelmRelease
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: weave-gitops
+  namespace: flux-system
+spec:
+  interval: 1m
+  releaseName: weave-gitops
+  targetNamespace: weave-gitops
+  chart:
+    spec:
+      chart: charts/gitops-server
+      version: "*"
+      sourceRef:
+        kind: GitRepository
+        name: weave-gitops
+        namespace: flux-system
+      interval: 1m
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # Weave GitOps configuration
+    adminUser:
+      create: true
+      username: admin
+      # Default password hash for 'admin' - you should change this
+      passwordHash: "$2y$05$o/2x.PmGVS6L0OpLwk3XmOqyMaFpzh2J2FqtsGbarWv95oR0luQFK"
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 9001
+      annotations: {}
+
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Security context
+    securityContext:
+      capabilities:
+        drop:
+          - ALL
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 2000
+
+    # Pod security context
+    podSecurityContext:
+      fsGroup: 2000
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 2000
+
+    # RBAC
+    rbac:
+      create: true
+      impersonationResourceNames: ["admin"]
+      additionalRules: []
+
+    # Service account
+    serviceAccount:
+      create: true
+      annotations: {}
+
+    # Ingress configuration (disabled by default)
+    ingress:
+      enabled: false
+      className: ""
+      annotations: {}
+      hosts:
+        - host: weave-gitops.local
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+
+    # Metrics
+    metrics:
+      enabled: true
+
+    # Additional environment variables
+    envVars: []
+
+    # Node selector
+    nodeSelector: {}
+
+    # Tolerations
+    tolerations: []
+
+    # Affinity
+    affinity: {}
