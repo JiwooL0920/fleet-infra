@@ -4,7 +4,9 @@ kind: Kustomization
 resources:
   # Infrastructure layer first
   - infrastructure.yaml
-  # Database layer second (depends on infrastructure)
+  # External secrets configuration (depends on infrastructure CRDs)
+  - external-secrets-config.yaml
+  # Database layer second (depends on infrastructure + secrets)
   - database.yaml
   # Application layer last (depends on database)
   - apps.yaml
