@@ -15,11 +15,6 @@ spec:
   # Category-based dependency: database UI depends on database workloads being ready
   dependsOn:
     - name: database-workloads
-  healthChecks:
-    - apiVersion: helm.toolkit.fluxcd.io/v2
-      kind: HelmRelease
-      name: pgadmin4
-      namespace: flux-system
   postBuild:
     substitute:
       cluster_name: ${CLUSTER_NAME}
