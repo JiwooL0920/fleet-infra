@@ -2,12 +2,14 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Resources ordered by dependency
 resources:
-  # Infrastructure layer first
-  - infrastructure.yaml
-  # External secrets configuration (depends on infrastructure CRDs)
-  - external-secrets-config.yaml
-  # Database layer second (depends on infrastructure + secrets)
-  - database.yaml
+  # Infrastructure base services (LocalStack, ESO, Traefik, etc.)
+  - infrastructure-base.yaml
+  # Infrastructure config (ClusterSecretStore - needs base services running)
+  - infrastructure-config.yaml
+  # Database operators (depends on infrastructure config)
+  - database-operators.yaml
+  # Database workloads (depends on operators)
+  - database-workloads.yaml
   # Application layer last (depends on database)
   - apps.yaml
   # Services configuration

@@ -1,12 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Infrastructure services - foundation layer
+# Infrastructure base services - foundation layer
 resources:
   # Foundation networking and ingress
   - traefik
-  # Local AWS services emulation
+  # Local AWS services emulation (must be first for secrets)
   - localstack
-  # Secrets management
+  # Secrets management operator (needs LocalStack endpoint)
   - external-secrets-operator
   # Monitoring stack
   - kube-prometheus-stack
