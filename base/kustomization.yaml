@@ -6,22 +6,22 @@ kind: Kustomization
 
 resources:
   # Wave 1: Infrastructure Core (Foundation - Sequential)
-  - infrastructure/core
+  - infrastructure-core.yaml
   
   # Wave 2: Infrastructure Operators (Depends on Core - Sequential)
-  - infrastructure/operators
+  - infrastructure-operators.yaml
   
   # Wave 3: Infrastructure Configuration (Depends on Operators - Sequential)
-  - infrastructure/config
+  - infrastructure-config.yaml
   
   # Wave 4: Parallel Deployment (All depend on Config being ready)
   # These can deploy simultaneously for faster startup
-  - infrastructure/monitoring  # Monitoring and GitOps tools
-  - database/workloads        # Database services
-  - services                  # Application services
+  - infrastructure-monitoring.yaml  # Monitoring and GitOps tools
+  - database-workloads.yaml        # Database services
+  - services.yaml                  # Application services
   
   # Wave 5: Database UI (Depends on Database Workloads - Sequential)
-  - database/ui
+  - database-ui.yaml
 
 configMapGenerator:
   - name: cluster-vars
