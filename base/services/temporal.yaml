@@ -13,9 +13,9 @@ spec:
   prune: true
   wait: true
   timeout: 10m0s
-  # Category-based dependency: services depend on infrastructure config being ready
+  # Category-based dependency: services depend on database workloads being ready
   dependsOn:
-    - name: infrastructure-config
+    - name: database-workloads
   postBuild:
     substituteFrom:
       - kind: ConfigMap

@@ -8,13 +8,16 @@ This is a Kubernetes GitOps infrastructure repository using Flux CD for multi-en
 
 ## Common Commands
 
-### Environment Bootstrap
+### Local Development Setup
 ```bash
-# Bootstrap development environment (tracks develop branch)
-./scripts/flux-bootstrap.sh dev
+# Initialize AWS secrets in LocalStack (required for External Secrets)
+make init-aws-secrets
 
-# Bootstrap production environment (tracks main branch)
-./scripts/flux-bootstrap.sh prod
+# Start port forwarding for all services
+make port-forward
+
+# Verify service startup order and health
+make verify-startup
 ```
 
 ### Port Forwarding
@@ -54,20 +57,16 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.use
 kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.password}' | base64 -d
 ```
 
-### Testing and Validation
+### Available Scripts
 ```bash
-# Pre-commit checks
-./scripts/pre-commit-check.sh
+# Initialize secrets in LocalStack for pgAdmin4 and Redis
+./scripts/init-pgadmin-secrets.sh
+./scripts/init-redis-secret.sh
 
-# Test Flux changes
-./scripts/test-flux-changes.sh
-
-# Update Flux repository configuration
-./scripts/flux-update-repo.sh
+# Start port forwarding for all services
+./scripts/port-forward.sh
 
 # Verify service startup order and health
-make verify-startup
-# OR
 ./scripts/verify-startup.sh
 ```
 
@@ -90,23 +89,38 @@ make verify-startup
 - **CloudNative PostgreSQL**: 3-node HA cluster with automated backups
 - **CNPG Operator**: CloudNative PostgreSQL operator for managing PostgreSQL clusters
 - **External Secrets Operator**: Manages external secrets integration and synchronization
+- **Redis**: In-memory data store with authentication via External Secrets
 - **N8N**: Workflow automation engine with PostgreSQL backend (depends on PostgreSQL)
 - **Temporal**: Workflow orchestration platform (depends on PostgreSQL)
 - **pgAdmin4**: Web-based PostgreSQL database administration tool (depends on PostgreSQL)
+- **RedisInsight**: Web-based Redis database administration tool (depends on Redis)
 - **Traefik**: Ingress controller and load balancer
 - **Kube-Prometheus-Stack**: Monitoring with Grafana, Prometheus, Alertmanager
-- **LocalStack**: Local AWS services emulation (required for PostgreSQL backups)
+- **LocalStack**: Local AWS services emulation (required for PostgreSQL backups and External Secrets)
 - **Weave GitOps**: GitOps dashboard and management
 
-#### Service Dependencies (startup order)
-1. **Traefik** (ingress and foundational networking)
-2. **LocalStack** (AWS services emulation)
-3. **CNPG Operator** (PostgreSQL operator)
-4. **External Secrets Operator** (secrets management)
-5. **PostgreSQL Cluster** (depends on operator + LocalStack)
-6. **Kube-Prometheus-Stack** (monitoring stack)
-7. **N8N, Temporal, pgAdmin4** (depend on PostgreSQL)
-8. **Weave GitOps** (GitOps management)
+#### Wave-Based Deployment Architecture
+Deployment uses a 5-wave system with dependency management:
+
+**Wave 1: Infrastructure Core** (5m timeout)
+- Traefik (ingress and foundational networking)
+- LocalStack (AWS services emulation)
+
+**Wave 2: Infrastructure Operators** (10m timeout)
+- CNPG Operator (PostgreSQL operator)
+- External Secrets Operator (secrets management)
+
+**Wave 3: Infrastructure Configuration**
+- Namespace configurations and base settings
+
+**Wave 4: Parallel Deployment** (all depend on Wave 3)
+- **Infrastructure Monitoring**: Kube-Prometheus-Stack, Weave GitOps
+- **Database Workloads** (15m timeout): PostgreSQL Cluster, Redis
+- **Services**: N8N, Temporal
+
+**Wave 5: Database UI** (depends on Database Workloads)
+- pgAdmin4 (depends on PostgreSQL)
+- RedisInsight (depends on Redis)
 
 #### Database Architecture
 - PostgreSQL 16 with CloudNative PG operator
@@ -118,20 +132,16 @@ make verify-startup
 ### Directory Structure Logic
 
 ```
-apps/base/                    # Base application configurations (Helm releases)
-├── cloudnative-pg/          # PostgreSQL cluster configurations
-│   ├── databases/           # Database creation configs (n8n.yaml, temporal.yaml)
-│   ├── kustomization.yaml
-│   └── postgresql-cluster.yaml
-├── cnpg-operator/           # CloudNative PostgreSQL operator
-├── external-secrets-operator/ # External secrets management
-├── kube-prometheus-stack/   # Monitoring stack (Grafana, Prometheus)
-├── localstack/             # Local AWS services emulation
-├── n8n/                    # Workflow automation engine
-├── pgadmin4/               # PostgreSQL database administration tool
-├── temporal/               # Workflow orchestration platform
-├── traefik/                # Ingress controller and load balancer
-└── weave-gitops/           # GitOps dashboard and management
+base/                        # Wave-based deployment configurations
+├── infrastructure/         # Wave 1-3: Core infrastructure
+│   ├── core/              # Traefik, LocalStack
+│   ├── operators/         # CNPG, External Secrets operators
+│   └── config/            # Configuration and namespaces
+├── infrastructure-monitoring.yaml # Wave 4: Monitoring stack
+├── database/              # Wave 4-5: Database services
+│   ├── workloads/         # PostgreSQL cluster, Redis
+│   └── ui/                # pgAdmin4, RedisInsight
+└── services.yaml          # Wave 4: Application services (N8N, Temporal)
 
 base/                       # Base Kustomization aggregating all apps
 ├── kustomization.yaml      # Main kustomization with resource order
@@ -151,11 +161,9 @@ clusters/stages/            # Environment-specific configurations
 └── prod/                   # Production environment (similar structure, tracks main branch)
 
 scripts/                    # Automation scripts
-├── flux-bootstrap.sh       # Environment-aware bootstrap
-├── flux-update-repo.sh     # Repository update utilities
+├── init-pgadmin-secrets.sh # Initialize pgAdmin4 secrets in LocalStack
+├── init-redis-secret.sh    # Initialize Redis secrets in LocalStack
 ├── port-forward.sh         # Service port forwarding
-├── pre-commit-check.sh     # Git safety checks
-├── test-flux-changes.sh    # Flux validation testing
 └── verify-startup.sh       # Service health verification
 ```
 
@@ -173,13 +181,19 @@ scripts/                    # Automation scripts
 - Weave GitOps: 9001
 - Temporal UI: 8090
 - pgAdmin4: 8080
+- PostgreSQL: 5432
+- Redis: 6379
+- RedisInsight: 8001
 
 ## Key Development Workflows
 
 ### Making Infrastructure Changes
 1. Create feature branch from `develop`
 2. Make changes to application configurations
-3. Test with `./scripts/test-flux-changes.sh`
+3. Test with Flux dry-run commands:
+   ```bash
+   flux diff kustomization apps --path ./base
+   ```
 4. Commit and push to feature branch
 5. Create PR to `develop`
 6. After merge, changes auto-deploy to dev environment
@@ -217,7 +231,7 @@ scripts/                    # Automation scripts
 
 - Never commit database credentials or secrets to Git
 - Always test changes in development environment first
-- Use the bootstrap script for setting up new environments
+- Use `make init-aws-secrets` before starting services locally
 - Monitor Flux reconciliation status when making changes
 - PostgreSQL databases are created automatically via database configs in `apps/base/cloudnative-pg/databases/`
 - All applications use PostgreSQL from the shared 3-node cluster
@@ -231,35 +245,19 @@ When restarting Colima, services now start in proper dependency order:
 3. Extended timeouts (10-15m) allow for slower startups
 4. Health checks prevent services from starting before dependencies are ready
 
-## GitOps Safety and Cross-Environment Protection
+## Environment-Specific Configuration
 
-### Pre-commit Hooks
-```bash
-# Install pre-commit hook to prevent cross-environment mistakes
-ln -s ../../scripts/pre-commit-check.sh .git/hooks/pre-commit
-```
-
-The pre-commit hook automatically:
-- Prevents editing production files when on `develop` branch
-- Warns when committing directly to `main` branch
-- Ensures proper branch-environment alignment
-
-### Local Testing and Validation
-```bash
-# Validate all changes before committing
-./scripts/test-flux-changes.sh
-
-# Check kustomizations and HelmReleases
-# Validates syntax and detects common issues like:
-# - Duplicate resource names
-# - Missing namespaces
-# - Invalid YAML syntax
-```
-
-### Environment-Specific Configuration
+### Configuration Management
 - **cluster-vars-patch.yaml**: Environment-specific overrides for base configurations
 - **environment.env**: Base environment variables that can be overridden per environment
+- **ConfigMap substitution**: Uses `postBuild.substituteFrom` for dynamic value injection
 - Use patches rather than duplicating entire configurations
+
+### Cross-Environment Safety
+- Complete environment isolation using different Git branches
+- Development environment tracks `develop` branch
+- Production environment tracks `main` branch
+- No shared resources between environments
 
 ### Makefile Targets
 ```bash
@@ -267,4 +265,40 @@ The pre-commit hook automatically:
 make help           # Show available targets
 make port-forward   # Start port forwarding for all services
 make verify-startup # Verify service startup order and health
+make init-aws-secrets # Initialize AWS secrets in LocalStack
+```
+
+## External Secrets Integration
+
+### LocalStack Secrets Manager
+The repository uses LocalStack to simulate AWS Secrets Manager for local development:
+- **pgAdmin4**: Requires `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD`
+- **Redis**: Requires `REDIS_PASSWORD` for authentication
+- **ClusterSecretStore**: Configured to sync secrets from LocalStack to Kubernetes secrets
+
+### Secret Initialization Workflow
+```bash
+# The init-aws-secrets target automatically:
+# 1. Starts LocalStack port forwarding if needed
+# 2. Waits for LocalStack health check
+# 3. Creates secrets in LocalStack Secrets Manager
+# 4. External Secrets Operator syncs them to Kubernetes
+```
+
+## Troubleshooting
+
+### Common Issues
+```bash
+# Check External Secrets Operator status
+kubectl get externalsecrets --all-namespaces
+kubectl get secretstore --all-namespaces
+
+# Check LocalStack connectivity
+curl http://localhost:4566/_localstack/health
+
+# Force secret synchronization
+kubectl annotate externalsecret <secret-name> -n <namespace> force-sync=$(date +%s)
+
+# Check Flux reconciliation status
+flux get all --status-selector ready=false
 ```
