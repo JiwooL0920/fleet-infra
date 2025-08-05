@@ -1,0 +1,20 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: metrics-server
+  namespace: flux-system
+spec:
+  interval: 5m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/metrics-server
+  prune: true
+  timeout: 5m
+  # Category-based dependency: operators depend on infrastructure-core being ready
+  dependsOn:
+    - name: infrastructure-core
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

@@ -9,3 +9,6 @@ resources:
   
   # Secrets management operator
   - external-secrets-operator.yaml
+  
+  # Metrics collection operator
+  - metrics-server.yaml
