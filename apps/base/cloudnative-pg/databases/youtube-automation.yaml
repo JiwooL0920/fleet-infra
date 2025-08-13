@@ -1,0 +1,12 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: youtube-automation
+  namespace: cnpg-system
+spec:
+  name: youtube-automation
+  owner: app
+  cluster:
+    name: postgresql-cluster
+
