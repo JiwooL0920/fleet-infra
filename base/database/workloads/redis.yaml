@@ -15,7 +15,7 @@ spec:
   timeout: 5m0s
   # Category-based dependency: database workloads depend on infrastructure operators and config being ready
   dependsOn:
-    - name: infrastructure-config
+    - name: external-secrets-config
   postBuild:
     substituteFrom:
       - kind: ConfigMap
