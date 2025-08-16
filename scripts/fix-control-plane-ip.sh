@@ -50,8 +50,8 @@ get_control_plane_container() {
 # Function to check if control plane node is NotReady
 is_control_plane_not_ready() {
     local node_name=$1
-    local status=$(kubectl get node "$node_name" --no-headers -o custom-columns=STATUS:.status.conditions[-1].type)
-    [[ "$status" != "Ready" ]]
+    local ready_status=$(kubectl get node "$node_name" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+    [[ "$ready_status" != "True" ]]
 }
 
 # Function to get current IP from container

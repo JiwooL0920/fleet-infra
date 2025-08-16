@@ -169,3 +169,21 @@ spec:
     # Gateway configuration (not needed for single binary)
     gateway:
       enabled: false
+    
+    # Disable cache components for dev environment
+    resultsCache:
+      enabled: false
+    chunksCache:
+      enabled: false
+    
+    # Disable memcached components
+    memcached:
+      enabled: false
+    memcachedExporter:
+      enabled: false
+    memcachedChunks:
+      enabled: false
+    memcachedFrontend:
+      enabled: false
+    memcachedIndexQueries:
+      enabled: false
