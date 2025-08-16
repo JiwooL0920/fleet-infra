@@ -119,7 +119,6 @@ spec:
                 pool_size: 10
                 idle_timeout: 90s
                 max_connection_age: 10m
-            compression: "snappy"
         
         # Frontend configuration with caching
         frontend:
@@ -129,31 +128,27 @@ spec:
         # Chunk store configuration with Redis cache
         chunk_store_config:
           chunk_cache_config:
-            cache:
-              redis:
-                endpoint: redis.redis.svc.cluster.local:26379
-                master_name: mymaster
-                password: "$${REDIS_PASSWORD}"
-                db: 1
-                expiration: 1h
-                timeout: 500ms
-                pool_size: 10
-                idle_timeout: 90s
-                max_connection_age: 10m
-            compression: "snappy"
+            redis:
+              endpoint: redis.redis.svc.cluster.local:26379
+              master_name: mymaster
+              password: "$${REDIS_PASSWORD}"
+              db: 1
+              expiration: 1h
+              timeout: 500ms
+              pool_size: 10
+              idle_timeout: 90s
+              max_connection_age: 10m
           write_dedupe_cache_config:
-            cache:
-              redis:
-                endpoint: redis.redis.svc.cluster.local:26379
-                master_name: mymaster
-                password: "$${REDIS_PASSWORD}"
-                db: 2
-                expiration: 10m
-                timeout: 500ms
-                pool_size: 5
-                idle_timeout: 90s
-                max_connection_age: 10m
-            compression: "snappy"
+            redis:
+              endpoint: redis.redis.svc.cluster.local:26379
+              master_name: mymaster
+              password: "$${REDIS_PASSWORD}"
+              db: 2
+              expiration: 10m
+              timeout: 500ms
+              pool_size: 5
+              idle_timeout: 90s
+              max_connection_age: 10m
         
         # Storage configuration with index queries cache
         storage_config:
@@ -163,18 +158,16 @@ spec:
             active_index_directory: /var/loki/tsdb-index
             cache_location: /var/loki/tsdb-cache
           index_queries_cache_config:
-            cache:
-              redis:
-                endpoint: redis.redis.svc.cluster.local:26379
-                master_name: mymaster
-                password: "$${REDIS_PASSWORD}"
-                db: 3
-                expiration: 1h
-                timeout: 500ms
-                pool_size: 10
-                idle_timeout: 90s
-                max_connection_age: 10m
-            compression: "snappy"
+            redis:
+              endpoint: redis.redis.svc.cluster.local:26379
+              master_name: mymaster
+              password: "$${REDIS_PASSWORD}"
+              db: 3
+              expiration: 1h
+              timeout: 500ms
+              pool_size: 10
+              idle_timeout: 90s
+              max_connection_age: 10m
     
     # Deployment mode - single binary for simplicity
     deploymentMode: SingleBinary
