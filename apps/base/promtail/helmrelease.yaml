@@ -1,0 +1,226 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: promtail
+  namespace: flux-system
+spec:
+  interval: 1m
+  targetNamespace: monitoring
+  chart:
+    spec:
+      chart: promtail
+      version: 6.16.6
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+      interval: 1m
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # Promtail configuration
+    config:
+      # Loki client configuration
+      clients:
+        - url: http://monitoring-loki:3100/loki/api/v1/push
+          tenant_id: fake
+      
+      # Server configuration
+      serverPort: 3101
+      
+      # Positions file to track log reading progress
+      positions:
+        filename: /run/promtail/positions.yaml
+      
+      # Scrape configurations
+      snippets:
+        # Common configuration snippets
+        common:
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_pod_node_name
+            target_label: node_name
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_pod_container_name
+            target_label: container
+          - action: replace
+            replacement: /var/log/pods/*$1/*.log
+            separator: /
+            source_labels:
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+          - action: replace
+            regex: true/(.*)
+            replacement: /var/log/pods/*$1/*.log
+            separator: /
+            source_labels:
+              - __meta_kubernetes_pod_annotationpresent_kubernetes_io_config_hash
+              - __meta_kubernetes_pod_annotation_kubernetes_io_config_hash
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+        
+        # Add Kubernetes labels to log streams
+        addScrapeJobLabel: true
+        
+        # Pipeline stages for log processing
+        pipelineStages:
+          - cri: {}
+          - labeldrop:
+              - filename
+              - stream
+        
+        # Scrape configs for Kubernetes pods
+        scrapeConfigs: |
+          - job_name: kubernetes-pods
+            pipeline_stages:
+              {{- toYaml .Values.config.snippets.pipelineStages | nindent 6 }}
+            kubernetes_sd_configs:
+              - role: pod
+            relabel_configs:
+              - source_labels:
+                  - __meta_kubernetes_pod_controller_name
+                regex: ([0-9a-z-.]+?)(-[0-9a-f]{8,10})?
+                action: replace
+                target_label: __tmp_controller_name
+              - source_labels:
+                  - __meta_kubernetes_pod_label_app_kubernetes_io_name
+                  - __meta_kubernetes_pod_label_app
+                  - __tmp_controller_name
+                  - __meta_kubernetes_pod_name
+                regex: ^;*([^;]+)(;.*)?$
+                action: replace
+                target_label: app
+              - source_labels:
+                  - __meta_kubernetes_pod_label_app_kubernetes_io_component
+                  - __meta_kubernetes_pod_label_component
+                regex: ^;*([^;]+)(;.*)?$
+                action: replace
+                target_label: component
+              {{- if .Values.config.snippets.addScrapeJobLabel }}
+              - replacement: kubernetes-pods
+                target_label: scrape_job
+              {{- end }}
+              {{- toYaml .Values.config.snippets.common | nindent 4 }}
+    
+    # DaemonSet configuration
+    daemonset:
+      enabled: true
+      autoscaling:
+        enabled: false
+        minReplicas: 1
+        maxReplicas: 10
+        targetCPUUtilizationPercentage: 80
+        targetMemoryUtilizationPercentage: 80
+    
+    # Pod configuration
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "3101"
+    
+    # Resource limits
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    
+    # Service Account
+    serviceAccount:
+      create: true
+      name: promtail
+    
+    # RBAC configuration
+    rbac:
+      create: true
+      pspEnabled: false
+    
+    # Security context
+    containerSecurityContext:
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+    
+    # Volume mounts for log collection
+    defaultVolumes:
+      - name: run
+        hostPath:
+          path: /run/promtail
+      - name: containers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: pods
+        hostPath:
+          path: /var/log/pods
+    
+    defaultVolumeMounts:
+      - name: run
+        mountPath: /run/promtail
+      - name: containers
+        mountPath: /var/lib/docker/containers
+        readOnly: true
+      - name: pods
+        mountPath: /var/log/pods
+        readOnly: true
+    
+    # Extra volumes for systemd journal (if needed)
+    extraVolumes:
+      - name: journal
+        hostPath:
+          path: /var/log/journal
+    
+    extraVolumeMounts:
+      - name: journal
+        mountPath: /var/log/journal
+        readOnly: true
+    
+    # Tolerations to run on all nodes
+    tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+    
+    # Service Monitor for Prometheus scraping
+    serviceMonitor:
+      enabled: true
+      namespace: monitoring
+      interval: 30s
+      scrapeTimeout: 10s
+      labels:
+        prometheus: kube-prometheus
+    
+    # Enable extra scrape configs for systemd logs
+    extraScrapeConfigs:
+      - job_name: journal
+        journal:
+          path: /var/log/journal
+          max_age: 12h
+          labels:
+            job: systemd-journal
+        relabel_configs:
+          - source_labels: ['__journal__systemd_unit']
+            target_label: 'unit'
+          - source_labels: ['__journal__hostname']
+            target_label: 'hostname'
+        pipeline_stages:
+          - labeldrop:
+              - filename
+              - stream
