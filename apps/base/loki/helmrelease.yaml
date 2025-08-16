@@ -113,6 +113,7 @@ spec:
                 endpoint: redis.redis.svc.cluster.local:26379
                 master_name: mymaster
                 password: "$${REDIS_PASSWORD}"
+                sentinel_auth_password: "$${REDIS_PASSWORD}"
                 db: 0
                 expiration: 1h
                 timeout: 500ms
@@ -133,6 +134,7 @@ spec:
               endpoint: redis.redis.svc.cluster.local:26379
               master_name: mymaster
               password: "$${REDIS_PASSWORD}"
+              sentinel_auth_password: "$${REDIS_PASSWORD}"
               db: 1
               expiration: 1h
               timeout: 500ms
@@ -145,6 +147,7 @@ spec:
               endpoint: redis.redis.svc.cluster.local:26379
               master_name: mymaster
               password: "$${REDIS_PASSWORD}"
+              sentinel_auth_password: "$${REDIS_PASSWORD}"
               db: 2
               expiration: 10m
               timeout: 500ms
@@ -165,6 +168,7 @@ spec:
               endpoint: redis.redis.svc.cluster.local:26379
               master_name: mymaster
               password: "$${REDIS_PASSWORD}"
+              sentinel_auth_password: "$${REDIS_PASSWORD}"
               db: 3
               expiration: 1h
               timeout: 500ms
