@@ -1,0 +1,22 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: loki
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/loki
+  prune: true
+  wait: true
+  timeout: 10m0s
+  # Loki depends on kube-prometheus-stack which creates the monitoring namespace
+  dependsOn:
+    - name: kube-prometheus-stack
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
