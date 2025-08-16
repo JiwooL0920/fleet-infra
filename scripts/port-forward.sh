@@ -50,6 +50,9 @@ start_port_forward "monitoring" "monitoring-kube-prometheus-prometheus" "9090" "
 start_port_forward "monitoring" "monitoring-kube-prometheus-alertmanager" "9093" "9093" "Alertmanager"
 start_port_forward "monitoring" "monitoring-kube-prometheus-stack-prometheus-node-exporter" "9100" "9100" "Node Exporter"
 
+# --- loki ---
+start_port_forward "monitoring" "monitoring-loki" "3100" "3100" "Loki"
+
 # --- weave-gitops ---
 start_port_forward "weave-gitops" "weave-gitops" "9001" "9001" "Weave GitOps"
 
@@ -78,6 +81,7 @@ echo "  Grafana:       http://localhost:3030"
 echo "  Prometheus:    http://localhost:9090"
 echo "  Alertmanager:  http://localhost:9093"
 echo "  Node Exporter: http://localhost:9100"
+echo "  Loki:          http://localhost:3100"
 echo "  Weave GitOps:  http://localhost:9001"
 echo "  PostgreSQL:    localhost:5432"
 echo "  Temporal UI:   http://localhost:8090"
