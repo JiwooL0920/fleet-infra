@@ -36,6 +36,7 @@ spec:
     # Authentication configuration
     auth:
       enabled: true
+      sentinel: false
       existingSecret: "redis-password"
       existingSecretPasswordKey: "password"
 
@@ -46,10 +47,9 @@ spec:
       downAfterMilliseconds: 30000
       failoverTimeout: 180000
       parallelSyncs: 1
+      usePassword: false
       # Disable Sentinel authentication to allow proper service discovery
       # The Redis servers themselves will still require authentication
-      auth:
-        enabled: false
       
     # Redis Master configuration
     master:
