@@ -120,8 +120,6 @@ spec:
                 idle_timeout: 90s
                 max_connection_age: 10m
                 route_randomly: true
-                auth:
-                  sentinel: false
         
         # Frontend configuration with caching
         frontend:
@@ -142,8 +140,6 @@ spec:
               idle_timeout: 90s
               max_connection_age: 10m
               route_randomly: true
-              auth:
-                sentinel: false
           write_dedupe_cache_config:
             redis:
               endpoint: redis.redis.svc.cluster.local:26379
@@ -156,8 +152,6 @@ spec:
               idle_timeout: 90s
               max_connection_age: 10m
               route_randomly: true
-              auth:
-                sentinel: false
         
         # Storage configuration with index queries cache
         storage_config:
@@ -178,8 +172,6 @@ spec:
               idle_timeout: 90s
               max_connection_age: 10m
               route_randomly: true
-              auth:
-                sentinel: false
     
     # Deployment mode - single binary for simplicity
     deploymentMode: SingleBinary
