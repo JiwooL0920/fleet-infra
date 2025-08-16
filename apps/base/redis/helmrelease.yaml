@@ -46,6 +46,11 @@ spec:
       downAfterMilliseconds: 30000
       failoverTimeout: 180000
       parallelSyncs: 1
+      # Configure Sentinel authentication
+      auth:
+        enabled: true
+        existingSecret: "redis-password"
+        existingSecretPasswordKey: "password"
       
     # Redis Master configuration
     master:
