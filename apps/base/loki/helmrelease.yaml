@@ -40,7 +40,7 @@ spec:
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: redis-secret
+              name: redis-password
               key: password
     
     # Loki configuration
@@ -158,6 +158,19 @@ spec:
     # Single binary configuration
     singleBinary:
       replicas: 1
+      
+      # Extra arguments to pass to the single binary
+      extraArgs:
+        - '-config.expand-env=true'
+        - '-log.level=info'
+      
+      # Environment variables for Redis password
+      extraEnv:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-password
+              key: password
       
       # Resource limits
       resources:
