@@ -6,6 +6,7 @@ Services Enabled:
 - `localstack`: emulate AWS cloud infrastructure
 - `external-secrets-operator`: store and retreive secrets within the cluster
 - `kube-prometheus-stack`: monitoring
+- `loki`: log aggregation and centralized logging
 - `weave-gitops`: single source of truth for infrastructure and app configs
 - `traefik`: cloud-native reverse proxy and load balancer
 - `n8n`: workflow automation tool
