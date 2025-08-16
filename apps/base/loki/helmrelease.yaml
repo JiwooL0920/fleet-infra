@@ -31,6 +31,18 @@ spec:
     remediation:
       retries: 3
   values:
+    # Global configuration for environment variables
+    global:
+      extraArgs:
+        - '-config.expand-env=true'
+        - '-log.level=info'
+      extraEnv:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: password
+    
     # Loki configuration
     loki:
       # Authentication
@@ -60,13 +72,6 @@ spec:
           chunks_directory: /var/loki/chunks
           rules_directory: /var/loki/rules
       
-      # Storage config for indexes and chunks
-      storage_config:
-        filesystem:
-          directory: /var/loki/chunks
-        tsdb_shipper:
-          active_index_directory: /var/loki/tsdb-index
-          cache_location: /var/loki/tsdb-cache
       
       # Pattern ingester configuration
       pattern_ingester:
@@ -96,6 +101,56 @@ spec:
           local:
             directory: /var/loki/rules
         rule_path: /var/loki/rules-temp
+      
+      # Query range configuration with caching
+      query_range:
+        align_queries_with_step: true
+        cache_results: true
+        results_cache:
+          cache:
+            redis:
+              endpoint: redis.redis.svc.cluster.local:6379
+              password: "${REDIS_PASSWORD}"
+              db: 0
+              expiration: 1h
+              timeout: 500ms
+      
+      # Frontend configuration with caching
+      frontend:
+        address: 0.0.0.0
+        compress_responses: true
+      
+      # Chunk store configuration with Redis cache
+      chunk_store_config:
+        chunk_cache_config:
+          redis:
+            endpoint: redis.redis.svc.cluster.local:6379
+            password: "${REDIS_PASSWORD}"
+            db: 1
+            expiration: 1h
+            timeout: 500ms
+        write_dedupe_cache_config:
+          redis:
+            endpoint: redis.redis.svc.cluster.local:6379
+            password: "${REDIS_PASSWORD}"
+            db: 2
+            expiration: 10m
+            timeout: 500ms
+      
+      # Index queries cache configuration
+      storage_config:
+        filesystem:
+          directory: /var/loki/chunks
+        tsdb_shipper:
+          active_index_directory: /var/loki/tsdb-index
+          cache_location: /var/loki/tsdb-cache
+        index_queries_cache_config:
+          redis:
+            endpoint: redis.redis.svc.cluster.local:6379
+            password: "${REDIS_PASSWORD}"
+            db: 3
+            expiration: 1h
+            timeout: 500ms
     
     # Deployment mode - single binary for simplicity
     deploymentMode: SingleBinary
