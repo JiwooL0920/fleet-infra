@@ -108,17 +108,16 @@ spec:
           align_queries_with_step: true
           cache_results: true
           results_cache:
-            cache:
-              redis:
-                endpoint: redis.redis.svc.cluster.local:26379
-                master_name: mymaster
-                password: "$${REDIS_PASSWORD}"
-                db: 0
-                expiration: 1h
-                timeout: 500ms
-                pool_size: 10
-                idle_timeout: 90s
-                max_connection_age: 10m
+            redis:
+              endpoint: redis.redis.svc.cluster.local:26379
+              master_name: mymaster
+              password: "$${REDIS_PASSWORD}"
+              db: 0
+              expiration: 1h
+              timeout: 500ms
+              pool_size: 10
+              idle_timeout: 90s
+              max_connection_age: 10m
         
         # Frontend configuration with caching
         frontend:
