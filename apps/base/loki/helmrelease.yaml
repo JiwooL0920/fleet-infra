@@ -110,7 +110,7 @@ spec:
           cache:
             redis:
               endpoint: redis.redis.svc.cluster.local:6379
-              password: "${REDIS_PASSWORD}"
+              password: "$${REDIS_PASSWORD}"
               db: 0
               expiration: 1h
               timeout: 500ms
