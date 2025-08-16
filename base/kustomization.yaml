@@ -15,8 +15,13 @@ resources:
   - infrastructure-config.yaml
   
   # Wave 4: Parallel Deployment (All depend on Config being ready)
-  # These can deploy simultaneously for faster startup
+  # Wave 4a: Monitoring infrastructure (must complete first)
   - infrastructure-monitoring.yaml  # Monitoring and GitOps tools
+  
+  # Wave 4b: Logging infrastructure (depends on monitoring)
+  - infrastructure-logging.yaml     # Loki logging stack
+  
+  # Wave 4c: Application workloads (can run parallel with logging)
   - database-workloads.yaml        # Database services
   - services.yaml                  # Application services
   
