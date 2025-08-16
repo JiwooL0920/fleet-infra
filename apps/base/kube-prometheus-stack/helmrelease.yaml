@@ -82,17 +82,15 @@ spec:
         storageClassName: "standard"
         size: 5Gi
       
-      # Additional datasources - Loki for log aggregation
+      # Additional datasources
       additionalDataSources:
         - name: Loki
           type: loki
           access: proxy
           url: http://loki:3100
           jsonData:
-            maxLines: 5000
-            timeout: 60
-          isDefault: false
-          editable: true
+            maxLines: 1000
+      
     
     # AlertManager configuration
     alertmanager:
