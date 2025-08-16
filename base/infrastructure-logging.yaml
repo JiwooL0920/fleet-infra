@@ -1,20 +1,20 @@
----
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
   name: infrastructure-logging
   namespace: flux-system
 spec:
-  interval: 10m0s
+  dependsOn:
+    - name: infrastructure-monitoring  # Depends on monitoring stack (Grafana needs to be ready)
+  interval: 1m
+  retryInterval: 2m
+  timeout: 10m
   sourceRef:
     kind: GitRepository
     name: flux-system
   path: ./base/infrastructure/logging
   prune: true
   wait: true
-  timeout: 10m0s
-  dependsOn:
-    - name: infrastructure-monitoring
   postBuild:
     substituteFrom:
       - kind: ConfigMap
