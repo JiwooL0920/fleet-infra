@@ -1,7 +1,6 @@
-A self-hosted Kubernetes home lab to run personal projects locally, with shared infrastructure for monitoring, logging, and AWS emulation via LocalStack.
+GitOps infrastructure platform managing 10+ microservices across multi-environment Kubernetes clusters with automated deployment, monitoring, and high availability.
 
 Services Enabled:
-
 - `cloudnative-pg`: managing PostgreSQL databases natively within Kubernetes
 - `redis`: redis-sentinel cache with HA
 - `localstack`: emulate AWS cloud infrastructure
@@ -13,4 +12,4 @@ Services Enabled:
 - `n8n`: workflow automation tool
 - `temporal`: workflow orchestration engine
 
-Learning DevOps Engineering :)
+Learning DevOps Engineering patterns and best practices :)
