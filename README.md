@@ -3,6 +3,7 @@ A self-hosted Kubernetes home lab to run personal projects locally, with shared 
 Services Enabled:
 
 - `cloudnative-pg`: managing PostgreSQL databases natively within Kubernetes
+- `redis`: redis-sentinel cache with HA
 - `localstack`: emulate AWS cloud infrastructure
 - `external-secrets-operator`: store and retreive secrets within the cluster
 - `kube-prometheus-stack`: monitoring
