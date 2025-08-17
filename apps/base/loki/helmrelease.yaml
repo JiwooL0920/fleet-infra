@@ -110,8 +110,8 @@ spec:
           results_cache:
             cache:
               redis:
-                endpoint: redis.redis.svc.cluster.local:26379
-                master_name: mymaster
+                # Read-heavy cache can use load-balanced service for performance
+                endpoint: redis.redis.svc.cluster.local:6379
                 password: "$${REDIS_PASSWORD}"
                 db: 0
                 expiration: 1h
@@ -119,7 +119,6 @@ spec:
                 pool_size: 10
                 idle_timeout: 90s
                 max_connection_age: 10m
-                route_randomly: true
         
         # Frontend configuration with caching
         frontend:
@@ -130,8 +129,8 @@ spec:
         chunk_store_config:
           chunk_cache_config:
             redis:
-              endpoint: redis.redis.svc.cluster.local:26379
-              master_name: mymaster
+              # Read-heavy chunk metadata cache can use load-balanced service
+              endpoint: redis.redis.svc.cluster.local:6379
               password: "$${REDIS_PASSWORD}"
               db: 1
               expiration: 1h
@@ -139,11 +138,10 @@ spec:
               pool_size: 10
               idle_timeout: 90s
               max_connection_age: 10m
-              route_randomly: true
           write_dedupe_cache_config:
             redis:
-              endpoint: redis.redis.svc.cluster.local:26379
-              master_name: mymaster
+              # CRITICAL: Write deduplication MUST go to master for data consistency
+              endpoint: redis-master.redis.svc.cluster.local:6379
               password: "$${REDIS_PASSWORD}"
               db: 2
               expiration: 10m
@@ -151,7 +149,6 @@ spec:
               pool_size: 5
               idle_timeout: 90s
               max_connection_age: 10m
-              route_randomly: true
         
         # Storage configuration with index queries cache
         storage_config:
@@ -162,8 +159,8 @@ spec:
             cache_location: /var/loki/tsdb-cache
           index_queries_cache_config:
             redis:
-              endpoint: redis.redis.svc.cluster.local:26379
-              master_name: mymaster
+              # Read-heavy index cache can use load-balanced service for performance
+              endpoint: redis.redis.svc.cluster.local:6379
               password: "$${REDIS_PASSWORD}"
               db: 3
               expiration: 1h
@@ -171,7 +168,6 @@ spec:
               pool_size: 10
               idle_timeout: 90s
               max_connection_age: 10m
-              route_randomly: true
     
     # Deployment mode - single binary for simplicity
     deploymentMode: SingleBinary

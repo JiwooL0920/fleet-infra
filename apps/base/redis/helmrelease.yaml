@@ -53,9 +53,8 @@ spec:
       parallelSyncs: 1
       # Use same password for Sentinel as Redis data servers
       # This allows Loki to authenticate with both using the same credential
-      masterService:
-        enabled: true
-        type: ClusterIP
+      service:
+        createMaster: true
       
     # Redis Master configuration
     master:
