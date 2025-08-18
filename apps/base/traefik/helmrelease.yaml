@@ -44,6 +44,10 @@ spec:
       dashboard: true
       insecure: false
     
+    # Explicitly disable insecure API access
+    additionalArguments:
+      - "--api.insecure=false"
+    
     # Use ClusterIP service
     service:
       type: ClusterIP
