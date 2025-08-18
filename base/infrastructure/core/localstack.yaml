@@ -13,9 +13,7 @@ spec:
   prune: true
   wait: true
   timeout: 5m0s
-  # Part of infrastructure-core category - depends on traefik within same category
-  dependsOn:
-    - name: traefik
+  # Part of infrastructure-core category - deploys first
   postBuild:
     substituteFrom:
       - kind: ConfigMap

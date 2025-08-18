@@ -13,6 +13,9 @@ spec:
   prune: true
   wait: true
   timeout: 5m0s
+  # Traefik needs LocalStack for future authentication secrets
+  dependsOn:
+    - name: localstack
   postBuild:
     substituteFrom:
       - kind: ConfigMap
