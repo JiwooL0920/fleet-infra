@@ -44,10 +44,6 @@ spec:
       dashboard: true
       insecure: false
     
-    # Explicitly disable insecure API access
-    additionalArguments:
-      - "--api.insecure=false"
-    
     # Use ClusterIP service
     service:
       type: ClusterIP
@@ -101,6 +97,7 @@ spec:
     
     # Additional arguments for local development
     additionalArguments:
+      - "--api.insecure=false"
       - "--log.level=INFO"
       - "--accesslog=true"
       - "--entrypoints.web.address=:8000"
