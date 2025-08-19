@@ -60,7 +60,10 @@ spec:
     # Grafana configuration
     grafana:
       enabled: true
-      adminPassword: "admin123"
+      admin:
+        existingSecret: "grafana-admin-credentials"
+        userKey: "admin-user"
+        passwordKey: "admin-password"
       
       # Service configuration
       service:

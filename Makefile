@@ -41,6 +41,7 @@ init-aws-secrets:
 	@./scripts/init-pgadmin-secrets.sh
 	@./scripts/init-redis-secret.sh
 	@./scripts/init-traefik-secrets.sh
+	@./scripts/init-grafana-secrets.sh
 
 # Fix control plane IP after Colima restart
 fix-control-plane:
