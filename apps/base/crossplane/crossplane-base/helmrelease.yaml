@@ -75,7 +75,6 @@ spec:
     args:
       - --enable-composition-functions
       - --enable-composition-webhook-schema-validation
-      - --enable-environment-configs
 
     # Package cache configuration
     packageCache:

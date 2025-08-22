@@ -6,3 +6,6 @@ kind: Kustomization
 resources:
   # External secrets configuration (depends on external-secrets-operator)
   - external-secrets-config.yaml
+  
+  # Crossplane configuration (depends on crossplane provider and external-secrets)
+  - crossplane-config.yaml
