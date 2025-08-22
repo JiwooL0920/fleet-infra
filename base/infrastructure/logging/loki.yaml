@@ -13,9 +13,10 @@ spec:
   prune: true
   wait: true
   timeout: 15m0s
-  # Loki depends on kube-prometheus-stack to create monitoring namespace
+  # Loki depends on kube-prometheus-stack to create monitoring namespace and redis for caching
   dependsOn:
     - name: kube-prometheus-stack
+    - name: redis
   postBuild:
     substituteFrom:
       - kind: ConfigMap
