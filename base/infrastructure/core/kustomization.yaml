@@ -9,3 +9,6 @@ resources:
   
   # Local AWS services for development/testing
   - localstack.yaml
+  
+  # Initialize infrastructure secrets early (replaces manual scripts)
+  - ../../apps/base/infrastructure/secret-init-job.yaml

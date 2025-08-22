@@ -20,9 +20,11 @@ verify-startup:
 	@echo "Verifying service startup order and health..."
 	@./scripts/verify-startup.sh
 
-# Initialize AWS secrets target
+# Initialize AWS secrets target (Legacy - now automated via Wave 1 job)
+# NOTE: This is now automated via secret-init-job in Wave 1 infrastructure-core
+# You only need to run this manually if the automated job fails
 init-aws-secrets:
-	@echo "Initializing AWS secrets in LocalStack..."
+	@echo "Initializing AWS secrets in LocalStack (Legacy mode)..."
 	@echo "Checking if LocalStack is accessible on port 4566..."
 	@if ! curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; then \
 		echo "Starting LocalStack port forwarding..."; \

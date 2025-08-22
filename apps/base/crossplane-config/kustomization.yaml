@@ -7,6 +7,7 @@ resources:
   - provider-config.yaml
   # Test resources for LocalStack integration  
   - test-bucket.yaml
+  # Note: infrastructure secrets are now managed by Wave 1 job
   # Note: compositions directory needs kustomization.yaml to be included
 
 # Variable substitution handled by Flux Kustomization at higher level
