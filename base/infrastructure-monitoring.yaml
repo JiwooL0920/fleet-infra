@@ -14,7 +14,7 @@ spec:
   wait: true
   timeout: 10m0s
   dependsOn:
-    - name: infrastructure-core
+    - name: infrastructure-operators
   postBuild:
     substituteFrom:
       - kind: ConfigMap
