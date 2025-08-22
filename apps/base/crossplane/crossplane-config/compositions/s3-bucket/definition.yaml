@@ -1,0 +1,106 @@
+---
+# XRD (Composite Resource Definition) for S3 Bucket
+# This defines the API for creating S3 buckets with standard configurations
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xbuckets.storage.platform.io
+spec:
+  group: storage.platform.io
+  names:
+    kind: XBucket
+    plural: xbuckets
+  claimNames:
+    kind: Bucket
+    plural: buckets
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    region:
+                      type: string
+                      description: AWS region for the bucket
+                      default: us-east-1
+                      enum:
+                        - us-east-1
+                        - us-west-2
+                        - eu-west-1
+                        - eu-central-1
+                    versioning:
+                      type: boolean
+                      description: Enable versioning for the bucket
+                      default: false
+                    encryption:
+                      type: string
+                      description: Server-side encryption algorithm
+                      default: AES256
+                      enum:
+                        - AES256
+                        - aws:kms
+                    lifecycleDays:
+                      type: integer
+                      description: Days before objects expire (0 = no expiration)
+                      default: 0
+                      minimum: 0
+                      maximum: 3650
+                    publicAccessBlock:
+                      type: boolean
+                      description: Block all public access
+                      default: true
+                    cors:
+                      type: boolean
+                      description: Enable CORS configuration
+                      default: false
+                    corsOrigins:
+                      type: array
+                      description: Allowed CORS origins
+                      items:
+                        type: string
+                      default: ["*"]
+                    tags:
+                      type: object
+                      description: Resource tags
+                      additionalProperties:
+                        type: string
+                  required:
+                    - region
+              required:
+                - parameters
+            status:
+              type: object
+              properties:
+                bucketName:
+                  type: string
+                  description: The actual name of the created bucket
+                bucketArn:
+                  type: string
+                  description: The ARN of the created bucket
+                bucketDomainName:
+                  type: string
+                  description: The domain name of the bucket
+      additionalPrinterColumns:
+        - name: READY
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Ready')].status
+        - name: SYNCED
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Synced')].status
+        - name: BUCKET
+          type: string
+          jsonPath: .status.bucketName
+        - name: REGION
+          type: string
+          jsonPath: .spec.parameters.region
+        - name: AGE
+          type: date
+          jsonPath: .metadata.creationTimestamp

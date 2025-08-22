@@ -1,0 +1,46 @@
+---
+# Patch and Transform Function
+# Most commonly used function for composing resources
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+  namespace: crossplane-system
+  annotations:
+    render.crossplane.io/runtime: Development
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.4.0
+  packagePullPolicy: IfNotPresent
+---
+# Auto Ready Function
+# Automatically sets composite resource readiness
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-auto-ready
+  namespace: crossplane-system
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-auto-ready:v0.2.1
+  packagePullPolicy: IfNotPresent
+---
+# Go Templating Function (Optional)
+# For advanced templating scenarios
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-go-templating
+  namespace: crossplane-system
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.4.0
+  packagePullPolicy: IfNotPresent
+---
+# Conditional Function (Optional)
+# For conditional resource creation
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-conditional
+  namespace: crossplane-system
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-conditional:v0.1.0
+  packagePullPolicy: IfNotPresent

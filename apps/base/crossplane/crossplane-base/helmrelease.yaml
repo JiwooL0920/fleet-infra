@@ -1,0 +1,107 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: crossplane
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://charts.crossplane.io/stable
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: crossplane
+  namespace: flux-system
+spec:
+  interval: 5m
+  releaseName: crossplane
+  targetNamespace: crossplane-system
+  install:
+    createNamespace: true
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: crossplane
+      version: "1.18.2" # Latest stable version
+      sourceRef:
+        kind: HelmRepository
+        name: crossplane
+        namespace: flux-system
+      interval: 5m
+  values:
+    # Core Crossplane configuration
+    replicas: 1
+
+    # Image configuration
+    image:
+      repository: xpkg.crossplane.io/crossplane/crossplane
+      pullPolicy: IfNotPresent
+
+    # Resources for core controller
+    resourcesCrossplane:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+    # RBAC Manager configuration
+    rbacManager:
+      deploy: true
+      replicas: 1
+      leaderElection: true
+      resourcesRBACManager:
+        limits:
+          cpu: 100m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+
+    # Enable webhooks for validation
+    webhooks:
+      enabled: true
+
+    # Metrics configuration
+    metrics:
+      enabled: true
+
+    # Feature flags and arguments
+    args:
+      - --enable-composition-functions
+      - --enable-composition-webhook-schema-validation
+      - --enable-environment-configs
+
+    # Package cache configuration
+    packageCache:
+      medium: ""
+      sizeLimit: 20Mi
+      pvc: ""
+
+    # Service account configuration
+    serviceAccount:
+      customAnnotations: {}
+
+    # Extra environment variables for AWS integration
+    extraEnvVarsCrossplane:
+      AWS_REGION:
+        value: "${AWS_REGION}"
+      AWS_DEFAULT_REGION:
+        value: "${AWS_REGION}"
+      # For LocalStack integration in development
+      AWS_ENDPOINT_URL:
+        value: "${AWS_ENDPOINT_URL}"
+
+    # Node selector and tolerations if needed
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+

@@ -1,0 +1,79 @@
+---
+# External Secret to sync AWS credentials from External Secrets Operator
+# These credentials will be used by native AWS providers
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: crossplane-aws-credentials
+  namespace: crossplane-system
+spec:
+  refreshInterval: 5m
+  secretStoreRef:
+    name: localstack-secretstore
+    kind: ClusterSecretStore
+  target:
+    name: aws-credentials
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        # AWS credentials in standard format for native providers
+        creds: |
+          [default]
+          aws_access_key_id={{ .access_key_id }}
+          aws_secret_access_key={{ .secret_access_key }}
+  data:
+    - secretKey: access_key_id
+      remoteRef:
+        key: crossplane/aws
+        property: access_key_id
+    - secretKey: secret_access_key
+      remoteRef:
+        key: crossplane/aws
+        property: secret_access_key
+---
+# Native AWS ProviderConfig for LocalStack development
+# This uses native AWS providers with LocalStack endpoint support
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-credentials
+      key: creds
+  # LocalStack endpoint configuration
+  endpoint:
+    hostnameImmutable: true
+    services: [iam, s3, sts, ec2, dynamodb, lambda, cloudformation, secretsmanager]
+    url:
+      type: Static
+      static: http://localstack.localstack.svc.cluster.local:4566
+  # LocalStack-specific settings
+  skip_credentials_validation: true
+  skip_metadata_api_check: true
+  skip_requesting_account_id: true
+  s3_use_path_style: true
+---
+# Alternative ProviderConfig for production AWS
+# Uses native AWS providers with real AWS endpoints
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: aws-production
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-credentials-prod
+      key: creds
+  # No endpoint configuration - uses real AWS
+  # Production settings
+  skip_credentials_validation: false
+  skip_metadata_api_check: false
+  skip_requesting_account_id: false
+  s3_use_path_style: false
