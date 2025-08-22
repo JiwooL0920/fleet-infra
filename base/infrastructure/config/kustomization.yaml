@@ -12,3 +12,6 @@ resources:
   
   # Crossplane configuration (depends on crossplane providers and external-secrets)
   - crossplane-config.yaml
+  
+  # Traefik configuration (depends on traefik helm release)
+  - traefik-config.yaml
