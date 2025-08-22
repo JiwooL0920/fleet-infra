@@ -9,9 +9,4 @@ resources:
   # Test resources for LocalStack integration
   - test-bucket.yaml
 
-# Enable variable substitution from cluster-vars ConfigMap
-postBuild:
-  substituteFrom:
-    - kind: ConfigMap
-      name: cluster-vars
-      optional: false
+# Variable substitution handled by Flux Kustomization at higher level
