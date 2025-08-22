@@ -41,7 +41,7 @@ spec:
 
     # Image configuration
     image:
-      repository: xpkg.crossplane.io/crossplane/crossplane
+      repository: crossplane/crossplane
       pullPolicy: IfNotPresent
 
     # Resources for core controller
@@ -93,12 +93,12 @@ spec:
     # Extra environment variables for AWS integration
     extraEnvVarsCrossplane:
       AWS_REGION:
-        value: "${AWS_REGION}"
+        value: "${REGION}"
       AWS_DEFAULT_REGION:
-        value: "${AWS_REGION}"
-      # For LocalStack integration in development
+        value: "${REGION}"
+      # For LocalStack integration in development  
       AWS_ENDPOINT_URL:
-        value: "${AWS_ENDPOINT_URL}"
+        value: "http://localstack.localstack.svc.cluster.local:4566"
 
     # Node selector and tolerations if needed
     nodeSelector: {}
