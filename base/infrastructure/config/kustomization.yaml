@@ -15,3 +15,6 @@ resources:
   
   # Traefik configuration (depends on traefik helm release)
   - traefik-config.yaml
+  
+  # External secrets resources (depends on external-secrets-config)
+  - external-secrets.yaml
