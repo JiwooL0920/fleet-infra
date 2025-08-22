@@ -5,8 +5,8 @@ kind: Kustomization
 # Contains native AWS ProviderConfigs, ExternalSecrets, and test resources
 resources:
   - provider-config.yaml
-  - compositions
-  # Test resources for LocalStack integration
+  # Test resources for LocalStack integration  
   - test-bucket.yaml
+  # Note: compositions directory needs kustomization.yaml to be included
 
 # Variable substitution handled by Flux Kustomization at higher level
