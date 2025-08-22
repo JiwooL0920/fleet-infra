@@ -37,8 +37,7 @@ spec:
   values:
     # pgAdmin4 configuration
     env:
-      email: "admin@example.com"
-      password: "admin123"
+      # Credentials managed by External Secret (no hardcoded values)
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
       PGADMIN_CONFIG_LOGIN_BANNER: "PostgreSQL Administration - Fleet Infrastructure"
       PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: "20"
