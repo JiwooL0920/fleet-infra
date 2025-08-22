@@ -16,7 +16,9 @@ spec:
       Purpose: localstack-integration-test
   providerConfigRef:
     name: default
-  writeConnectionSecretsToNamespace: default
+  writeConnectionSecretToRef:
+    name: test-bucket-connection
+    namespace: default
 ---
 # Test IAM Role using native AWS provider with LocalStack
 apiVersion: iam.aws.upbound.io/v1beta1
@@ -26,7 +28,7 @@ metadata:
   namespace: default
 spec:
   forProvider:
-    assumeRolePolicyDocument: |
+    assumeRolePolicy: |
       {
         "Version": "2012-10-17",
         "Statement": [
@@ -55,7 +57,7 @@ metadata:
 spec:
   forProvider:
     description: "Test S3 access policy for LocalStack"
-    policyDocument: |
+    policy: |
       {
         "Version": "2012-10-17",
         "Statement": [
