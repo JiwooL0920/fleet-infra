@@ -11,4 +11,4 @@ resources:
   - localstack.yaml
   
   # Initialize infrastructure secrets early (replaces manual scripts)
-  - ../../apps/base/infrastructure/secret-init-job.yaml
+  - ../../../apps/base/infrastructure/secret-init-job.yaml
