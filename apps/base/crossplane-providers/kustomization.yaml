@@ -4,8 +4,6 @@ kind: Kustomization
 # Crossplane Providers and Configuration
 # Deployed after Crossplane core is ready
 resources:
-  # AWS Providers (S3, IAM, EC2)
+  # AWS Providers only (S3, IAM, EC2)
+  # This creates the provider CRDs that ProviderConfig depends on
   - ../crossplane/provider-aws
-  
-  # Provider Configuration and test resources
-  - ../crossplane/crossplane-config
