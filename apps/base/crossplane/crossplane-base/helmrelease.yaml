@@ -29,7 +29,7 @@ spec:
   chart:
     spec:
       chart: crossplane
-      version: "1.18.2" # Latest stable version
+      version: "1.18.0" # Latest stable version
       sourceRef:
         kind: HelmRepository
         name: crossplane
@@ -39,10 +39,7 @@ spec:
     # Core Crossplane configuration
     replicas: 1
 
-    # Image configuration
-    image:
-      repository: crossplane/crossplane
-      pullPolicy: IfNotPresent
+    # Use default image from Helm chart
 
     # Resources for core controller
     resourcesCrossplane:
