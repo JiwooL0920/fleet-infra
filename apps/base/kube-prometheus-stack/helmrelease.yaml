@@ -60,7 +60,10 @@ spec:
     # Grafana configuration
     grafana:
       enabled: true
-      adminPassword: "admin123"
+      admin:
+        existingSecret: "grafana-admin-credentials"
+        userKey: "admin-user"
+        passwordKey: "admin-password"
       
       # Service configuration
       service:
@@ -81,6 +84,16 @@ spec:
         enabled: true
         storageClassName: "standard"
         size: 5Gi
+      
+      # Additional datasources
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://monitoring-loki:3100
+          jsonData:
+            maxLines: 1000
+      
     
     # AlertManager configuration
     alertmanager:

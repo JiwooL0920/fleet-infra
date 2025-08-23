@@ -1,0 +1,88 @@
+---
+# Example 1: Simple S3 bucket with defaults
+apiVersion: storage.platform.io/v1alpha1
+kind: Bucket
+metadata:
+  name: my-app-data
+  namespace: default
+spec:
+  parameters:
+    region: us-east-1
+    tags:
+      Environment: dev
+      Application: my-app
+      Team: platform
+---
+# Example 2: S3 bucket with versioning and lifecycle
+apiVersion: storage.platform.io/v1alpha1
+kind: Bucket
+metadata:
+  name: backup-storage
+  namespace: default
+spec:
+  parameters:
+    region: us-east-1
+    versioning: true
+    lifecycleDays: 90
+    encryption: AES256
+    tags:
+      Environment: prod
+      Purpose: backups
+      Team: operations
+---
+# Example 3: S3 bucket for static website hosting with CORS
+apiVersion: storage.platform.io/v1alpha1
+kind: Bucket
+metadata:
+  name: static-website
+  namespace: default
+spec:
+  parameters:
+    region: us-west-2
+    versioning: false
+    publicAccessBlock: false
+    cors: true
+    corsOrigins:
+      - "https://example.com"
+      - "https://app.example.com"
+    tags:
+      Environment: prod
+      Purpose: static-hosting
+      Team: frontend
+---
+# Example 4: S3 bucket for logs with auto-expiration
+apiVersion: storage.platform.io/v1alpha1
+kind: Bucket
+metadata:
+  name: application-logs
+  namespace: monitoring
+spec:
+  parameters:
+    region: us-east-1
+    versioning: false
+    lifecycleDays: 30
+    encryption: AES256
+    publicAccessBlock: true
+    tags:
+      Environment: prod
+      Purpose: logging
+      Team: sre
+      CostCenter: operations
+---
+# Example 5: Database backup bucket for CNPG
+apiVersion: storage.platform.io/v1alpha1
+kind: XBucket  # Using XBucket directly (cluster-scoped)
+metadata:
+  name: cnpg-backups
+spec:
+  parameters:
+    region: us-east-1
+    versioning: true
+    lifecycleDays: 30
+    encryption: AES256
+    publicAccessBlock: true
+    tags:
+      Environment: dev
+      Purpose: database-backups
+      Database: postgresql
+      ManagedBy: cnpg-operator

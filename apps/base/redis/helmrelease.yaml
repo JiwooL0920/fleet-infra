@@ -33,9 +33,14 @@ spec:
     # Override default naming
     fullnameOverride: "redis"
     
+    # RBAC configuration (required for master service tracking)
+    rbac:
+      create: true
+
     # Authentication configuration
     auth:
       enabled: true
+      sentinel: true
       existingSecret: "redis-password"
       existingSecretPasswordKey: "password"
 
@@ -46,6 +51,10 @@ spec:
       downAfterMilliseconds: 30000
       failoverTimeout: 180000
       parallelSyncs: 1
+      # Use same password for Sentinel as Redis data servers
+      # This allows Loki to authenticate with both using the same credential
+      masterService:
+        enabled: true
       
     # Redis Master configuration
     master:
@@ -69,6 +78,8 @@ spec:
     replica:
       replicaCount: 2
       podAntiAffinityPreset: hard
+      # Required for master service tracking functionality
+      automountServiceAccountToken: true
       service:
         type: ClusterIP
         ports:

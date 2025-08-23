@@ -1,0 +1,23 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: temporal
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/temporal
+  prune: true
+  wait: true
+  timeout: 10m0s
+  # Fine-grained dependencies for Temporal
+  dependsOn:
+    - name: external-secrets-config  # Needs ClusterSecretStore for database credentials
+    - name: postgresql-cluster  # Needs PostgreSQL database
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

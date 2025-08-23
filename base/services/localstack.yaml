@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: localstack
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  timeout: 3m  # No dependencies, quick startup
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/localstack
+  prune: true
+  wait: true
+  # No dependsOn - starts immediately (foundation service)
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: localstack
+      namespace: localstack

@@ -1,0 +1,251 @@
+---
+# Composition for S3 Bucket with enterprise features
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xbuckets.aws.storage.platform.io
+  labels:
+    provider: aws
+    service: s3
+spec:
+  compositeTypeRef:
+    apiVersion: storage.platform.io/v1alpha1
+    kind: XBucket
+  mode: Pipeline
+  pipeline:
+    # Step 1: Patch and Transform for S3 Bucket
+    - step: s3-bucket
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          # Main S3 Bucket Resource
+          - name: s3-bucket
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                forProvider:
+                  forceDestroy: false
+                providerConfigRef:
+                  name: default
+            patches:
+              # Region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              
+              # Bucket name from metadata
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: metadata.name
+                transforms:
+                  - type: string
+                    string:
+                      fmt: "%s-bucket"
+              
+              # Tags
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.tags
+                toFieldPath: spec.forProvider.tags
+                policy:
+                  mergeOptions:
+                    appendSlice: true
+              
+              # Add standard tags
+              - type: CombineFromComposite
+                toFieldPath: spec.forProvider.tags.ManagedBy
+                combine:
+                  variables:
+                    - fromFieldPath: metadata.name
+                  strategy: string
+                  string:
+                    fmt: "crossplane"
+              
+              # Status fields
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.bucketName
+              
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: status.bucketArn
+              
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.bucketDomainName
+                toFieldPath: status.bucketDomainName
+          
+          # Versioning Configuration
+          - name: s3-versioning
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketVersioning
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  versioningConfiguration:
+                    - status: Enabled
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.versioning
+                toFieldPath: spec.forProvider.versioningConfiguration[0].status
+                transforms:
+                  - type: map
+                    map:
+                      "true": Enabled
+                      "false": Suspended
+          
+          # Server-Side Encryption
+          - name: s3-encryption
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketServerSideEncryptionConfiguration
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  rule:
+                    - applyServerSideEncryptionByDefault:
+                        - sseAlgorithm: AES256
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.encryption
+                toFieldPath: spec.forProvider.rule[0].applyServerSideEncryptionByDefault[0].sseAlgorithm
+          
+          # Public Access Block
+          - name: s3-public-access-block
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketPublicAccessBlock
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  blockPublicAcls: true
+                  blockPublicPolicy: true
+                  ignorePublicAcls: true
+                  restrictPublicBuckets: true
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicAccessBlock
+                toFieldPath: spec.forProvider.blockPublicAcls
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicAccessBlock
+                toFieldPath: spec.forProvider.blockPublicPolicy
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicAccessBlock
+                toFieldPath: spec.forProvider.ignorePublicAcls
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.publicAccessBlock
+                toFieldPath: spec.forProvider.restrictPublicBuckets
+          
+          # Lifecycle Configuration (Conditional)
+          - name: s3-lifecycle
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketLifecycleConfiguration
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  rule:
+                    - id: expire-old-objects
+                      status: Enabled
+                      expiration:
+                        - days: 30
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.lifecycleDays
+                toFieldPath: spec.forProvider.rule[0].expiration[0].days
+              
+              # Disable lifecycle if days is 0
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.lifecycleDays
+                toFieldPath: spec.forProvider.rule[0].status
+                transforms:
+                  - type: map
+                    map:
+                      "0": Disabled
+                    default: Enabled
+          
+          # CORS Configuration (Conditional)
+          - name: s3-cors
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: BucketCorsConfiguration
+              spec:
+                forProvider:
+                  bucketSelector:
+                    matchControllerRef: true
+                  corsRule:
+                    - allowedHeaders:
+                        - "*"
+                      allowedMethods:
+                        - GET
+                        - HEAD
+                        - POST
+                        - PUT
+                        - DELETE
+                      allowedOrigins:
+                        - "*"
+                      exposeHeaders:
+                        - ETag
+                      maxAgeSeconds: 3000
+                providerConfigRef:
+                  name: default
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.region
+                toFieldPath: spec.forProvider.region
+              
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.corsOrigins
+                toFieldPath: spec.forProvider.corsRule[0].allowedOrigins
+              
+              # Only create CORS if enabled
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.parameters.cors
+                toFieldPath: metadata.annotations["crossplane.io/paused"]
+                transforms:
+                  - type: map
+                    map:
+                      "false": "true"
+                      "true": "false"
+    
+    # Step 2: Auto Ready (marks composite as ready when all resources are ready)
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready
+      input:
+        apiVersion: fnio.crossplane.io/v1beta1
+        kind: Config

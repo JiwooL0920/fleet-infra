@@ -39,10 +39,10 @@ spec:
         cpu: "200m"
         memory: "256Mi"
     
-    # Enable dashboard for local development
+    # Enable secure dashboard with authentication
     api:
       dashboard: true
-      insecure: true
+      insecure: false
     
     # Use ClusterIP service
     service:
@@ -97,11 +97,11 @@ spec:
     
     # Additional arguments for local development
     additionalArguments:
+      - "--api.insecure=false"
       - "--log.level=INFO"
       - "--accesslog=true"
       - "--entrypoints.web.address=:8000"
       - "--entrypoints.websecure.address=:8443"
-      - "--api.dashboard=true"
       - "--ping=true"
       - "--providers.kubernetesingress=true"
       - "--providers.kubernetescrd=true"

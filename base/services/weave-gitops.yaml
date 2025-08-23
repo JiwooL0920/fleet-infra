@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: weave-gitops
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  timeout: 3m  # Simple web UI, quick startup
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/weave-gitops
+  prune: true
+  wait: true
+  # No dependsOn - GitOps UI can start immediately
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: ww-gitops-weave-gitops
+      namespace: flux-system

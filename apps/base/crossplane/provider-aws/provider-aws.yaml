@@ -1,0 +1,27 @@
+---
+# AWS S3 Provider - Core S3 functionality
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-s3
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.16.0
+  packagePullPolicy: IfNotPresent
+---
+# AWS IAM Provider - Identity and Access Management
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-iam
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-iam:v1.16.0
+  packagePullPolicy: IfNotPresent
+---
+# AWS EC2 Provider - Compute resources
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-ec2
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-ec2:v1.16.0
+  packagePullPolicy: IfNotPresent

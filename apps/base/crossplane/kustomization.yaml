@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Crossplane Main Kustomization
+# Orchestrates the deployment of Crossplane components in order
+resources:
+  # 1. Core Crossplane installation only (namespace, helm chart)
+  - crossplane-base
+  
+  # 2. Providers and Config will be deployed in separate wave
+  # This ensures Crossplane core is ready before installing providers

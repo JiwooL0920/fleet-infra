@@ -1,0 +1,99 @@
+---
+# Test S3 bucket using native AWS provider with LocalStack
+apiVersion: s3.aws.upbound.io/v1beta1
+kind: Bucket
+metadata:
+  name: test-localstack-bucket
+  namespace: default
+  annotations:
+    crossplane.io/external-name: test-localstack-bucket-native
+spec:
+  forProvider:
+    region: us-east-1
+    tags:
+      Environment: dev
+      ManagedBy: crossplane-native
+      Purpose: localstack-integration-test
+  providerConfigRef:
+    name: default
+  writeConnectionSecretToRef:
+    name: test-bucket-connection
+    namespace: default
+---
+# Test IAM Role using native AWS provider with LocalStack
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: Role
+metadata:
+  name: test-localstack-role
+  namespace: default
+spec:
+  forProvider:
+    assumeRolePolicy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Service": "ec2.amazonaws.com"
+            },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      }
+    tags:
+      Environment: dev
+      ManagedBy: crossplane-native
+      Purpose: localstack-integration-test
+  providerConfigRef:
+    name: default
+---
+# Test IAM Policy using native AWS provider with LocalStack
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: Policy
+metadata:
+  name: test-localstack-policy
+  namespace: default
+spec:
+  forProvider:
+    description: "Test S3 access policy for LocalStack"
+    policy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "s3:GetObject",
+              "s3:PutObject",
+              "s3:DeleteObject"
+            ],
+            "Resource": "arn:aws:s3:::test-localstack-bucket-native/*"
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::test-localstack-bucket-native"
+          }
+        ]
+      }
+    tags:
+      Environment: dev
+      ManagedBy: crossplane-native
+  providerConfigRef:
+    name: default
+---
+# Attach policy to role
+apiVersion: iam.aws.upbound.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: test-role-policy-attachment
+  namespace: default
+spec:
+  forProvider:
+    role: test-localstack-role
+    policyArn: "arn:aws:iam::000000000000:policy/test-localstack-policy"
+  providerConfigRef:
+    name: default

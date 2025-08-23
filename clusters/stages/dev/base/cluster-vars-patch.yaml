@@ -6,3 +6,8 @@ metadata:
 data:
   CLUSTER_NAME: dev-cluster
   ENVIRONMENT: dev
+  # LocalStack configuration for development
+  AWS_ENDPOINT_URL: "http://localstack.localstack.svc.cluster.local:4566"
+  SKIP_CREDENTIALS_VALIDATION: "true"
+  SKIP_REQUESTING_ACCOUNT_ID: "true"
+  S3_USE_PATH_STYLE: "true"
