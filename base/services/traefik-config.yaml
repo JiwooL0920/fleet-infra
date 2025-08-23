@@ -2,21 +2,20 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: temporal
+  name: traefik-config
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/temporal
+  path: ./apps/base/traefik-config
   prune: true
   wait: true
-  timeout: 10m0s
-  # Fine-grained dependencies for Temporal
+  timeout: 5m0s
   dependsOn:
-    - name: external-secrets-config  # Needs ClusterSecretStore for database credentials
-    - name: postgresql-cluster  # Needs PostgreSQL database
+    - name: traefik  # Traefik must be running first
+    - name: external-secrets-config  # Needs ClusterSecretStore for Basic Auth credentials
   postBuild:
     substituteFrom:
       - kind: ConfigMap

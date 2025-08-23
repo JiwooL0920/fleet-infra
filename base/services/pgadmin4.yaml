@@ -15,7 +15,8 @@ spec:
   prune: true
   wait: true
   dependsOn:
-    - name: postgresql-cluster  # Only needs PostgreSQL, not Redis
+    - name: external-secrets-config  # Needs ClusterSecretStore for admin credentials
+    - name: postgresql-cluster  # Needs PostgreSQL database
   postBuild:
     substituteFrom:
       - kind: ConfigMap

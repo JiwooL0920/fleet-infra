@@ -10,6 +10,8 @@ resources:
   - localstack.yaml
   - cnpg-operator.yaml
   - external-secrets-operator.yaml
+  - external-secrets-config.yaml  # ClusterSecretStore and PushSecrets
+  - traefik-config.yaml  # Traefik middleware and configuration
   - metrics-server.yaml
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml

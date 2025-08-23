@@ -14,7 +14,8 @@ spec:
   path: ./apps/base/kube-prometheus-stack
   prune: true
   wait: true
-  # No dependsOn - monitoring can start immediately
+  dependsOn:
+    - name: external-secrets-config  # Needs ClusterSecretStore for Grafana admin credentials
   postBuild:
     substituteFrom:
       - kind: ConfigMap

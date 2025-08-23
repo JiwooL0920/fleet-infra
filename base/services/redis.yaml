@@ -15,7 +15,7 @@ spec:
   prune: true
   wait: true
   dependsOn:
-    - name: external-secrets-operator  # Needs External Secrets for authentication
+    - name: external-secrets-config  # Needs ClusterSecretStore for authentication
   postBuild:
     substituteFrom:
       - kind: ConfigMap

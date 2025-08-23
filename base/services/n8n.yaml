@@ -13,9 +13,10 @@ spec:
   prune: true
   wait: true
   timeout: 5m0s
-  # Fine-grained dependency: N8N only needs PostgreSQL cluster ready
+  # Fine-grained dependencies for N8N
   dependsOn:
-    - name: postgresql-cluster
+    - name: external-secrets-config  # Needs ClusterSecretStore for database credentials
+    - name: postgresql-cluster  # Needs PostgreSQL database
   postBuild:
     substituteFrom:
       - kind: ConfigMap
