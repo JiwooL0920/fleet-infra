@@ -1,0 +1,31 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: postgresql-cluster
+  namespace: flux-system
+spec:
+  interval: 10m
+  retryInterval: 1m
+  timeout: 5m  # Database cluster setup time
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/cloudnative-pg
+  prune: true
+  wait: true
+  dependsOn:
+    - name: cnpg-operator  # Only needs CNPG operator ready
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: postgresql-cluster
+      namespace: cnpg-system
+    - apiVersion: v1
+      kind: Secret
+      name: postgresql-cluster-app
+      namespace: cnpg-system

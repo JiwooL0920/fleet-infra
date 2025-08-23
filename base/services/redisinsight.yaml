@@ -1,0 +1,31 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: redisinsight
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 30s
+  timeout: 2m  # Simple web UI for Redis management
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/redisinsight
+  prune: true
+  wait: true
+  dependsOn:
+    - name: redis  # Only needs Redis, not PostgreSQL
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: redis
+      namespace: redis
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: redisinsight
+      namespace: redisinsight

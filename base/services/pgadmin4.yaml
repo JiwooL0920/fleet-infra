@@ -1,0 +1,31 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: pgadmin4
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 30s
+  timeout: 3m  # Simple web UI for database management
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/pgadmin4
+  prune: true
+  wait: true
+  dependsOn:
+    - name: postgresql-cluster  # Only needs PostgreSQL, not Redis
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: postgresql-cluster
+      namespace: cnpg-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: pgadmin4
+      namespace: pgadmin4

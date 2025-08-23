@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: metrics-server
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  timeout: 3m  # No dependencies, simple system service
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/metrics-server
+  prune: true
+  wait: true
+  # No dependsOn - starts immediately (foundation service)
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: metrics-server
+      namespace: kube-system

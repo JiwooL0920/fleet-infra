@@ -1,0 +1,31 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: n8n
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  timeout: 4m  # Application with database dependency
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/n8n
+  prune: true
+  wait: true
+  dependsOn:
+    - name: postgresql-cluster  # Needs PostgreSQL database ready
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: postgresql-cluster
+      namespace: cnpg-system
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: n8n
+      namespace: n8n
