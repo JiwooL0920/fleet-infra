@@ -25,3 +25,11 @@ resources:
   # Database UI services (fine-grained dependencies)
   - pgadmin4.yaml
   - redisinsight.yaml
+
+configMapGenerator:
+  - name: cluster-vars
+    envs:
+      - environment.env
+    options:
+      disableNameSuffixHash: true
+    namespace: flux-system
