@@ -1,0 +1,27 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: loki
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/loki
+  prune: true
+  wait: true
+  timeout: 10m0s
+  dependsOn:
+    - name: external-secrets-operator  # For S3 credentials
+    - name: localstack  # S3 storage backend
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: loki
+      namespace: monitoring
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

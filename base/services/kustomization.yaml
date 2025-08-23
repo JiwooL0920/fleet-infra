@@ -14,6 +14,15 @@ resources:
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml
   
+  # Infrastructure as Code services
+  - crossplane.yaml
+  - crossplane-providers.yaml
+  - crossplane-config.yaml
+  
+  # Logging stack services
+  - loki.yaml
+  - promtail.yaml
+  
   # Database services (depend on operators)
   - postgresql-cluster.yaml
   - redis.yaml
