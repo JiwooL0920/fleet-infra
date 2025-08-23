@@ -1,7 +1,15 @@
-# CNPG Operator
+# CNPG Operator - Foundation Service
 
-CloudNative PostgreSQL operator for managing PostgreSQL clusters in Kubernetes.
+CloudNative PostgreSQL operator enabling PostgreSQL cluster management in Kubernetes.
 
 ## Purpose
 
-Deploys and manages the CNPG operator that provides PostgreSQL cluster lifecycle management, including provisioning, scaling, backup, and recovery operations.
+- PostgreSQL cluster lifecycle management (provisioning, scaling, backup, recovery)
+- Custom Resource Definitions (CRDs) for PostgreSQL clusters
+- Automated database maintenance and monitoring
+- Foundation service enabling database layer deployment
+
+## Dependencies
+
+- **Depends on**: None (foundation service)
+- **Depended on by**: postgresql-cluster (requires CNPG CRDs and operator)

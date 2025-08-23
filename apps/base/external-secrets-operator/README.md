@@ -1,13 +1,22 @@
-# External Secrets Operator
+# External Secrets Operator - Foundation Service
 
-External Secrets Operator for synchronizing secrets from external systems to Kubernetes.
+Kubernetes secrets management operator enabling secure credential synchronization from external stores.
 
 ## Purpose
 
-Manages secret synchronization between external secret stores (like AWS Secrets Manager via LocalStack) and Kubernetes secrets.
+- Synchronizes secrets from external stores (LocalStack AWS Secrets Manager) to Kubernetes
+- Provides ClusterSecretStore and ExternalSecret CRDs
+- Enables secure credential management across all services
+- Foundation service for secret management capabilities
+
+## Dependencies
+
+- **Depends on**: None (foundation service)
+- **Depended on by**: external-secrets-config, redis, loki, kube-prometheus-stack (services requiring secret synchronization)
 
 ## Components
 
-- Operator deployment via HelmRelease
-- ClusterSecretStore for LocalStack integration
+- External Secrets operator deployment via HelmRelease
+- ClusterSecretStore for LocalStack integration  
 - Push secret configurations for PostgreSQL credentials
+- Namespace and RBAC configurations

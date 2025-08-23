@@ -1,7 +1,16 @@
-# Weave GitOps
+# Weave GitOps - GitOps Dashboard
 
-GitOps dashboard and management interface.
+Web-based GitOps dashboard for monitoring and managing Flux deployments and cluster resources.
 
 ## Purpose
 
-Provides a web-based dashboard for monitoring and managing GitOps deployments, Flux reconciliations, and cluster resource status.
+- GitOps dashboard for Flux deployment monitoring and management
+- Real-time visualization of kustomization and helmrelease status
+- Git repository synchronization status monitoring
+- Cluster resource status and health monitoring
+- GitOps workflow management and troubleshooting interface
+
+## Dependencies
+
+- **Depends on**: traefik (ingress for web dashboard access)
+- **Depended on by**: None (monitoring dashboard)

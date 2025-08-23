@@ -1,7 +1,16 @@
-# N8N
+# N8N - Application Service
 
-Workflow automation engine with PostgreSQL backend.
+Visual workflow automation platform with PostgreSQL backend for workflow persistence.
 
 ## Purpose
 
-Deploys N8N workflow automation platform with PostgreSQL database integration and secure credential management via External Secrets.
+- Visual workflow builder with drag-and-drop interface
+- Integration platform connecting various services and APIs
+- PostgreSQL database backend for workflow and execution data
+- Secure credential management via External Secrets
+- Web-based workflow design and monitoring interface
+
+## Dependencies
+
+- **Depends on**: postgresql-cluster (requires PostgreSQL database for persistence)
+- **Parallel with**: temporal (both applications depend on PostgreSQL)

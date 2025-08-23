@@ -1,7 +1,15 @@
-# LocalStack
+# LocalStack - Foundation Service
 
-Local AWS services emulation for development and testing.
+Local AWS services emulation providing S3 storage and Secrets Manager for development.
 
 ## Purpose
 
-Provides local AWS service emulation including S3 for PostgreSQL backups and Secrets Manager for External Secrets Operator integration.
+- AWS S3 emulation for PostgreSQL automated backups
+- AWS Secrets Manager emulation for External Secrets integration
+- Local development environment eliminating need for real AWS resources
+- Foundation service enabling backup and secret management capabilities
+
+## Dependencies
+
+- **Depends on**: None (foundation service)
+- **Depended on by**: postgresql-cluster (backup storage), external-secrets-config (secrets store)

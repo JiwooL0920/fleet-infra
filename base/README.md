@@ -1,23 +1,40 @@
-# Base Directory
+# Base Directory - Fine-Grained GitOps System
 
-Wave-based deployment configurations for the fleet infrastructure.
+Fine-grained service-level deployment configurations for the fleet infrastructure.
 
-## Purpose
+## Architecture
 
-Orchestrates deployment order using a 5-wave system with dependency management to ensure proper service startup sequence and stability.
+Orchestrates **21 services** using precise service-level dependencies for optimal parallel deployment, eliminating the need for coarse wave-based waiting.
 
-## Wave Structure
+## Structure
 
-- **Wave 1**: Infrastructure Core (Traefik, LocalStack)
-- **Wave 2**: Infrastructure Operators (CNPG, External Secrets)
-- **Wave 3**: Infrastructure Configuration
-- **Wave 4**: Mixed deployment - monitoring and databases in parallel, then services sequentially
-- **Wave 5**: Database UI tools (depends on Wave 4 databases)
+- `services/` - **Fine-grained service kustomizations** (primary deployment method)
+  - Individual service definitions with precise dependencies
+  - Parallel deployment opportunities maximized
+  - 8-12 minute deployment times achieved
 
-## Components
+## Services Directory
 
-- Individual wave configuration files (`.yaml`)
-- `infrastructure/` - Core infrastructure components by wave
-- `database/` - Database workloads and UI tools
-- `services/` - Application services
-- `kustomization.yaml` - Main orchestration with resource ordering
+Contains individual `.yaml` files for each of the 21 services:
+
+### Foundation (No Dependencies)
+
+- `traefik.yaml`, `localstack.yaml`, `cnpg-operator.yaml`, `external-secrets-operator.yaml`, `metrics-server.yaml`
+
+### Infrastructure & Configuration
+
+- `crossplane.yaml`, `crossplane-config.yaml`, `crossplane-providers.yaml`
+- `external-secrets-config.yaml`, `traefik-config.yaml`
+
+### Monitoring & Observability
+
+- `kube-prometheus-stack.yaml`, `weave-gitops.yaml`, `loki.yaml`, `promtail.yaml`
+
+### Data & Applications
+
+- `postgresql-cluster.yaml`, `redis.yaml`, `n8n.yaml`, `temporal.yaml`
+
+### Database Management
+
+- `pgadmin4.yaml`, `redisinsight.yaml`
+
