@@ -16,6 +16,7 @@ spec:
   dependsOn:
     - name: external-secrets-operator  # For S3 credentials
     - name: localstack  # S3 storage backend
+    - name: redis  # Redis cache for query results
   healthChecks:
     - apiVersion: apps/v1
       kind: StatefulSet
