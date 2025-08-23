@@ -13,9 +13,9 @@ spec:
   prune: true
   wait: true
   timeout: 5m0s
-  # Category-based dependency: services depend on database workloads being ready
+  # Fine-grained dependency: N8N only needs PostgreSQL cluster ready
   dependsOn:
-    - name: database-workloads
+    - name: postgresql-cluster
   postBuild:
     substituteFrom:
       - kind: ConfigMap
