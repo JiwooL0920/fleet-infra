@@ -22,5 +22,5 @@ spec:
   healthChecks:
     - apiVersion: apps/v1
       kind: Deployment
-      name: cnpg-cloudnative-pg
+      name: cnpg-operator-cloudnative-pg
       namespace: cnpg-system
