@@ -48,19 +48,22 @@ spec:
     service:
       type: ClusterIP
     
-    # Configure ports
+    # Configure ports - updated for Traefik v32.1.1 schema
     ports:
       web:
         port: 8000
-        expose: true
+        expose:
+          default: true
         exposedPort: 80
       websecure:
         port: 8443
-        expose: true
+        expose:
+          default: true
         exposedPort: 443
       traefik:
         port: 9000
-        expose: true
+        expose:
+          default: true
         exposedPort: 9000
     
     # Configure providers
