@@ -18,7 +18,7 @@ spec:
   chart:
     spec:
       chart: loki
-      version: ${LOKI_CHART_VERSION}
+      version: 6.16.0
       sourceRef:
         kind: HelmRepository
         name: grafana
@@ -80,7 +80,7 @@ spec:
         
         # Limits configuration
         limits_config:
-          retention_period: ${LOKI_RETENTION_PERIOD}
+          retention_period: 720h  # 30 days
           reject_old_samples: true
           reject_old_samples_max_age: 168h
           max_cache_freshness_per_query: 10m
@@ -114,9 +114,9 @@ spec:
                 endpoint: redis.redis.svc.cluster.local:6379
                 password: "$${REDIS_PASSWORD}"
                 db: 0
-                expiration: ${LOKI_CACHE_EXPIRATION}
-                timeout: ${LOKI_CACHE_TIMEOUT}
-                pool_size: ${LOKI_REDIS_POOL_SIZE}
+                expiration: 1h
+                timeout: 500ms
+                pool_size: 10
                 idle_timeout: 90s
                 max_connection_age: 10m
         
@@ -133,9 +133,9 @@ spec:
               endpoint: redis.redis.svc.cluster.local:6379
               password: "$${REDIS_PASSWORD}"
               db: 1
-              expiration: ${LOKI_CACHE_EXPIRATION}
-              timeout: ${LOKI_CACHE_TIMEOUT}
-              pool_size: ${LOKI_REDIS_POOL_SIZE}
+              expiration: 1h
+              timeout: 500ms
+              pool_size: 10
               idle_timeout: 90s
               max_connection_age: 10m
           write_dedupe_cache_config:
@@ -146,7 +146,7 @@ spec:
               db: 2
               expiration: 10m
               timeout: 500ms
-              pool_size: ${LOKI_WRITE_POOL_SIZE}
+              pool_size: 5
               idle_timeout: 90s
               max_connection_age: 10m
         
@@ -163,9 +163,9 @@ spec:
               endpoint: redis.redis.svc.cluster.local:6379
               password: "$${REDIS_PASSWORD}"
               db: 3
-              expiration: ${LOKI_CACHE_EXPIRATION}
-              timeout: ${LOKI_CACHE_TIMEOUT}
-              pool_size: ${LOKI_REDIS_POOL_SIZE}
+              expiration: 1h
+              timeout: 500ms
+              pool_size: 10
               idle_timeout: 90s
               max_connection_age: 10m
     
@@ -174,7 +174,7 @@ spec:
     
     # Single binary configuration
     singleBinary:
-      replicas: ${LOKI_REPLICA_COUNT}
+      replicas: 1
       
       # Extra arguments to pass to the single binary
       extraArgs:
@@ -192,17 +192,17 @@ spec:
       # Resource limits
       resources:
         limits:
-          memory: "${LOKI_MEMORY_LIMIT}"
-          cpu: "${LOKI_CPU_LIMIT}"
+          memory: "1Gi"
+          cpu: "500m"
         requests:
-          memory: "${LOKI_MEMORY_REQUEST}"
-          cpu: "${LOKI_CPU_REQUEST}"
+          memory: "512Mi"
+          cpu: "250m"
       
       # Persistence for logs
       persistence:
         enabled: true
         storageClass: "standard"
-        size: ${LOKI_STORAGE_SIZE}
+        size: 10Gi
       
       # Service configuration
       service:

@@ -23,7 +23,7 @@ spec:
   chart:
     spec:
       chart: charts/gitops-server
-      version: "*"
+      version: "${WEAVE_GITOPS_CHART_VERSION}"
       sourceRef:
         kind: GitRepository
         name: weave-gitops
@@ -53,11 +53,11 @@ spec:
     # Resources
     resources:
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: "${WEAVE_GITOPS_CPU_REQUEST}"
+        memory: "${WEAVE_GITOPS_MEMORY_REQUEST}"
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: "${WEAVE_GITOPS_CPU_LIMIT}"
+        memory: "${WEAVE_GITOPS_MEMORY_LIMIT}"
 
     # Security context
     securityContext:

@@ -29,7 +29,7 @@ spec:
   chart:
     spec:
       chart: metrics-server
-      version: "3.12.2"
+      version: "${METRICS_SERVER_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: metrics-server
@@ -48,11 +48,11 @@ spec:
     # Resources
     resources:
       limits:
-        cpu: 100m
-        memory: 200Mi
+        cpu: "${METRICS_SERVER_CPU_LIMIT}"
+        memory: "${METRICS_SERVER_MEMORY_LIMIT}"
       requests:
-        cpu: 50m
-        memory: 100Mi
+        cpu: "${METRICS_SERVER_CPU_REQUEST}"
+        memory: "${METRICS_SERVER_MEMORY_REQUEST}"
     
     # Args for local development (kind/colima clusters)
     args:

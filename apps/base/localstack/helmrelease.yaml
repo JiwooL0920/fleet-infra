@@ -18,7 +18,7 @@ spec:
   chart:
     spec:
       chart: localstack
-      version: 0.6.24
+      version: "${LOCALSTACK_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: localstack
@@ -48,11 +48,11 @@ spec:
     # Resource limits (important for Kubernetes stability)
     resources:
       limits:
-        memory: "2Gi"
-        cpu: "1000m"
+        memory: "${LOCALSTACK_MEMORY_LIMIT}"
+        cpu: "${LOCALSTACK_CPU_LIMIT}"
       requests:
-        memory: "1Gi"
-        cpu: "500m"
+        memory: "${LOCALSTACK_MEMORY_REQUEST}"
+        cpu: "${LOCALSTACK_CPU_REQUEST}"
 
     # Proper probe configuration format for LocalStack chart
     livenessProbe:

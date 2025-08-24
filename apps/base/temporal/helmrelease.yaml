@@ -34,7 +34,7 @@ spec:
         kind: HelmRepository
         name: temporal
         namespace: flux-system
-      version: "0.64.0"
+      version: "${TEMPORAL_CHART_VERSION}"
   values:
     cassandra:
       enabled: false
@@ -109,12 +109,40 @@ spec:
     temporal:
       frontend:
         replicas: 2
+        resources:
+          limits:
+            memory: "${TEMPORAL_SERVER_MEMORY_LIMIT}"
+            cpu: "${TEMPORAL_SERVER_CPU_LIMIT}"
+          requests:
+            memory: "${TEMPORAL_SERVER_MEMORY_REQUEST}"
+            cpu: "${TEMPORAL_SERVER_CPU_REQUEST}"
       history:
         replicas: 2
+        resources:
+          limits:
+            memory: "${TEMPORAL_SERVER_MEMORY_LIMIT}"
+            cpu: "${TEMPORAL_SERVER_CPU_LIMIT}"
+          requests:
+            memory: "${TEMPORAL_SERVER_MEMORY_REQUEST}"
+            cpu: "${TEMPORAL_SERVER_CPU_REQUEST}"
       matching:
         replicas: 2
+        resources:
+          limits:
+            memory: "${TEMPORAL_SERVER_MEMORY_LIMIT}"
+            cpu: "${TEMPORAL_SERVER_CPU_LIMIT}"
+          requests:
+            memory: "${TEMPORAL_SERVER_MEMORY_REQUEST}"
+            cpu: "${TEMPORAL_SERVER_CPU_REQUEST}"
       worker:
         replicas: 2
+        resources:
+          limits:
+            memory: "${TEMPORAL_SERVER_MEMORY_LIMIT}"
+            cpu: "${TEMPORAL_SERVER_CPU_LIMIT}"
+          requests:
+            memory: "${TEMPORAL_SERVER_MEMORY_REQUEST}"
+            cpu: "${TEMPORAL_SERVER_CPU_REQUEST}"
     
     # Create default Temporal namespace
     namespaces:

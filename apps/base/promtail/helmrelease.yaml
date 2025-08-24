@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: promtail
-      version: 6.16.6
+      version: "${PROMTAIL_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: grafana
@@ -134,11 +134,11 @@ spec:
     # Resource limits
     resources:
       limits:
-        cpu: 200m
-        memory: 256Mi
+        cpu: "${PROMTAIL_CPU_LIMIT}"
+        memory: "${PROMTAIL_MEMORY_LIMIT}"
       requests:
-        cpu: 100m
-        memory: 128Mi
+        cpu: "${PROMTAIL_CPU_REQUEST}"
+        memory: "${PROMTAIL_MEMORY_REQUEST}"
     
     # Service Account
     serviceAccount:

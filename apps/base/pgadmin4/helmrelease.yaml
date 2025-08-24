@@ -28,7 +28,7 @@ spec:
   chart:
     spec:
       chart: pgadmin4
-      version: "1.47.0"
+      version: "${PGADMIN4_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: runix
@@ -70,7 +70,7 @@ spec:
     # Persistence
     persistentVolume:
       enabled: true
-      size: 1Gi
+      size: "${PGADMIN4_STORAGE_SIZE}"
       storageClass: ""
       accessModes:
         - ReadWriteOnce
@@ -78,11 +78,11 @@ spec:
     # Resource limits
     resources:
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: "${PGADMIN4_CPU_LIMIT}"
+        memory: "${PGADMIN4_MEMORY_LIMIT}"
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: "${PGADMIN4_CPU_REQUEST}"
+        memory: "${PGADMIN4_MEMORY_REQUEST}"
     
     # Security configuration
     securityContext:

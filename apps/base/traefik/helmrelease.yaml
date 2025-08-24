@@ -21,7 +21,7 @@ spec:
   chart:
     spec:
       chart: traefik
-      version: 25.0.0
+      version: "${TRAEFIK_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: traefik
@@ -29,15 +29,15 @@ spec:
       interval: 1m
   values:
     deployment:
-      replicas: 1
+      replicas: ${TRAEFIK_REPLICA_COUNT}
     
     resources:
       requests:
-        cpu: "100m"
-        memory: "128Mi"
+        cpu: "${TRAEFIK_CPU_REQUEST}"
+        memory: "${TRAEFIK_MEMORY_REQUEST}"
       limits:
-        cpu: "200m"
-        memory: "256Mi"
+        cpu: "${TRAEFIK_CPU_LIMIT}"
+        memory: "${TRAEFIK_MEMORY_LIMIT}"
     
     # Enable secure dashboard with authentication
     api:

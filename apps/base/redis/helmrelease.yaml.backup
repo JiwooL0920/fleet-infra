@@ -21,7 +21,7 @@ spec:
     spec:
       chart: redis
       reconcileStrategy: Revision
-      version: "${REDIS_CHART_VERSION}"
+      version: "20.3.0"
       sourceRef:
         kind: HelmRepository
         name: redis
@@ -48,9 +48,9 @@ spec:
     sentinel:
       enabled: true
       masterSet: "mymaster"
-      downAfterMilliseconds: ${REDIS_SENTINEL_TIMEOUT}
-      failoverTimeout: ${REDIS_FAILOVER_TIMEOUT}
-      parallelSyncs: ${REDIS_PARALLEL_SYNCS}
+      downAfterMilliseconds: 30000
+      failoverTimeout: 180000
+      parallelSyncs: 1
       # Use same password for Sentinel as Redis data servers
       # This allows Loki to authenticate with both using the same credential
       masterService:
@@ -65,18 +65,18 @@ spec:
           redis: 6379
       persistence:
         enabled: true
-        size: "${REDIS_STORAGE_SIZE}"
+        size: "8Gi"
       resources:
         requests:
-          memory: "${REDIS_MASTER_MEMORY_REQUEST}"
-          cpu: "${REDIS_MASTER_CPU_REQUEST}"
+          memory: "256Mi"
+          cpu: "100m"
         limits:
-          memory: "${REDIS_MASTER_MEMORY_LIMIT}"
-          cpu: "${REDIS_MASTER_CPU_LIMIT}"
+          memory: "512Mi"
+          cpu: "500m"
         
     # Redis Replica configuration  
     replica:
-      replicaCount: ${REDIS_REPLICA_COUNT}
+      replicaCount: 2
       podAntiAffinityPreset: hard
       # Required for master service tracking functionality
       automountServiceAccountToken: true
@@ -86,14 +86,14 @@ spec:
           redis: 6379
       persistence:
         enabled: true
-        size: "${REDIS_STORAGE_SIZE}"
+        size: "8Gi"
       resources:
         requests:
-          memory: "${REDIS_REPLICA_MEMORY_REQUEST}"
-          cpu: "${REDIS_REPLICA_CPU_REQUEST}"
+          memory: "256Mi"
+          cpu: "100m"
         limits:
-          memory: "${REDIS_REPLICA_MEMORY_LIMIT}"
-          cpu: "${REDIS_REPLICA_CPU_LIMIT}"
+          memory: "512Mi"
+          cpu: "500m"
       autoscaling:
         enabled: true
         maxReplicas: 3

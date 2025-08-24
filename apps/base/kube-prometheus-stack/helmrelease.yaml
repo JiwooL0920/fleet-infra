@@ -18,7 +18,7 @@ spec:
   chart:
     spec:
       chart: kube-prometheus-stack
-      version: 65.2.0
+      version: "${PROMETHEUS_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: prometheus-community
@@ -42,20 +42,20 @@ spec:
               accessModes: ["ReadWriteOnce"]
               resources:
                 requests:
-                  storage: 10Gi
+                  storage: "${PROMETHEUS_STORAGE_SIZE}"
         
         # Resource limits
         resources:
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "${PROMETHEUS_MEMORY_LIMIT}"
+            cpu: "${PROMETHEUS_CPU_LIMIT}"
           requests:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "${PROMETHEUS_MEMORY_REQUEST}"
+            cpu: "${PROMETHEUS_CPU_REQUEST}"
         
         # Retention policy
-        retention: "30d"
-        retentionSize: "8GB"
+        retention: "${PROMETHEUS_RETENTION_TIME}"
+        retentionSize: "${PROMETHEUS_RETENTION_SIZE}"
     
     # Grafana configuration
     grafana:
@@ -73,11 +73,11 @@ spec:
       # Resource limits
       resources:
         limits:
-          memory: "512Mi"
-          cpu: "500m"
+          memory: "${GRAFANA_MEMORY_LIMIT}"
+          cpu: "${GRAFANA_CPU_LIMIT}"
         requests:
-          memory: "256Mi"
-          cpu: "250m"
+          memory: "${GRAFANA_MEMORY_REQUEST}"
+          cpu: "${GRAFANA_CPU_REQUEST}"
       
       # Persistence
       persistence:
@@ -111,11 +111,11 @@ spec:
         # Resource limits
         resources:
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "${ALERTMANAGER_MEMORY_LIMIT}"
+            cpu: "200m"
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "${ALERTMANAGER_MEMORY_REQUEST}"
+            cpu: "50m"
     
     # Node Exporter configuration
     nodeExporter:
