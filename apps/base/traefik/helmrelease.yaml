@@ -31,6 +31,18 @@ spec:
     deployment:
       replicas: ${TRAEFIK_REPLICA_COUNT}
     
+    # High Availability Configuration - Pod Anti-Affinity
+    # Implements hard anti-affinity to prevent single point of failure
+    # Based on Kubernetes official documentation: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+              app.kubernetes.io/instance: traefik
+          topologyKey: kubernetes.io/hostname
+    
     resources:
       requests:
         cpu: "${TRAEFIK_CPU_REQUEST}"
