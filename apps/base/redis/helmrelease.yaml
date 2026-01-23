@@ -39,6 +39,9 @@ spec:
     volumePermissions:
       image:
         tag: "latest"
+    kubectl:
+      image:
+        tag: "latest"
     
     # RBAC configuration (required for master service tracking)
     rbac:
