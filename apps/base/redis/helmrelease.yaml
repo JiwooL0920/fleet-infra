@@ -33,6 +33,13 @@ spec:
     # Override default naming
     fullnameOverride: "redis"
     
+    # Override image tags to use available versions
+    image:
+      tag: "latest"
+    volumePermissions:
+      image:
+        tag: "latest"
+    
     # RBAC configuration (required for master service tracking)
     rbac:
       create: true
@@ -47,6 +54,8 @@ spec:
     # Redis Sentinel configuration
     sentinel:
       enabled: true
+      image:
+        tag: "latest"
       masterSet: "mymaster"
       downAfterMilliseconds: ${REDIS_SENTINEL_TIMEOUT}
       failoverTimeout: ${REDIS_FAILOVER_TIMEOUT}
