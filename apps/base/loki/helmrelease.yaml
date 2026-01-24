@@ -200,6 +200,9 @@ spec:
               max_connection_age: 10m
     
     # Storage configuration for Helm chart level (required for SimpleScalable validation)
+    # Object storage is mandatory for SimpleScalable deployment mode
+    objectStorage:
+      enabled: true
     storage:
       type: s3
       bucketNames:
