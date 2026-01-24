@@ -4,5 +4,5 @@ kind: Kustomization
 resources:
   - postgresql-cluster.yaml
   - databases/
-  - push-secret.yaml  # Push CNPG credentials to LocalStack - runs after cluster is ready
+
 
