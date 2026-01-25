@@ -49,6 +49,8 @@ spec:
       
       # Database configuration from secrets
       extraEnv:
+        N8N_PORT:
+          value: "5678"
         DB_POSTGRESDB_HOST:
           valueFrom:
             secretKeyRef:
