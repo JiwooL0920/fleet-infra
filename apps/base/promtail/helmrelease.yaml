@@ -127,14 +127,16 @@ spec:
               {{- toYaml .Values.config.snippets.common | nindent 4 }}
     
     # DaemonSet configuration
+    # Reduce to single replica for local dev to minimize file descriptors
     daemonset:
+      enabled: false
+    
+    # Use Deployment instead with single replica
+    deployment:
       enabled: true
+      replicaCount: 1
       autoscaling:
         enabled: false
-        minReplicas: 1
-        maxReplicas: 10
-        targetCPUUtilizationPercentage: 80
-        targetMemoryUtilizationPercentage: 80
     
     # Pod configuration
     podAnnotations:
@@ -169,13 +171,10 @@ spec:
           - ALL
     
     # Volume mounts for log collection
+    # Simplified for local dev - only monitor pod logs
     defaultVolumes:
       - name: run
-        hostPath:
-          path: /run/promtail
-      - name: containers
-        hostPath:
-          path: /var/lib/docker/containers
+        emptyDir: {}
       - name: pods
         hostPath:
           path: /var/log/pods
@@ -183,9 +182,6 @@ spec:
     defaultVolumeMounts:
       - name: run
         mountPath: /run/promtail
-      - name: containers
-        mountPath: /var/lib/docker/containers
-        readOnly: true
       - name: pods
         mountPath: /var/log/pods
         readOnly: true
