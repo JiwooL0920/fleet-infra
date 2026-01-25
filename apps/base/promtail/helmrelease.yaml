@@ -38,93 +38,18 @@ spec:
       
       # Scrape configurations
       snippets:
-        # Common configuration snippets
-        common:
-          - action: replace
-            source_labels:
-              - __meta_kubernetes_pod_node_name
-            target_label: node_name
-          - action: replace
-            source_labels:
-              - __meta_kubernetes_namespace
-            target_label: namespace
-          - action: replace
-            source_labels:
-              - __meta_kubernetes_pod_name
-            target_label: pod
-          - action: replace
-            source_labels:
-              - __meta_kubernetes_pod_container_name
-            target_label: container
-          - action: replace
-            replacement: /var/log/pods/*$1/*.log
-            separator: /
-            source_labels:
-              - __meta_kubernetes_pod_uid
-              - __meta_kubernetes_pod_container_name
-            target_label: __path__
-          - action: replace
-            regex: true/(.*)
-            replacement: /var/log/pods/*$1/*.log
-            separator: /
-            source_labels:
-              - __meta_kubernetes_pod_annotationpresent_kubernetes_io_config_hash
-              - __meta_kubernetes_pod_annotation_kubernetes_io_config_hash
-              - __meta_kubernetes_pod_container_name
-            target_label: __path__
+        # Disable automatic pod discovery to reduce file descriptor usage
+        scrapeConfigs: false
         
-        # Add Kubernetes labels to log streams
-        addScrapeJobLabel: true
-        
-        # Pipeline stages for log processing
-        pipelineStages:
-          - cri: {}
-          - labeldrop:
-              - filename
-              - stream
-        
-        # Scrape configs for Kubernetes pods
-        # Limited to specific namespaces to reduce file descriptor usage
-        scrapeConfigs: |
-          - job_name: kubernetes-pods
-            pipeline_stages:
-              {{- toYaml .Values.config.snippets.pipelineStages | nindent 6 }}
-            kubernetes_sd_configs:
-              - role: pod
-                namespaces:
-                  names:
-                    - n8n
-                    - temporal
-                    - monitoring
-            relabel_configs:
-              # Drop pods from system namespaces to reduce load
-              - source_labels: [__meta_kubernetes_namespace]
-                regex: (kube-system|kube-public|kube-node-lease|flux-system)
-                action: drop
-              - source_labels:
-                  - __meta_kubernetes_pod_controller_name
-                regex: ([0-9a-z-.]+?)(-[0-9a-f]{8,10})?
-                action: replace
-                target_label: __tmp_controller_name
-              - source_labels:
-                  - __meta_kubernetes_pod_label_app_kubernetes_io_name
-                  - __meta_kubernetes_pod_label_app
-                  - __tmp_controller_name
-                  - __meta_kubernetes_pod_name
-                regex: ^;*([^;]+)(;.*)?$
-                action: replace
-                target_label: app
-              - source_labels:
-                  - __meta_kubernetes_pod_label_app_kubernetes_io_component
-                  - __meta_kubernetes_pod_label_component
-                regex: ^;*([^;]+)(;.*)?$
-                action: replace
-                target_label: component
-              {{- if .Values.config.snippets.addScrapeJobLabel }}
-              - replacement: kubernetes-pods
-                target_label: scrape_job
-              {{- end }}
-              {{- toYaml .Values.config.snippets.common | nindent 4 }}
+        # Add simple manual scrape config for specific log files only
+        extraScrapeConfigs: |
+          - job_name: system
+            static_configs:
+              - targets:
+                  - localhost
+                labels:
+                  job: varlogs
+                  __path__: /var/log/*log
     
     # DaemonSet configuration
     # Reduce to single replica for local dev to minimize file descriptors
