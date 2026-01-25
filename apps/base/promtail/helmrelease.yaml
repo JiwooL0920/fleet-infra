@@ -39,7 +39,7 @@ spec:
       # Scrape configurations
       snippets:
         # Disable automatic pod discovery to reduce file descriptor usage
-        scrapeConfigs: false
+        scrapeConfigs: ""
         
         # Add simple manual scrape config for specific log files only
         extraScrapeConfigs: |
