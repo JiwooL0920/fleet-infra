@@ -84,13 +84,23 @@ spec:
               - stream
         
         # Scrape configs for Kubernetes pods
+        # Limited to specific namespaces to reduce file descriptor usage
         scrapeConfigs: |
           - job_name: kubernetes-pods
             pipeline_stages:
               {{- toYaml .Values.config.snippets.pipelineStages | nindent 6 }}
             kubernetes_sd_configs:
               - role: pod
+                namespaces:
+                  names:
+                    - n8n
+                    - temporal
+                    - monitoring
             relabel_configs:
+              # Drop pods from system namespaces to reduce load
+              - source_labels: [__meta_kubernetes_namespace]
+                regex: (kube-system|kube-public|kube-node-lease|flux-system)
+                action: drop
               - source_labels:
                   - __meta_kubernetes_pod_controller_name
                 regex: ([0-9a-z-.]+?)(-[0-9a-f]{8,10})?
