@@ -36,38 +36,43 @@ spec:
       positions:
         filename: /run/promtail/positions.yaml
       
-      # Scrape configurations - minimal config to avoid file descriptor issues
+      # Minimal scrape configuration - NO kubernetes service discovery
       snippets:
-        # Use minimal pod logs scraping only
+        # Completely disable default scrape configs
         scrapeConfigs: |
-          - job_name: kubernetes-pods
-            kubernetes_sd_configs:
-              - role: pod
-            relabel_configs:
-              # Only scrape pods with specific annotation to limit scope
-              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-                action: keep
-                regex: true
-              - source_labels: [__meta_kubernetes_pod_container_name]
-                target_label: container
-              - source_labels: [__meta_kubernetes_pod_name]
-                target_label: pod
-              - source_labels: [__meta_kubernetes_namespace]
-                target_label: namespace
-              - replacement: /var/log/pods/*$1/*.log
-                separator: /
-                source_labels:
-                  - __meta_kubernetes_pod_uid
-                  - __meta_kubernetes_pod_container_name
-                target_label: __path__
+          - job_name: static-pods
+            static_configs:
+              - targets:
+                  - localhost
+                labels:
+                  job: pod-logs
+                  __path__: /var/log/pods/*/*/*.log
+            pipeline_stages:
+              - cri: {}
+              - labeldrop:
+                  - filename
     
-    # DaemonSet configuration - use DaemonSet for proper log collection
+    # Use Deployment mode with single replica on control-plane
+    # DaemonSet causes "too many open files" on worker nodes with many pods
     daemonset:
-      enabled: true
-    
-    # Disable Deployment mode
-    deployment:
       enabled: false
+    
+    # Enable Deployment mode
+    deployment:
+      enabled: true
+      replicaCount: 1
+      autoscaling:
+        enabled: false
+    
+    # Schedule on control-plane node (fewer pods = fewer file descriptors)
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    
+    # Tolerate control-plane taint
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
     
     # Pod configuration
     podAnnotations:
@@ -88,7 +93,7 @@ spec:
       create: true
       name: promtail
     
-    # RBAC configuration
+    # RBAC configuration - minimal permissions since no k8s API calls
     rbac:
       create: true
       pspEnabled: false
@@ -101,8 +106,7 @@ spec:
         drop:
           - ALL
     
-    # Volume mounts for log collection
-    # Only mount what's necessary
+    # Volume mounts for log collection - ONLY pod logs
     defaultVolumes:
       - name: run
         emptyDir: {}
@@ -117,16 +121,9 @@ spec:
         mountPath: /var/log/pods
         readOnly: true
     
-    # Remove extra volumes to reduce file descriptor usage
+    # No extra volumes
     extraVolumes: []
     extraVolumeMounts: []
-    
-    # Tolerations to run on all nodes
-    tolerations:
-      - effect: NoSchedule
-        operator: Exists
-      - effect: NoExecute
-        operator: Exists
     
     # Service Monitor for Prometheus scraping
     serviceMonitor:
