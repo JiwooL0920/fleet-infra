@@ -40,4 +40,3 @@ Contains individual `.yaml` files for each of the 21 services (16 active by defa
 
 - `crossplane.yaml`, `crossplane-config.yaml`, `crossplane-providers.yaml` (Infrastructure as Code)
 - `loki.yaml`, `promtail.yaml` (Log aggregation stack)
-

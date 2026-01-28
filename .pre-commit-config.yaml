@@ -9,37 +9,37 @@ repos:
       # Prevent committing large files
       - id: check-added-large-files
         args: ['--maxkb=1000']
-      
+
       # Ensure files end with newline
       - id: end-of-file-fixer
         exclude: '\.sops\.ya?ml$'
-      
+
       # Remove trailing whitespace
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
-      
+
       # Check YAML syntax
       - id: check-yaml
         args: [--allow-multiple-documents, --unsafe]
         exclude: 'templates/.*\.ya?ml$'
-      
+
       # Check for merge conflicts
       - id: check-merge-conflict
-      
+
       # Check for broken symlinks
       - id: check-symlinks
-      
+
       # Prevent commits to main branch
       - id: no-commit-to-branch
         args: [--branch, main, --branch, master]
-      
+
       # Detect AWS credentials
       - id: detect-aws-credentials
         args: [--allow-missing-credentials]
-      
+
       # Detect private keys
       - id: detect-private-key
-      
+
       # Check case conflicts
       - id: check-case-conflict
 
@@ -81,7 +81,7 @@ repos:
         language: system
         files: '\.ya?ml$'
         pass_filenames: false
-        
+
       # Check for proper Flux CRD versions
       - id: flux-check-versions
         name: Check Flux API versions
@@ -89,7 +89,7 @@ repos:
         language: system
         files: '(kustomization|helmrelease|gitrepository|helmrepository).*\.ya?ml$'
         pass_filenames: false
-        
+
       # Validate kustomization overlays
       - id: kustomize-build
         name: Validate Kustomize overlays

@@ -180,7 +180,7 @@ clusters/stages/            # Environment-specific configurations
 ├── dev/clusters/services-amer/  # Development environment
 │   ├── flux-system/       # Flux controllers (tracks develop branch)
 │   ├── cluster-vars-patch.yaml # Dev-specific overrides
-│   └── kustomization.yaml # References base/services/ 
+│   └── kustomization.yaml # References base/services/
 └── prod/                  # Production environment (similar structure, tracks main branch)
 
 scripts/                   # Automation and utilities

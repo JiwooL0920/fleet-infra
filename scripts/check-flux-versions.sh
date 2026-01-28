@@ -32,7 +32,7 @@ WARN_COUNT=0
 is_current_version() {
     local apiVersion=$1
     local kind=$2
-    
+
     case "$kind" in
         "Kustomization")
             [[ "$apiVersion" == "kustomize.toolkit.fluxcd.io/v1" ]]
@@ -55,7 +55,7 @@ is_current_version() {
 # Get the current version for a kind
 get_current_version() {
     local kind=$1
-    
+
     case "$kind" in
         "Kustomization") echo "kustomize.toolkit.fluxcd.io/v1" ;;
         "HelmRelease") echo "helm.toolkit.fluxcd.io/v2" ;;
@@ -68,7 +68,7 @@ get_current_version() {
 # Check if version is deprecated
 is_deprecated() {
     local apiVersion=$1
-    
+
     case "$apiVersion" in
         "kustomize.toolkit.fluxcd.io/v1beta1"|"kustomize.toolkit.fluxcd.io/v1beta2")
             echo "kustomize.toolkit.fluxcd.io/v1"
@@ -91,7 +91,7 @@ is_deprecated() {
 check_file() {
     local file=$1
     local apiVersion kind
-    
+
     # Extract apiVersion and kind
     if command -v yq &> /dev/null; then
         apiVersion=$(yq e '.apiVersion' "$file" 2>/dev/null || echo "")
@@ -100,12 +100,12 @@ check_file() {
         apiVersion=$(grep -E '^apiVersion:' "$file" | head -1 | awk '{print $2}' || echo "")
         kind=$(grep -E '^kind:' "$file" | head -1 | awk '{print $2}' || echo "")
     fi
-    
+
     # Skip if not a Flux resource
     if [[ ! "$apiVersion" =~ toolkit.fluxcd.io ]]; then
         return 0
     fi
-    
+
     # Check if using deprecated version
     local upgrade_to
     if upgrade_to=$(is_deprecated "$apiVersion" 2>/dev/null); then
@@ -114,7 +114,7 @@ check_file() {
         echo "  Upgrade to: $upgrade_to"
         ((WARN_COUNT++))
     fi
-    
+
     # Check if using current version for known kinds
     local current_version
     current_version=$(get_current_version "$kind")
@@ -132,25 +132,25 @@ check_file() {
 # Main execution
 main() {
     echo_info "Checking Flux API versions"
-    
+
     # Find all YAML files containing Flux CRDs
     while IFS= read -r file; do
         [[ -n "$file" ]] && check_file "$file"
     done < <(find . -type f \( -name '*.yaml' -o -name '*.yml' \) \
         -exec grep -l 'toolkit.fluxcd.io' {} \; 2>/dev/null)
-    
+
     echo ""
     echo_info "API version check complete"
     echo "  Errors: $ERROR_COUNT"
     echo "  Warnings: $WARN_COUNT"
-    
+
     if [ $ERROR_COUNT -gt 0 ]; then
         echo_error "Found $ERROR_COUNT API version errors"
         echo "Please upgrade deprecated Flux API versions"
         echo "See: https://fluxcd.io/flux/migration/"
         exit 1
     fi
-    
+
     if [ $WARN_COUNT -gt 0 ]; then
         echo_warn "Found $WARN_COUNT deprecated API versions"
         echo "Consider upgrading to current versions"

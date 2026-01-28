@@ -16,21 +16,21 @@ rules:
     headings: true
     strict: false
     stern: false
-  
+
   # MD033 - Inline HTML - allow for flexibility in docs
   MD033: false
-  
+
   # MD041 - First line in file should be a top-level heading
   MD041: false
-  
+
   # MD024 - Multiple headings with the same content
   MD024:
     siblings_only: true
-  
+
   # MD046 - Code block style - prefer fenced
   MD046:
     style: fenced
-  
+
   # MD003 - Heading style - prefer ATX (#)
   MD003:
     style: atx
