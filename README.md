@@ -4,8 +4,8 @@ GitOps infrastructure platform to manage 10+ services across multi-environment K
 
 ### Start Docker Engine
 
-- Adjust configuration for colima `vi ~/.colima/default/colima.yaml`
-- 4 CPU and 8 GB RAM recommended
+- Adjust configuration for colima: `colima edit` or `vi ~/.colima/default/colima.yaml`
+- **Recommended resources:** 8 CPU, 16GB RAM, 80GB disk (6 CPU, 12GB RAM, 60GB disk minimum)
 - Run `colima start`
 - Check status with `colima list`
 
@@ -39,9 +39,30 @@ flux bootstrap github \
 ### Run post-setup scripts
 
 - Fix controlplane IP (if needed): `make fix-control-plane`
-- Initialize AWS Secrets in LocalStack: `make init-aws-secrets`
-- Verify services are starting properly: `make verify-startup``
+- Verify services are starting properly: `make verify-startup`
 
-### Start Port Forwarding
+**Note:** Secrets are now automatically initialized by LocalStack startup hooks. No manual initialization needed.
+
+### Setup Local DNS for Traefik Ingress (Recommended)
+
+Setup local DNS entries to access services via Traefik without port forwarding:
+
+```bash
+./scripts/setup-local-dns.sh
+```
+
+This adds `.local` domain entries to `/etc/hosts`, allowing you to access services at:
+- `http://grafana.local` - Grafana
+- `http://prometheus.local` - Prometheus
+- `http://n8n.local` - N8N
+- `http://temporal.local` - Temporal UI
+- `http://traefik.local` - Traefik Dashboard
+- And more...
+
+**Note:** Traefik must be configured with NodePort for this to work (already configured in dev environment).
+
+### Alternative: Start Port Forwarding
+
+If you prefer traditional port forwarding instead of DNS setup:
 
 - `make port-forward`

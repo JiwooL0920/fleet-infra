@@ -1,0 +1,16 @@
+---
+# RedisInsight IngressRoute
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: redisinsight
+  namespace: redisinsight
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`redis.local`)
+      kind: Rule
+      services:
+        - name: redisinsight
+          port: 5540

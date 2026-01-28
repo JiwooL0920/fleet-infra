@@ -56,9 +56,9 @@ spec:
       dashboard: true
       insecure: false
     
-    # Use ClusterIP service
+    # Use NodePort for local development (Kind cluster)
     service:
-      type: ClusterIP
+      type: NodePort
     
     # Configure ports - updated for Traefik v32.1.1 schema
     ports:
@@ -67,11 +67,13 @@ spec:
         expose:
           default: true
         exposedPort: 80
+        nodePort: 30080
       websecure:
         port: 8443
         expose:
           default: true
         exposedPort: 443
+        nodePort: 30443
       traefik:
         port: 9000
         expose:
