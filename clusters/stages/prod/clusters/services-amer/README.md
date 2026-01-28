@@ -5,7 +5,7 @@ Production cluster configuration for application services and infrastructure in 
 ## Cluster Configuration
 
 - **Cluster Name**: `services-amer-prod`
-- **Environment**: `production` 
+- **Environment**: `production`
 - **Git Branch**: Tracks `main` branch
 - **Sync Interval**: 10 minutes
 - **Resource Profile**: Performance-optimized
@@ -59,7 +59,7 @@ This cluster uses environment-specific configuration overlays for optimal produc
 
 Production cluster includes enhanced monitoring:
 - Resource utilization tracking
-- Application performance monitoring  
+- Application performance monitoring
 - Configuration drift detection
 - Deployment success/failure alerts
 - Security and compliance monitoring

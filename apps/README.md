@@ -41,7 +41,7 @@ The apps directory contains **16 active services** (21 total, 5 disabled) organi
 - **redis-sentinel/**: Redis cache with Sentinel HA
 
 ### Applications (2 Active)
-- **n8n/**: Workflow automation platform  
+- **n8n/**: Workflow automation platform
 - **temporal/**: Workflow orchestration engine
 
 ### Database Management (2 Active)

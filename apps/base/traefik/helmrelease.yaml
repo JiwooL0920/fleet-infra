@@ -30,7 +30,7 @@ spec:
   values:
     deployment:
       replicas: ${TRAEFIK_REPLICA_COUNT}
-    
+
     # High Availability Configuration - Pod Anti-Affinity
     # Implements hard anti-affinity to prevent single point of failure
     # Based on Kubernetes official documentation: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
@@ -42,7 +42,7 @@ spec:
               app.kubernetes.io/name: traefik
               app.kubernetes.io/instance: traefik
           topologyKey: kubernetes.io/hostname
-    
+
     resources:
       requests:
         cpu: "${TRAEFIK_CPU_REQUEST}"
@@ -50,16 +50,16 @@ spec:
       limits:
         cpu: "${TRAEFIK_CPU_LIMIT}"
         memory: "${TRAEFIK_MEMORY_LIMIT}"
-    
+
     # Enable secure dashboard with authentication
     api:
       dashboard: true
       insecure: false
-    
+
     # Use NodePort for local development (Kind cluster)
     service:
       type: NodePort
-    
+
     # Configure ports - updated for Traefik v32.1.1 schema
     ports:
       web:
@@ -79,7 +79,7 @@ spec:
         expose:
           default: true
         exposedPort: 9000
-    
+
     # Configure providers
     providers:
       kubernetesCRD:
@@ -88,7 +88,7 @@ spec:
       kubernetesIngress:
         enabled: true
         allowExternalNameServices: true
-    
+
     logs:
       access:
         enabled: true
@@ -106,12 +106,12 @@ spec:
               Authorization: redact
               Cookie: redact
               Proxy-Authorization: redact
-    
+
     # Global arguments
     globalArguments:
       - "--global.checknewversion=false"
       - "--global.sendanonymoususage=false"
-    
+
     # Additional arguments for local development
     additionalArguments:
       - "--api.insecure=false"

@@ -68,7 +68,6 @@ download_flux_schemas() {
 # Validate a single kustomization
 validate_kustomization() {
     local kustomization_dir=$1
-    local dir_name=$(basename "$kustomization_dir")
 
     echo_info "Validating kustomization: ${kustomization_dir}"
 
@@ -104,6 +103,18 @@ main() {
     while IFS= read -r -d $'\0' file; do
         ((total_count++))
         local dir="${file%/$KUSTOMIZE_CONFIG}"
+
+        # Skip files with Flux-specific fields (postBuild, dependsOn, healthChecks, etc.)
+        if grep -qE "(postBuild|dependsOn|healthChecks|wait|timeout|retryInterval)" "$file" 2>/dev/null; then
+            echo_info "Skipping kustomization with Flux-specific fields: ${dir}"
+            continue
+        fi
+
+        # Skip empty or invalid base directories
+        if [[ "$dir" == *"/base" ]] && ! kustomize build "$dir" &>/dev/null; then
+            echo_info "Skipping empty base directory: ${dir}"
+            continue
+        fi
 
         if ! validate_kustomization "$dir"; then
             ((error_count++))

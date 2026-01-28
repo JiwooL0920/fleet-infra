@@ -11,7 +11,7 @@ Contains environment-specific configurations that deploy the **16 active service
 - `stages/` - Environment-specific deployment configurations
   - `dev/` - Development environment (tracks develop branch)
   - Production configurations (tracks main branch)
-  
+
 Each environment deploys 16 active services using fine-grained service-level dependencies for 8-12 minute deployment times with maximum parallel execution.
 
 ## Environment Isolation

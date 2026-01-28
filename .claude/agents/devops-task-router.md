@@ -17,7 +17,7 @@ When you receive a DevOps-related request, you will:
      - Log retrieval and basic troubleshooting
      - Port forwarding setup
      - Simple configuration queries
-   
+
    - **Route to senior-devops** for:
      - Multi-step deployment procedures
      - Infrastructure changes or new feature implementation

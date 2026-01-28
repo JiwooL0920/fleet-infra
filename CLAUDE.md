@@ -163,17 +163,17 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 
 ```
 base/services/              # Fine-grained service kustomizations (DEPLOYED SYSTEM)
-├── kustomization.yaml      # 16 active services with dependency orchestration  
+├── kustomization.yaml      # 16 active services with dependency orchestration
 ├── environment.env         # Base environment variables for ConfigMap generation
 ├── traefik.yaml           # Foundation services (7 - no dependencies)
-├── postgresql-cluster.yaml # Database services (2 - depend on operators)  
+├── postgresql-cluster.yaml # Database services (2 - depend on operators)
 ├── n8n.yaml               # Application services (3 - depend on databases)
 └── [13 other services]    # Each with precise service-level dependencies
 
 apps/base/                  # Service Kubernetes manifests (referenced by above)
 ├── traefik/               # HelmRelease, namespace, kustomization per service
 ├── postgresql-cluster/    # Individual service definitions (cloudnative-pg)
-├── n8n/                   # Application configurations  
+├── n8n/                   # Application configurations
 └── [18 other services]/   # Complete Kubernetes resources per service (includes disabled)
 
 clusters/stages/            # Environment-specific configurations

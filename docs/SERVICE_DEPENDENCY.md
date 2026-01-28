@@ -123,7 +123,7 @@ Wave 4 enables maximum deployment efficiency through parallel execution of indep
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### Wave 4b: Database Workloads  
+#### Wave 4b: Database Workloads
 **Timeout: 15 minutes | Dependency: Wave 2 Complete**
 
 ```
@@ -236,15 +236,15 @@ WAVE 3 (Sequential, 5m timeout, depends on Wave 2)
     │             │             │
     ▼             ▼             ▼
 WAVE 4 (Parallel deployment categories)
-┌─────────────┐ ┌─────────────┐ 
-│Monitoring   │ │Database     │ 
-│(deps: W1)   │ │Workloads    │ 
-│10m timeout  │ │(deps: W2)   │ 
-│             │ │15m timeout  │ 
-│- Prometheus │ │- PostgreSQL │ 
-│- Grafana    │ │- Redis      │ 
-│- WeaveGitOps│ │             │ 
-└─────────────┘ └──────┬──────┘ 
+┌─────────────┐ ┌─────────────┐
+│Monitoring   │ │Database     │
+│(deps: W1)   │ │Workloads    │
+│10m timeout  │ │(deps: W2)   │
+│             │ │15m timeout  │
+│- Prometheus │ │- PostgreSQL │
+│- Grafana    │ │- Redis      │
+│- WeaveGitOps│ │             │
+└─────────────┘ └──────┬──────┘
                        │
                        ├─────────────────┐
                        ▼                 ▼
@@ -257,7 +257,7 @@ WAVE 4 (Parallel deployment categories)
                 │- Temporal       │ │- RedisInsight   │
                 │                 │ │                 │
                 └─────────────────┘ └─────────────────┘
-                
+
                 Wave 4c & 5 deploy in parallel after W4b
 ```
 
@@ -282,7 +282,7 @@ resources:
 dependsOn:
   - name: infrastructure-core
 
-# infrastructure-config.yaml  
+# infrastructure-config.yaml
 dependsOn:
   - name: infrastructure-operators
 
@@ -339,7 +339,7 @@ Path C: Wave 1 → Wave 2 → Wave 4b → Wave 5 (DB UI) = 40 minutes (same timi
 
 ### Timeout Configuration
 - **Wave 1**: 5 minutes (fast networking setup)
-- **Wave 2**: 10 minutes (operator installation)  
+- **Wave 2**: 10 minutes (operator installation)
 - **Wave 3**: 5 minutes (configuration setup)
 - **Wave 4a**: 10 minutes (monitoring tools)
 - **Wave 4b**: 15 minutes (database clusters - most time-intensive)
@@ -395,7 +395,7 @@ kubectl get kustomization infrastructure-operators -n flux-system -o yaml
 kubectl get pods -n cnpg-system
 kubectl get pods -n external-secrets-system
 
-# Check database cluster status  
+# Check database cluster status
 kubectl get cluster -n cnpg-system
 kubectl get pods -n cnpg-system
 
@@ -420,7 +420,7 @@ flux reconcile kustomization <wave-name>
 - Uses LocalStack for AWS services simulation
 - More permissive timeout values for slower startup
 
-### Production Environment  
+### Production Environment
 - Longer sync intervals for stability (10 minutes)
 - Real AWS services instead of LocalStack
 - Stricter resource limits and security policies

@@ -104,7 +104,7 @@ REDIS_METRICS_ENABLED=true
 ```
 ✗ apps/base/redis/
   ✗ All files deleted (replaced by redis-sentinel)
-  
+
 ✗ base/services/redis.yaml (replaced by redis-sentinel.yaml)
 ```
 

@@ -92,7 +92,7 @@ spec:
         value: "${REGION}"
       AWS_DEFAULT_REGION:
         value: "${REGION}"
-      # For LocalStack integration in development  
+      # For LocalStack integration in development
       AWS_ENDPOINT_URL:
         value: "http://localstack.localstack.svc.cluster.local:4566"
 
@@ -100,4 +100,3 @@ spec:
     nodeSelector: {}
     tolerations: []
     affinity: {}
-

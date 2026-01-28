@@ -26,7 +26,7 @@ From analysis of current HelmRelease files, the following hardcoded values need 
 
 **Redis (apps/base/redis/helmrelease.yaml):**
 - Chart version: `20.3.0`
-- Resource limits: Memory 256Mi/512Mi, CPU 100m/500m  
+- Resource limits: Memory 256Mi/512Mi, CPU 100m/500m
 - Replica count: `2`, Master count: `1`
 - Storage size: `8Gi`
 - Sentinel settings: downAfterMilliseconds `30000`, failoverTimeout `180000`
@@ -231,7 +231,7 @@ DEFAULT_CPU_REQUEST=50m
 **Resource Strategy:** Maximize performance and availability
 
 ```bash
-# Production overrides (clusters/stages/prod/clusters/services-amer/environment.env)  
+# Production overrides (clusters/stages/prod/clusters/services-amer/environment.env)
 CLUSTER_NAME=services-amer-prod
 ENVIRONMENT=production
 
@@ -286,7 +286,7 @@ DEFAULT_CPU_REQUEST=100m
 - Post-migration: Comprehensive application health checks
 
 **Rollback Procedures:**
-- Immediate rollback: Revert git commits and force Flux reconciliation  
+- Immediate rollback: Revert git commits and force Flux reconciliation
 - Graduated rollback: Service-by-service rollback with dependency consideration
 - Emergency rollback: Suspend Flux and manual kubectl application of known-good configs
 
@@ -314,7 +314,7 @@ flux build kustomization services --path ./base/services \
 
 **Post-Migration Validation:**
 ```bash
-#!/bin/bash  
+#!/bin/bash
 # scripts/post-migration-health-check.sh
 
 # 1. Wait for all services to be ready
@@ -323,7 +323,7 @@ kubectl wait --for=condition=ready pod -l app.kubernetes.io/managed-by=Helm \
 
 # 2. Service-specific health checks
 curl -f http://localhost:5678/healthz  # N8N
-curl -f http://localhost:3030/api/health  # Grafana  
+curl -f http://localhost:3030/api/health  # Grafana
 redis-cli -h redis.redis.svc.cluster.local ping  # Redis
 
 # 3. Resource utilization validation
@@ -350,7 +350,7 @@ REDIS_MASTER_MEMORY_LIMIT=512Mi
 REDIS_STORAGE_SIZE=8Gi
 REDIS_SENTINEL_TIMEOUT=30000
 
-# Database services  
+# Database services
 POSTGRESQL_CHART_VERSION=15.5.0
 POSTGRESQL_INSTANCES=1
 POSTGRESQL_STORAGE_SIZE=20Gi
@@ -371,7 +371,7 @@ N8N_CHART_VERSION=2.31.0
 N8N_MEMORY_LIMIT=1Gi
 N8N_STORAGE_SIZE=5Gi
 
-TEMPORAL_CHART_VERSION=0.45.0  
+TEMPORAL_CHART_VERSION=0.45.0
 TEMPORAL_MEMORY_LIMIT=1Gi
 TEMPORAL_STORAGE_SIZE=10Gi
 ```
@@ -392,7 +392,7 @@ spec:
       persistence:
         size: 8Gi
 
-# After (variable substitution)  
+# After (variable substitution)
 spec:
   values:
     replica:
@@ -457,7 +457,7 @@ clusters/stages/prod/
         ├── cluster-vars-patch.yaml
         ├── flux-system/
         │   ├── gotk-components.yaml
-        │   ├── gotk-sync.yaml      # Tracks main branch  
+        │   ├── gotk-sync.yaml      # Tracks main branch
         │   └── kustomization.yaml
         └── kustomization.yaml
 ```
@@ -518,7 +518,7 @@ spec:
 ### Pilot Implementation (Next Week)
 
 1. **Redis migration** - Start with straightforward resource configurations
-2. **Loki migration** - Test complex cache configuration substitution  
+2. **Loki migration** - Test complex cache configuration substitution
 3. **Validation framework** - Establish testing and rollback procedures
 4. **Documentation updates** - Update CLAUDE.md and team guidance
 
@@ -536,7 +536,7 @@ spec:
 ### Documentation Updates Required
 
 1. **CLAUDE.md**: New configuration management patterns and commands
-2. **README.md**: Updated configuration management section  
+2. **README.md**: Updated configuration management section
 3. **Service READMEs**: Individual service configuration references
 4. **Runbooks**: New deployment and configuration change procedures
 
@@ -544,7 +544,7 @@ spec:
 
 1. **Configuration management training** for all team members
 2. **Environment-specific optimization guidelines** for resource allocation
-3. **Troubleshooting guides** for configuration-related issues  
+3. **Troubleshooting guides** for configuration-related issues
 4. **Emergency procedures** for configuration rollbacks
 
 ---

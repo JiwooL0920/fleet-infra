@@ -13,7 +13,7 @@ This document describes the comprehensive wave-based deployment architecture use
 
 Wave 1: Infrastructure Core (5m timeout)
 ├── LocalStack (AWS services emulation)
-├── Traefik (Ingress controller) 
+├── Traefik (Ingress controller)
 └── Secret-initializer (Creates initial secrets)
         ↓
 Wave 2: Infrastructure Operators (10m timeout)
@@ -64,7 +64,7 @@ fleet-infra/
 ├── base/                        # Wave orchestration layer
 │   ├── infrastructure/          # Wave component definitions
 │   │   ├── core/               # Wave 1 components
-│   │   ├── operators/          # Wave 2 components  
+│   │   ├── operators/          # Wave 2 components
 │   │   ├── config/             # Wave 3 components
 │   │   ├── monitoring/         # Wave 4 monitoring
 │   │   └── logging/            # Wave 4 logging
@@ -94,7 +94,7 @@ fleet-infra/
 
 **Critical Dependencies**: None (foundation wave)
 
-### Wave 2: Infrastructure Operators  
+### Wave 2: Infrastructure Operators
 **Purpose**: Kubernetes operators that extend cluster capabilities
 **Timeout**: 10 minutes
 **Depends On**: infrastructure-core
@@ -110,7 +110,7 @@ fleet-infra/
 
 ### Wave 3: Infrastructure Configuration
 **Purpose**: Configuration resources that depend on operators
-**Timeout**: 5 minutes  
+**Timeout**: 5 minutes
 **Depends On**: infrastructure-operators
 **Components**:
 - **External Secrets Config**: Creates ClusterSecretStore pointing to LocalStack
@@ -134,14 +134,14 @@ fleet-infra/
 - **Kube-Prometheus-Stack**: Grafana, Prometheus, Alertmanager
 - **Weave GitOps**: GitOps dashboard
 
-#### Infrastructure Logging  
+#### Infrastructure Logging
 **Depends On**: infrastructure-monitoring
 **Components**:
 - **Loki**: Log aggregation (depends on monitoring namespace + Redis)
 - **Promtail**: Log collection (depends on Loki)
 
 #### Database Workloads
-**Depends On**: infrastructure-operators  
+**Depends On**: infrastructure-operators
 **Timeout**: 15 minutes
 **Components**:
 - **PostgreSQL 3-node HA Cluster**: Primary database
@@ -231,7 +231,7 @@ fleet-infra/
 
 ### 1. Traefik CRD Chicken-and-Egg Problem
 **Issue**: Traefik Middleware resources were being applied before Traefik CRDs existed
-**Solution**: 
+**Solution**:
 - Separated Traefik Helm release (Wave 1) from configuration (Wave 3)
 - Created `traefik-config` separate from `traefik` application
 **Files Changed**:
@@ -243,7 +243,7 @@ fleet-infra/
 **Solution**: Added missing `externalsecret.yaml` to kustomization files
 **Files Fixed**:
 - `apps/base/loki/kustomization.yaml`
-- `apps/base/n8n/kustomization.yaml` 
+- `apps/base/n8n/kustomization.yaml`
 - `apps/base/temporal/kustomization.yaml`
 
 ### 3. Secret-initializer Job Failures
@@ -265,7 +265,7 @@ fleet-infra/
 ## Troubleshooting Common Issues
 
 ### Secret Sync Failures
-**Symptoms**: 
+**Symptoms**:
 - Pods stuck in `CreateContainerConfigError`
 - ExternalSecret shows `SecretSyncedError`
 
@@ -379,7 +379,7 @@ kubectl describe pod <pod-name> -n <namespace>
 ### Wave Timeouts
 - **Wave 1 (Core)**: 5m - Lightweight services
 - **Wave 2 (Operators)**: 10m - Operator installations
-- **Wave 3 (Config)**: 5m - Configuration resources  
+- **Wave 3 (Config)**: 5m - Configuration resources
 - **Wave 4 (Applications)**: 10-15m - Heavy services, databases get 15m
 - **Wave 5 (UI)**: 10m - User interfaces
 

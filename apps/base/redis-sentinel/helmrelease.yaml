@@ -28,7 +28,7 @@ spec:
         namespace: flux-system
   values:
     fullnameOverride: redis-sentinel
-    
+
     # Image configuration - use latest for simplicity
     image:
       registry: docker.io
@@ -50,7 +50,7 @@ spec:
       stop-writes-on-bgsave-error no
       dbfilename dump.rdb
       dir /data
-      
+
       # Disable AOF for better performance (RDB snapshots only)
       appendonly no
 
@@ -120,4 +120,3 @@ spec:
       serviceMonitor:
         enabled: ${REDIS_METRICS_ENABLED}
         interval: 30s
-

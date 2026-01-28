@@ -33,7 +33,7 @@ kind: Kustomization
 resources:
   # Smart dependency ordering - parallel where possible
   - sources/repositories.yaml        # All sources (no deps) - START IMMEDIATELY
-  - infrastructure/networking.yaml   # Networking (no deps) - START IMMEDIATELY  
+  - infrastructure/networking.yaml   # Networking (no deps) - START IMMEDIATELY
   - infrastructure/controllers.yaml  # Operators (no deps) - START IMMEDIATELY
   - infrastructure/storage.yaml      # Storage (deps: controllers) - WHEN READY
   - infrastructure/observability.yaml # Monitoring (deps: networking) - WHEN READY
@@ -63,7 +63,7 @@ spec:
     - name: infrastructure-core  # Waits for traefik, localstack, etc.
 
 ---
-# Wave 4: database-workloads.yaml  
+# Wave 4: database-workloads.yaml
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
@@ -201,10 +201,10 @@ spec:
 # Create new FluxCD-aligned directory structure
 create_flux_structure() {
   local ENV=$1
-  
+
   # Platform layer
   mkdir -p clusters/stages/${ENV}/platform/{sources,infrastructure,tenants,config}
-  
+
   # Create source repositories aggregator
   cat > clusters/stages/${ENV}/platform/sources/repositories.yaml <<'EOF'
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -363,12 +363,12 @@ spec:
 migrate_wave_to_dependency() {
   local WAVE_FILE=$1
   local OUTPUT_DIR=$2
-  
+
   echo "Analyzing $WAVE_FILE..."
-  
+
   # Extract resources from wave
   RESOURCES=$(yq '.spec.path' $WAVE_FILE)
-  
+
   # Determine real dependencies
   case "$WAVE_FILE" in
     *"infrastructure-operators"*)
@@ -384,7 +384,7 @@ migrate_wave_to_dependency() {
       DEPS=""
       ;;
   esac
-  
+
   # Generate new kustomization
   generate_kustomization "$RESOURCES" "$DEPS" "$OUTPUT_DIR"
 }
@@ -394,7 +394,7 @@ generate_kustomization() {
   local RESOURCES=$1
   local DEPS=$2
   local OUTPUT=$3
-  
+
   cat > $OUTPUT <<EOF
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -451,19 +451,19 @@ time_deployment() {
 # Map actual dependencies
 map_dependencies() {
   echo "Mapping service dependencies..."
-  
+
   # Find PostgreSQL dependents
   kubectl get pods -A -o json | \
-    jq -r '.items[] | 
-      select(.spec.containers[].env[]? | 
-      select(.name | contains("POSTGRES"))) | 
+    jq -r '.items[] |
+      select(.spec.containers[].env[]? |
+      select(.name | contains("POSTGRES"))) |
       .metadata.namespace + "/" + .metadata.name'
-  
-  # Find Redis dependents  
+
+  # Find Redis dependents
   kubectl get pods -A -o json | \
-    jq -r '.items[] | 
-      select(.spec.containers[].env[]? | 
-      select(.name | contains("REDIS"))) | 
+    jq -r '.items[] |
+      select(.spec.containers[].env[]? |
+      select(.name | contains("REDIS"))) |
       .metadata.namespace + "/" + .metadata.name'
 }
 
@@ -486,20 +486,20 @@ data:
   test.sh: |
     #!/bin/bash
     set -e
-    
+
     echo "Testing parallel deployment..."
-    
+
     # Check controllers started in parallel
     kubectl get events -n cnpg-system --sort-by='.lastTimestamp' | head -20
     kubectl get events -n external-secrets --sort-by='.lastTimestamp' | head -20
-    
+
     # Verify dependencies respected
     kubectl logs -n flux-system deployment/kustomize-controller | \
       grep -E "(dependency|wait|health)"
-    
+
     # Measure deployment time
     flux get ks -A --status-selector ready=true | wc -l
-    
+
     echo "✅ Smoke test passed"
 ```
 
@@ -555,12 +555,12 @@ data:
     before:
       total_deployment_time: 2700s  # 45 minutes
       wave_1_time: 300s   # 5 minutes
-      wave_2_time: 600s   # 10 minutes  
+      wave_2_time: 600s   # 10 minutes
       wave_3_time: 300s   # 5 minutes
       wave_4_time: 900s   # 15 minutes
       wave_5_time: 600s   # 10 minutes
       parallel_resources: 0
-      
+
     after:
       total_deployment_time: 900s  # 15 minutes
       parallel_resources: 12
@@ -570,7 +570,7 @@ data:
         - storage: 300s (depends on controllers)
         - applications: 600s (depends on storage)
         - monitoring: 300s (parallel with storage)
-      
+
     improvements:
       time_saved: 66%
       complexity_reduction: 70%

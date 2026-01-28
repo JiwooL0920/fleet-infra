@@ -4,10 +4,10 @@
 
 This document outlines the comprehensive implementation plan for migrating the fleet-infra GitOps repository from hardcoded configuration values to a centralized, environment-specific configuration management system using Flux CD's variable substitution capabilities.
 
-**Initiative:** Environment-Specific Configuration Management  
-**Complexity:** HIGH - Affects 15+ applications across entire infrastructure  
-**Timeline:** 5 weeks with phased approach  
-**Risk Level:** MEDIUM with comprehensive mitigation strategies  
+**Initiative:** Environment-Specific Configuration Management
+**Complexity:** HIGH - Affects 15+ applications across entire infrastructure
+**Timeline:** 5 weeks with phased approach
+**Risk Level:** MEDIUM with comprehensive mitigation strategies
 
 ### Business Drivers
 - **Deployment Velocity:** Current hardcoded values slow down environment promotions by 40%
@@ -112,14 +112,14 @@ configMapGenerator:
       - GLOBAL_CLUSTER_NAME=fleet-cluster
       - GLOBAL_ENVIRONMENT=base
       - GLOBAL_REGION=us-east-1
-  
+
   - name: infrastructure-vars
     namespace: flux-system
     files:
       - infrastructure/monitoring-config.yaml
       - infrastructure/storage-config.yaml
       - infrastructure/networking-config.yaml
-  
+
   - name: service-vars
     namespace: flux-system
     files:
@@ -134,11 +134,11 @@ graph TD
     A[Base Configuration] --> B[Environment Overlay]
     B --> C[Cluster-Specific Patches]
     C --> D[Final Configuration]
-    
+
     A1[global-config.yaml] --> B
     A2[service configs] --> B
     A3[infra configs] --> B
-    
+
     B1[dev/prod overrides] --> C
     C1[services-amer patches] --> D
 ```
@@ -219,15 +219,15 @@ graph TD
 graph LR
     A[Development] -->|2 days validation| B[Staging]
     B -->|3 days validation| C[Production]
-    
+
     A1[Feature Branch] --> A
     A --> A2[Smoke Tests]
     A2 --> A3[Integration Tests]
-    
+
     B1[Develop Branch] --> B
     B --> B2[Full Test Suite]
     B2 --> B3[Performance Tests]
-    
+
     C1[Main Branch] --> C
     C --> C2[Canary Deployment]
     C2 --> C3[Progressive Rollout]
@@ -354,7 +354,7 @@ configMapGenerator:
     literals:
       - GLOBAL_ENVIRONMENT=development
       - GLOBAL_CLUSTER_NAME=fleet-dev
-  
+
   - name: infrastructure-vars
     namespace: flux-system
     behavior: merge
@@ -383,7 +383,7 @@ spec:
         value: ${SERVICE_N8N_DB_NAME}
       - name: N8N_BASIC_AUTH_ACTIVE
         value: "${SECURITY_BASIC_AUTH_ENABLED}"
-    
+
     ingress:
       enabled: true
       className: ${INFRA_INGRESS_CLASS}
@@ -584,7 +584,7 @@ for resource in deployment statefulset daemonset; do
       yq eval '.items[].spec.template.spec.containers[].resources' - \
       > /tmp/${env}-${resource}-resources.yaml
   done
-  
+
   # Generate diff report
   diff -u /tmp/dev-${resource}-resources.yaml \
           /tmp/prod-${resource}-resources.yaml \
@@ -848,12 +848,12 @@ spec:
       for: 5m
       annotations:
         summary: "Configuration substitution failed for {{ $labels.name }}"
-        
+
     - alert: ConfigMapSizeExceeded
       expr: kube_configmap_size_bytes > 1048576  # 1MB
       annotations:
         summary: "ConfigMap {{ $labels.configmap }} exceeds size limit"
-        
+
     - alert: ServiceDegradation
       expr: rate(kube_pod_container_status_restarts_total[5m]) > 0.1
       annotations:
@@ -929,11 +929,11 @@ spec:
 
 ## Document Control
 
-**Version:** 1.0  
-**Last Updated:** 2025-08-23  
-**Owner:** Platform Engineering Team  
-**Review Cycle:** Weekly during migration, Monthly post-migration  
-**Next Review:** End of Week 1 implementation  
+**Version:** 1.0
+**Last Updated:** 2025-08-23
+**Owner:** Platform Engineering Team
+**Review Cycle:** Weekly during migration, Monthly post-migration
+**Next Review:** End of Week 1 implementation
 
 ## Approval Sign-offs
 

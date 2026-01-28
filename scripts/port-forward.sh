@@ -27,7 +27,7 @@ start_port_forward() {
     local local_port=$3
     local remote_port=$4
     local description=$5
-    
+
     if check_service "$namespace" "$service"; then
         # Kill any existing processes on this port
         kill_port "$local_port"

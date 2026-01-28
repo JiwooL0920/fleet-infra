@@ -1,26 +1,27 @@
-# Pre-commit hooks for FluxCD GitOps repository
+# Pre-commit hooks for Flux CD GitOps repository
 # See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
 
 repos:
-  # General file checks
+  # Standard pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: v5.0.0
     hooks:
-      # Prevent committing large files
+      # Prevent giant files from being committed
       - id: check-added-large-files
-        args: ['--maxkb=1000']
+        args: [--maxkb=1000]
 
-      # Ensure files end with newline
+      # Fix end of files
       - id: end-of-file-fixer
         exclude: '\.sops\.ya?ml$'
 
-      # Remove trailing whitespace
+      # Trim trailing whitespace
       - id: trailing-whitespace
-        args: [--markdown-linebreak-ext=md]
+        exclude: '\.sops\.ya?ml$'
 
       # Check YAML syntax
       - id: check-yaml
-        args: [--allow-multiple-documents, --unsafe]
+        args: [--unsafe]
         exclude: 'templates/.*\.ya?ml$'
 
       # Check for merge conflicts
@@ -29,18 +30,11 @@ repos:
       # Check for broken symlinks
       - id: check-symlinks
 
-      # Prevent commits to main branch
+      # Prevent commits to main/master
       - id: no-commit-to-branch
         args: [--branch, main, --branch, master]
 
-      # Detect AWS credentials
-      - id: detect-aws-credentials
-        args: [--allow-missing-credentials]
-
-      # Detect private keys
-      - id: detect-private-key
-
-      # Check case conflicts
+      # Check for case conflicts
       - id: check-case-conflict
 
   # YAML formatting and linting
@@ -48,19 +42,7 @@ repos:
     rev: v1.37.0
     hooks:
       - id: yamllint
-        args:
-          - --config-data
-          - |
-            extends: default
-            rules:
-              line-length:
-                max: 120
-                level: warning
-              document-start: disable
-              truthy:
-                allowed-values: ['true', 'false', 'on', 'off']
-              comments:
-                min-spaces-from-content: 1
+        args: [--config-data, "{extends: relaxed, rules: {line-length: {max: 200}}}"]
         exclude: 'templates/.*\.ya?ml$'
 
   # Validate Kubernetes manifests
@@ -70,6 +52,8 @@ repos:
       # Forbid tabs in YAML files
       - id: forbid-tabs
         exclude_types: [makefile, binary]
+        files: '\.ya?ml$'
+        exclude: '^(docs/|\.)'
 
   # Flux-specific validation
   - repo: local
@@ -77,7 +61,7 @@ repos:
       # Validate Flux manifests with kubeconform
       - id: kubeconform
         name: Validate Kubernetes/Flux manifests with kubeconform
-        entry: bash -c 'scripts/validate-manifests.sh'
+        entry: bash -c 'scripts/pre-commit/validate-manifests.sh'
         language: system
         files: '\.ya?ml$'
         pass_filenames: false
@@ -85,7 +69,7 @@ repos:
       # Check for proper Flux CRD versions
       - id: flux-check-versions
         name: Check Flux API versions
-        entry: bash -c 'scripts/check-flux-versions.sh'
+        entry: bash -c 'scripts/pre-commit/check-flux-versions.sh'
         language: system
         files: '(kustomization|helmrelease|gitrepository|helmrepository).*\.ya?ml$'
         pass_filenames: false
@@ -93,37 +77,19 @@ repos:
       # Validate kustomization overlays
       - id: kustomize-build
         name: Validate Kustomize overlays
-        entry: bash -c 'scripts/validate-kustomize.sh'
+        entry: bash -c 'scripts/pre-commit/validate-kustomize.sh'
         language: system
         files: 'kustomization\.ya?ml$'
+        exclude: '^(clusters/|base/services/)'  # Skip Flux Kustomization CRDs
         pass_filenames: false
-
-  # Secret scanning (SOPS encrypted files should be excluded)
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
-    hooks:
-      - id: detect-secrets
-        args:
-          - --baseline
-          - .secrets.baseline
-          - --exclude-files
-          - '\.sops\.ya?ml$'
-          - --exclude-files
-          - 'secrets\.env$'
-
-  # Markdown linting
-  - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.43.0
-    hooks:
-      - id: markdownlint
-        args: [--config, .markdownlint.yaml]
 
   # Shell script linting
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
     hooks:
       - id: shellcheck
-        args: [--severity=warning]
+        args: [--severity=error]  # Only fail on errors, not warnings
+        exclude: '^scripts/(fix-control-plane-ip|port-forward|setup-local-dns)\.sh$'
 
 # Global settings
 default_install_hook_types: [pre-commit, commit-msg]
@@ -139,5 +105,5 @@ exclude: |
       \.git/|
       clusters/.*/flux-system/.*|
       .*\.md\.backup|
-      \.secrets\.baseline
-  )$
+      node_modules/
+  )

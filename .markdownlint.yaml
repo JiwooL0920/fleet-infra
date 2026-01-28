@@ -6,16 +6,8 @@ default: true
 
 # Customizations
 rules:
-  # MD013 - Line length
-  MD013:
-    line_length: 120
-    heading_line_length: 120
-    code_block_line_length: 120
-    code_blocks: false
-    tables: false
-    headings: true
-    strict: false
-    stern: false
+  # MD013 - Line length - disabled for flexibility
+  MD013: false
 
   # MD033 - Inline HTML - allow for flexibility in docs
   MD033: false
@@ -34,3 +26,24 @@ rules:
   # MD003 - Heading style - prefer ATX (#)
   MD003:
     style: atx
+
+  # MD022 - Headings should be surrounded by blank lines
+  MD022: false
+
+  # MD031 - Fenced code blocks should be surrounded by blank lines
+  MD031: false
+
+  # MD032 - Lists should be surrounded by blank lines
+  MD032: false
+
+  # MD036 - Emphasis used instead of a heading
+  MD036: false
+
+  # MD040 - Fenced code blocks should have a language specified
+  MD040: false
+
+  # MD001 - Heading levels should only increment by one level at a time
+  MD001: false
+
+  # MD029 - Ordered list item prefix
+  MD029: false

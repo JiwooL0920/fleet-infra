@@ -24,7 +24,7 @@ Each service has an individual kustomization file with precise dependencies, ena
 - `crossplane-config.yaml` - IaC compositions (disabled)
 - `crossplane-providers.yaml` - Cloud providers (disabled)
 
-### Monitoring & Observability  
+### Monitoring & Observability
 - `kube-prometheus-stack.yaml` - Prometheus, Grafana (depends on traefik, metrics-server)
 - `weave-gitops.yaml` - GitOps dashboard (depends on traefik)
 - `loki.yaml` - Log aggregation (disabled)
@@ -54,7 +54,7 @@ Each service has an individual kustomization file with precise dependencies, ena
 
 ```
 T+0:00  Foundation services start (7 parallel)
-T+2:30  Monitoring services start (2 parallel)  
+T+2:30  Monitoring services start (2 parallel)
 T+5:30  Database services start (2 parallel)
 T+6:00  Applications start (3 parallel)
 T+7:00  Database management start (2 parallel)

@@ -15,7 +15,7 @@ resources:
   - metrics-server.yaml
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml
-  
+
   # Infrastructure as Code services (disabled)
   # - crossplane.yaml
   # - crossplane-providers.yaml
@@ -24,15 +24,15 @@ resources:
   # Logging stack services (disabled)
   # - loki.yaml
   # - promtail.yaml
-  
+
   # Database services (depend on operators)
   - postgresql-cluster.yaml
   - redis-sentinel.yaml
-  
-  # Application services (depend on databases)  
+
+  # Application services (depend on databases)
   - n8n.yaml
   - temporal.yaml
-  
+
   # Database UI services (fine-grained dependencies)
   - pgadmin4.yaml
   - redisinsight.yaml

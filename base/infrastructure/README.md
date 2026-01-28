@@ -69,7 +69,7 @@ When deploying to cloud environments, you would:
    # clusters/stages/prod-eks/infrastructure/kustomization.yaml
    resources:
      - ../../../base/infrastructure/default-karpenter-resources.yaml
-   
+
    patches:
      - patch: |-
          - op: replace

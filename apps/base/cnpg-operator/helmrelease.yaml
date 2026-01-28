@@ -38,13 +38,13 @@ spec:
   values:
     # Operator configuration
     replicaCount: 1
-    
+
     # Image configuration
     image:
       repository: ghcr.io/cloudnative-pg/cloudnative-pg
       tag: "1.26.0"
       pullPolicy: Always
-    
+
     # Resources for operator
     resources:
       limits:
@@ -53,13 +53,13 @@ spec:
       requests:
         cpu: "${CNPG_OPERATOR_CPU_REQUEST}"
         memory: "${CNPG_OPERATOR_MEMORY_REQUEST}"
-    
+
     # Monitoring
     monitoring:
       enabled: true
       podMonitor:
         enabled: true
-    
+
     # Additional configuration
     config:
       create: true
@@ -68,12 +68,12 @@ spec:
         ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES: 'true'
         INHERITED_LABELS: environment,workload,app
         INHERITED_ANNOTATIONS: categories
-    
+
     # Service account
     serviceAccount:
       create: true
       name: cnpg-manager
-    
+
     # Node selector and tolerations if needed
     nodeSelector: {}
     tolerations: []

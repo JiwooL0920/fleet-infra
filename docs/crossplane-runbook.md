@@ -582,4 +582,3 @@ kubectl get composite -A -o yaml > $BACKUP_DIR/composite-resources.yaml
 
 echo "Backup complete!"
 ```
-

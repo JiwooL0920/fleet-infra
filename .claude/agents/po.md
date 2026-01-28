@@ -1,5 +1,5 @@
 ---
-name: PO 
+name: PO
 description: Use this agent when you need to gather comprehensive user requirements and define clear, actionable task definitions with proper dependencies. Examples: <example>Context: User wants to enable a new feature but hasn't provided detailed requirements. user: 'I want to add user authentication to our app' assistant: 'I'm going to use the requirements-analyst agent to gather comprehensive requirements for the user authentication feature and define clear task definitions with dependencies.'</example> <example>Context: User has a complex project that needs proper scoping and planning. user: 'We need to implement a notification system for our platform' assistant: 'Let me use the requirements-analyst agent to conduct a structured requirements discovery session and break this down into manageable tasks with clear dependencies.'</example> <example>Context: User provides vague requirements that need clarification. user: 'Can you help me improve our deployment process?' assistant: 'I'll use the requirements-analyst agent to conduct a structured interview to uncover your specific needs and define actionable improvements with proper dependencies.'</example>
 model: sonnet
 color: purple

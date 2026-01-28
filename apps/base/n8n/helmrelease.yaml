@@ -37,7 +37,7 @@ spec:
   values:
     # Override the default name to avoid n8n-n8n
     fullnameOverride: n8n
-    
+
     # N8N main application configuration
     main:
       # N8N configuration converted to environment variables
@@ -46,7 +46,7 @@ spec:
           encryption_key: "n8n-encryption-key-change-me"
         db:
           type: postgresdb
-      
+
       # Database configuration from secrets
       extraEnv:
         N8N_PORT:
@@ -76,7 +76,7 @@ spec:
             secretKeyRef:
               name: n8n-postgres-credentials
               key: POSTGRES_PASSWORD
-      
+
       # Persistence configuration - disabled since using PostgreSQL
       persistence:
         enabled: false

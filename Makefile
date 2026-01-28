@@ -146,20 +146,19 @@ precommit-clean: check-precommit
 # Validate Kubernetes/Flux manifests
 validate-manifests:
 	@echo "Validating Kubernetes/Flux manifests..."
-	@./scripts/validate-manifests.sh
+	@./scripts/pre-commit/validate-manifests.sh
 
 # Check Flux API versions
 validate-flux:
 	@echo "Checking Flux API versions..."
-	@./scripts/check-flux-versions.sh
+	@./scripts/pre-commit/check-flux-versions.sh
 
 # Validate Kustomize overlays
 validate-kustomize:
 	@echo "Validating Kustomize overlays..."
-	@./scripts/validate-kustomize.sh
+	@./scripts/pre-commit/validate-kustomize.sh
 
 # Run all validations
 validate-all: validate-flux validate-kustomize validate-manifests
 	@echo ""
 	@echo "✓ All validations passed!"
-

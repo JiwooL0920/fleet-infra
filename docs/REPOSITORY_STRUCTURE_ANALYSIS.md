@@ -1,6 +1,6 @@
 # Repository Structure Deep Dive Analysis
 
-> **Comprehensive analysis of repository structure patterns: Current vs FluxCD Best Practices**  
+> **Comprehensive analysis of repository structure patterns: Current vs FluxCD Best Practices**
 > *Analysis Date: January 28, 2026*
 
 ## Executive Summary
@@ -170,7 +170,7 @@ fleet-infra-staging/
 └── clusters/
     └── staging/
 
-# Production Repository  
+# Production Repository
 fleet-infra-production/
 ├── apps/
 ├── infrastructure/

@@ -1,6 +1,6 @@
 # FluxCD GitOps Best Practices
 
-> **Comprehensive guide based on official FluxCD documentation and enterprise patterns**  
+> **Comprehensive guide based on official FluxCD documentation and enterprise patterns**
 > *All information sourced from [FluxCD Official Documentation](https://fluxcd.io/)*
 
 ## Table of Contents
@@ -26,11 +26,11 @@ The monorepo approach separates applications, infrastructure, and cluster-specif
 ```
 ├── apps
 │   ├── base
-│   ├── production 
+│   ├── production
 │   └── staging
 ├── infrastructure
 │   ├── base
-│   ├── production 
+│   ├── production
 │   └── staging
 └── clusters
     ├── production
@@ -55,7 +55,7 @@ The monorepo approach separates applications, infrastructure, and cluster-specif
 │   ├── team2
 ├── infrastructure
 │   ├── base
-│   ├── production 
+│   ├── production
 │   └── staging
 └── clusters
     ├── production
@@ -66,7 +66,7 @@ The monorepo approach separates applications, infrastructure, and cluster-specif
 ```
 └── apps
     ├── base
-    ├── production 
+    ├── production
     └── staging
 ```
 
@@ -86,7 +86,7 @@ The monorepo approach separates applications, infrastructure, and cluster-specif
 ├── src
 └── deploy
     ├── base
-    ├── production 
+    ├── production
     └── staging
 ```
 
@@ -95,7 +95,7 @@ The monorepo approach separates applications, infrastructure, and cluster-specif
 ├── src
 └── chart
     ├── templates
-    ├── values.yaml 
+    ├── values.yaml
     └── values-prod.yaml
 ```
 
@@ -131,7 +131,7 @@ patches:
     target:
       kind: Deployment
       name: "(kustomize-controller|helm-controller|notification-controller|image-reflector-controller|image-automation-controller)"
-  
+
   # Prevent remote bases (security)
   - patch: |
       - op: add
@@ -140,7 +140,7 @@ patches:
     target:
       kind: Deployment
       name: "kustomize-controller"
-  
+
   # Set default service account
   - patch: |
       - op: add
@@ -303,7 +303,7 @@ flux bootstrap github \
   --path=clusters/staging \
   --branch=develop
 
-# Production  
+# Production
 flux bootstrap github \
   --owner=my-org \
   --repository=fleet-infra \
@@ -567,5 +567,5 @@ All information in this document is sourced from the official FluxCD documentati
 - **OCI Artifacts:** https://github.com/fluxcd/website/blob/main/content/en/flux/cheatsheets/oci-artifacts.md
 - **Multi-Tenancy Example:** https://github.com/fluxcd/flux2-multi-tenancy
 
-**Last Updated:** Based on FluxCD v2.4+ documentation  
+**Last Updated:** Based on FluxCD v2.4+ documentation
 **Maintained By:** Generated from Context7 MCP FluxCD documentation

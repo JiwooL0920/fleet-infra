@@ -85,7 +85,7 @@ validate_yaml_syntax() {
             echo_error "Invalid YAML syntax in $file"
             ((error_count++))
         fi
-    done < <(find . -type f -name '*.yaml' -o -name '*.yml' -print0 | grep -zv '.sops.ya\?ml$')
+    done < <(find . -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 | grep -zv '.sops.ya\?ml$')
 
     if [ $error_count -gt 0 ]; then
         echo_error "Found $error_count YAML syntax errors"

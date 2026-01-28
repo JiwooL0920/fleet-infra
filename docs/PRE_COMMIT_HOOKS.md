@@ -141,7 +141,7 @@ Validates Kubernetes and Flux manifests against OpenAPI schemas.
 
 **Run manually:**
 ```bash
-./scripts/validate-manifests.sh
+./scripts/pre-commit/validate-manifests.sh
 ```
 
 #### flux-check-versions (check-flux-versions.sh)
@@ -162,7 +162,7 @@ Ensures Flux CRDs use current API versions.
 
 **Run manually:**
 ```bash
-./scripts/check-flux-versions.sh
+./scripts/pre-commit/check-flux-versions.sh
 ```
 
 #### kustomize-build (validate-kustomize.sh)
@@ -177,7 +177,7 @@ Validates all Kustomize overlays can be built successfully.
 
 **Run manually:**
 ```bash
-./scripts/validate-kustomize.sh
+./scripts/pre-commit/validate-kustomize.sh
 ```
 
 ### Security Scanning

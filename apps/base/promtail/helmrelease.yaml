@@ -1,4 +1,4 @@
-apiVersion: helm.toolkit.fluxcd.io/v2beta2
+apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: promtail
@@ -28,14 +28,14 @@ spec:
       clients:
         - url: http://monitoring-loki:3100/loki/api/v1/push
           tenant_id: fake
-      
+
       # Server configuration
       serverPort: 3101
-      
+
       # Positions file to track log reading progress
       positions:
         filename: /run/promtail/positions.yaml
-      
+
       # Minimal scrape configuration - NO kubernetes service discovery
       snippets:
         # Completely disable default scrape configs
@@ -51,34 +51,34 @@ spec:
               - cri: {}
               - labeldrop:
                   - filename
-    
+
     # Use Deployment mode with single replica on control-plane
     # DaemonSet causes "too many open files" on worker nodes with many pods
     daemonset:
       enabled: false
-    
+
     # Enable Deployment mode
     deployment:
       enabled: true
       replicaCount: 1
       autoscaling:
         enabled: false
-    
+
     # Schedule on control-plane node (fewer pods = fewer file descriptors)
     nodeSelector:
       node-role.kubernetes.io/control-plane: ""
-    
+
     # Tolerate control-plane taint
     tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
         effect: NoSchedule
-    
+
     # Pod configuration
     podAnnotations:
       prometheus.io/scrape: "true"
       prometheus.io/port: "3101"
-    
+
     # Resource limits
     resources:
       limits:
@@ -87,17 +87,17 @@ spec:
       requests:
         cpu: "${PROMTAIL_CPU_REQUEST}"
         memory: "${PROMTAIL_MEMORY_REQUEST}"
-    
+
     # Service Account
     serviceAccount:
       create: true
       name: promtail
-    
+
     # RBAC configuration - minimal permissions since no k8s API calls
     rbac:
       create: true
       pspEnabled: false
-    
+
     # Security context
     containerSecurityContext:
       readOnlyRootFilesystem: true
@@ -105,7 +105,7 @@ spec:
       capabilities:
         drop:
           - ALL
-    
+
     # Volume mounts for log collection - ONLY pod logs
     defaultVolumes:
       - name: run
@@ -113,18 +113,18 @@ spec:
       - name: pods
         hostPath:
           path: /var/log/pods
-    
+
     defaultVolumeMounts:
       - name: run
         mountPath: /run/promtail
       - name: pods
         mountPath: /var/log/pods
         readOnly: true
-    
+
     # No extra volumes
     extraVolumes: []
     extraVolumeMounts: []
-    
+
     # Service Monitor for Prometheus scraping
     serviceMonitor:
       enabled: true

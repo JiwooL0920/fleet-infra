@@ -43,7 +43,7 @@ spec:
               resources:
                 requests:
                   storage: "${PROMETHEUS_STORAGE_SIZE}"
-        
+
         # Resource limits
         resources:
           limits:
@@ -52,11 +52,11 @@ spec:
           requests:
             memory: "${PROMETHEUS_MEMORY_REQUEST}"
             cpu: "${PROMETHEUS_CPU_REQUEST}"
-        
+
         # Retention policy
         retention: "${PROMETHEUS_RETENTION_TIME}"
         retentionSize: "${PROMETHEUS_RETENTION_SIZE}"
-    
+
     # Grafana configuration
     grafana:
       enabled: true
@@ -64,12 +64,12 @@ spec:
         existingSecret: "grafana-admin-credentials"
         userKey: "admin-user"
         passwordKey: "admin-password"
-      
+
       # Service configuration
       service:
         type: ClusterIP
         port: 80
-      
+
       # Resource limits
       resources:
         limits:
@@ -78,13 +78,13 @@ spec:
         requests:
           memory: "${GRAFANA_MEMORY_REQUEST}"
           cpu: "${GRAFANA_CPU_REQUEST}"
-      
+
       # Persistence
       persistence:
         enabled: true
         storageClassName: "standard"
         size: 5Gi
-      
+
       # Additional datasources
       additionalDataSources:
         - name: Loki
@@ -93,8 +93,8 @@ spec:
           url: http://monitoring-loki:3100
           jsonData:
             maxLines: 1000
-      
-    
+
+
     # AlertManager configuration
     alertmanager:
       alertmanagerSpec:
@@ -107,7 +107,7 @@ spec:
               resources:
                 requests:
                   storage: 2Gi
-        
+
         # Resource limits
         resources:
           limits:
@@ -116,11 +116,11 @@ spec:
           requests:
             memory: "${ALERTMANAGER_MEMORY_REQUEST}"
             cpu: "50m"
-    
+
     # Node Exporter configuration
     nodeExporter:
       enabled: true
-    
+
     # Kube State Metrics configuration
     kubeStateMetrics:
       enabled: true

@@ -12,7 +12,7 @@ Organizes different deployment stages with **fine-grained service dependencies**
   - Deploys 16 active services (21 total) with fine-grained dependencies
   - Fast parallel deployment for rapid development cycles
   - Cost-optimized resources (single replicas, reduced storage)
-- `prod/` - Production environment (tracks `main` branch)  
+- `prod/` - Production environment (tracks `main` branch)
   - Same service architecture with production configuration overrides
   - High availability (multiple replicas, extended retention)
   - Identical fine-grained dependency benefits in production

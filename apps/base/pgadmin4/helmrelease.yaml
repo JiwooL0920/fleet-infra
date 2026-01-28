@@ -41,19 +41,19 @@ spec:
       PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
       PGADMIN_CONFIG_LOGIN_BANNER: "PostgreSQL Administration - Fleet Infrastructure"
       PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: "20"
-    
+
     # Use external secret for credentials
     existingSecret: "pgadmin4-credentials"
     secretKeys:
       pgadminPasswordKey: password
       pgadminEmailKey: email
-    
+
     # Service configuration
     service:
       type: ClusterIP
       port: 80
       targetPort: 80
-    
+
     # Ingress configuration
     ingress:
       enabled: true
@@ -66,7 +66,7 @@ spec:
             - path: /
               pathType: Prefix
       tls: []
-    
+
     # Persistence
     persistentVolume:
       enabled: true
@@ -74,7 +74,7 @@ spec:
       storageClass: ""
       accessModes:
         - ReadWriteOnce
-    
+
     # Resource limits
     resources:
       limits:
@@ -83,7 +83,7 @@ spec:
       requests:
         cpu: "${PGADMIN4_CPU_REQUEST}"
         memory: "${PGADMIN4_MEMORY_REQUEST}"
-    
+
     # Security configuration
     securityContext:
       runAsUser: 5050
