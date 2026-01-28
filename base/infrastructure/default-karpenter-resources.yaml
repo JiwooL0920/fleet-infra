@@ -1,0 +1,80 @@
+---
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    expireAfter: Never
+  template:
+    metadata: {}
+    spec:
+      nodeClassRef:
+        name: default
+      requirements:
+      - key: karpenter.k8s.aws/instance-family
+        operator: In
+        values: ["c5", "m5"]
+      - key: karpenter.k8s.aws/instance-size
+        operator: NotIn
+        values: ["metal"]
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+        - on-demand
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+        - amd64
+      - key: kubernetes.io/os
+        operator: In
+        values:
+        - linux
+---
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: Bottlerocket
+  amiSelectorTerms:
+  - name: "bottlerocket-aws-k8s-${K8S_VERSION}-x86_64-*"
+    owner: "amazon"
+  blockDeviceMappings:
+  - deviceName: /dev/xvda
+    ebs:
+      encrypted: true
+      volumeSize: 20Gi
+      volumeType: gp3
+      deleteOnTermination: true
+  - deviceName: /dev/xvdb
+    ebs:
+      encrypted: true
+      volumeSize: 100Gi
+      volumeType: gp3
+      deleteOnTermination: true
+      snapshotID: "${BOTTLEROCKET_SNAPSHOT_ID_CPU}"
+  metadataOptions:
+    httpEndpoint: enabled
+    httpTokens: required
+    httpPutResponseHopLimit: 2
+  instanceProfile: "App_EKS_worker_nodes"
+  securityGroupSelectorTerms:
+  - tags:
+      Name: ${EKS_CLUSTER_TYPE}-${EKS_CLUSTER_REGION}-node
+  subnetSelectorTerms:
+  - tags:
+      Terraform_Resource: CE_Subnet
+  tags:
+    CE_Environment: ${CLUSTER_ENVIRONMENT}
+  userData: |
+    [settings.host-containers.admin]
+    enabled = false
+
+    [settings.host-containers.control]
+    enabled = true
+
+    [settings.pki.root-ca]
+    data = "<cert>"
+    trusted = true
