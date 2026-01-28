@@ -16,13 +16,6 @@ spec:
   dependsOn:
     - name: traefik  # Traefik must be running first
     - name: external-secrets-config  # Needs ClusterSecretStore for Basic Auth credentials
-    - name: kube-prometheus-stack  # IngressRoutes for Grafana, Prometheus, AlertManager
-    - name: n8n  # IngressRoute for N8N
-    - name: temporal  # IngressRoute for Temporal
-    - name: pgadmin4  # IngressRoute for pgAdmin4
-    - name: redisinsight  # IngressRoute for RedisInsight
-    - name: weave-gitops  # IngressRoute for Weave GitOps
-    - name: localstack  # IngressRoute for LocalStack
   postBuild:
     substituteFrom:
       - kind: ConfigMap

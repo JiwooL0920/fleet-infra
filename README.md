@@ -48,7 +48,7 @@ flux bootstrap github \
 Setup local DNS entries to access services via Traefik without port forwarding:
 
 ```bash
-./scripts/setup-local-dns.sh
+make setup-dns
 ```
 
 This adds `.local` domain entries to `/etc/hosts`, allowing you to access services at:

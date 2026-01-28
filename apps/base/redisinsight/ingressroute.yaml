@@ -13,4 +13,4 @@ spec:
       kind: Rule
       services:
         - name: redisinsight
-          port: 5540
+          port: 8080

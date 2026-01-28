@@ -12,5 +12,5 @@ spec:
     - match: Host(`temporal.local`)
       kind: Rule
       services:
-        - name: temporal-web
+        - name: temporal-server-web
           port: 8080
