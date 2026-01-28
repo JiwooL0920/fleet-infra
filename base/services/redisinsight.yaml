@@ -15,16 +15,16 @@ spec:
   prune: true
   wait: true
   dependsOn:
-    - name: redis  # Only needs Redis, not PostgreSQL
+    - name: redis-sentinel  # Only needs Redis Sentinel, not PostgreSQL
   postBuild:
     substituteFrom:
       - kind: ConfigMap
         name: cluster-vars
   healthChecks:
     - apiVersion: apps/v1
-      kind: Deployment
-      name: redis
-      namespace: redis
+      kind: StatefulSet
+      name: redis-sentinel-node
+      namespace: redis-sentinel
     - apiVersion: apps/v1
       kind: Deployment
       name: redisinsight
