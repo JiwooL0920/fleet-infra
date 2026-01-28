@@ -29,11 +29,11 @@ spec:
   values:
     fullnameOverride: redis-sentinel
     
-    # Image configuration - use latest stable tags
+    # Image configuration - use latest for simplicity
     image:
       registry: docker.io
       repository: bitnami/redis
-      tag: 7.4.1-debian-12-r5
+      tag: latest
 
     # Enable Redis Sentinel architecture for high availability
     architecture: replication
@@ -68,7 +68,7 @@ spec:
       image:
         registry: docker.io
         repository: bitnami/redis-sentinel
-        tag: 7.4.1-debian-12-r4
+        tag: latest
       masterSet: "mymaster"
       masterService:
         enabled: false  # Disabled to avoid kubectl sidecar dependency
