@@ -5,10 +5,13 @@ help:
 	@echo "Available targets:"
 	@echo "  port-forward         - Start port forwarding for all services"
 	@echo "  verify-startup       - Verify service startup order and health"
-	@echo "  init-aws-secrets     - Initialize AWS secrets in LocalStack"
+	@echo "  init-aws-secrets     - (Fallback) Manually initialize secrets in LocalStack"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
-	@echo "  post-colima-restart  - Complete post-restart setup (fix IP + init secrets)"
+	@echo "  post-colima-restart  - Complete post-restart setup (fix IP only)"
 	@echo "  help                - Show this help message"
+	@echo ""
+	@echo "NOTE: Secrets are now auto-initialized via LocalStack startup hooks."
+	@echo "      Use init-aws-secrets only if the automated initialization fails."
 
 # Port forward target
 port-forward:
@@ -20,11 +23,11 @@ verify-startup:
 	@echo "Verifying service startup order and health..."
 	@./scripts/verify-startup.sh
 
-# Initialize AWS secrets target (Legacy - now automated via Wave 1 job)
-# NOTE: This is now automated via secret-init-job in Wave 1 infrastructure-core
-# You only need to run this manually if the automated job fails
+# Initialize AWS secrets target (Fallback - normally handled by LocalStack init hooks)
+# Secrets are auto-created when LocalStack starts via enableStartupScripts.
+# Use this only if the automated initialization fails or for debugging.
 init-aws-secrets:
-	@echo "Initializing AWS secrets in LocalStack (Legacy mode)..."
+	@echo "Initializing AWS secrets in LocalStack (manual fallback)..."
 	@echo "Checking if LocalStack is accessible on port 4566..."
 	@if ! curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; then \
 		echo "Starting LocalStack port forwarding..."; \
@@ -53,8 +56,10 @@ fix-control-plane:
 	@./scripts/fix-control-plane-ip.sh
 
 # Complete post-restart setup (recommended after Colima restart)
-post-colima-restart: fix-control-plane init-aws-secrets
-	@echo "✅ Post-Colima restart setup completed!"
-	@echo "Your cluster should now be ready. You can run 'make verify-startup' to check."
+# Secrets are auto-initialized by LocalStack startup hooks - no manual init needed
+post-colima-restart: fix-control-plane
+	@echo "Post-Colima restart setup completed!"
+	@echo "Secrets will be auto-initialized when LocalStack starts (via init hooks + persistence)."
+	@echo "Run 'make verify-startup' to check service health."
 
 

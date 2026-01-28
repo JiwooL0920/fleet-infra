@@ -68,3 +68,97 @@ spec:
       timeoutSeconds: 5
       successThreshold: 1
       failureThreshold: 3
+
+    # Persist LocalStack state across pod restarts
+    persistence:
+      enabled: true
+      size: 1Gi
+
+    # Enable persistence mode in LocalStack runtime
+    extraEnvVars:
+      - name: PERSISTENCE
+        value: "1"
+
+    # Auto-initialize secrets when LocalStack becomes ready
+    # Scripts in ready.d/ run after all services are confirmed healthy
+    enableStartupScripts: true
+    startupScriptContent: |
+      #!/bin/bash
+      set -euo pipefail
+
+      echo "=== LocalStack Secret Initialization ==="
+
+      # Create secret only if it doesn't already exist (idempotent with persistence)
+      create_secret() {
+          local name="$1"
+          local value="$2"
+          local description="$3"
+
+          if awslocal secretsmanager get-secret-value \
+              --secret-id "$name" \
+              --region us-east-1 >/dev/null 2>&1; then
+              echo "[SKIP] Already exists: $name"
+              return 0
+          fi
+
+          echo "[CREATE] $name"
+          awslocal secretsmanager create-secret \
+              --name "$name" \
+              --description "$description" \
+              --secret-string "$value" \
+              --region us-east-1 >/dev/null
+      }
+
+      # Generate secure random credentials
+      gen_password() { head -c 32 /dev/urandom | base64 | tr -d '\n/+='; }
+
+      REDIS_PWD=$(gen_password)
+      PGADMIN_PWD=$(gen_password)
+      GRAFANA_PWD=$(gen_password)
+      TRAEFIK_PWD=$(gen_password)
+      XP_ACCESS_KEY="localstack-access-key-$(date +%s)"
+      XP_SECRET_KEY=$(gen_password)
+
+      # Crossplane AWS credentials
+      create_secret "crossplane/aws" \
+          "{\"access_key_id\":\"$XP_ACCESS_KEY\",\"secret_access_key\":\"$XP_SECRET_KEY\"}" \
+          "AWS credentials for Crossplane"
+
+      # Redis
+      create_secret "redis/credentials/password" \
+          "$REDIS_PWD" \
+          "Redis authentication password"
+
+      # pgAdmin4
+      create_secret "pgadmin4/credentials/email" \
+          "admin@example.com" \
+          "pgAdmin4 admin email"
+      create_secret "pgadmin4/credentials/password" \
+          "$PGADMIN_PWD" \
+          "pgAdmin4 admin password"
+
+      # Grafana
+      create_secret "grafana/admin/credentials/username" \
+          "admin" \
+          "Grafana admin username"
+      create_secret "grafana/admin/credentials/password" \
+          "$GRAFANA_PWD" \
+          "Grafana admin password"
+
+      # Traefik
+      create_secret "traefik/dashboard/credentials/username" \
+          "admin" \
+          "Traefik dashboard username"
+      create_secret "traefik/dashboard/credentials/password" \
+          "$TRAEFIK_PWD" \
+          "Traefik dashboard password"
+
+      # Traefik htpasswd (Basic Auth) - use printf to avoid Flux $${} escaping issues
+      SALT=$(head -c 8 /dev/urandom | base64 | tr -d '=+/' | head -c 8)
+      HASH=$(printf '%s%s' "$TRAEFIK_PWD" "$SALT" | md5sum | cut -d' ' -f1)
+      HTPASSWD=$(printf 'admin:$apr1$%s$%s' "$SALT" "$HASH")
+      create_secret "traefik/dashboard/credentials/htpasswd" \
+          "$HTPASSWD" \
+          "Traefik dashboard htpasswd"
+
+      echo "=== Secret initialization complete ==="

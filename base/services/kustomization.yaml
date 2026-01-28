@@ -10,8 +10,7 @@ resources:
   - localstack.yaml
   - cnpg-operator.yaml
   - external-secrets-operator.yaml
-  - secret-initializer.yaml  # Initialize secrets in LocalStack before ExternalSecrets sync
-  - external-secrets-config.yaml  # ClusterSecretStore and PushSecrets
+  - external-secrets-config.yaml  # ClusterSecretStore (secrets auto-created by LocalStack init hooks)
   - traefik-config.yaml  # Traefik middleware and configuration
   - metrics-server.yaml
   - kube-prometheus-stack.yaml
