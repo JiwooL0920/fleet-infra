@@ -39,7 +39,6 @@ flux bootstrap github \
 ### Run post-setup scripts
 
 - Fix controlplane IP (if needed): `make fix-control-plane`
-- Verify services are starting properly: `make verify-startup`
 
 **Note:** Secrets are now automatically initialized by LocalStack startup hooks. No manual initialization needed.
 
@@ -66,3 +65,46 @@ This adds `.local` domain entries to `/etc/hosts`, allowing you to access servic
 If you prefer traditional port forwarding instead of DNS setup:
 
 - `make port-forward`
+
+## Development Workflow
+
+### Pre-commit Hooks
+
+This repository uses pre-commit hooks to validate changes before committing. This ensures code quality and catches issues early.
+
+**Quick Start:**
+
+```bash
+# Install pre-commit
+brew install pre-commit
+
+# Install required tools
+brew install kubeconform kustomize yq yamllint shellcheck markdownlint-cli detect-secrets
+
+# Install hooks
+pre-commit install
+
+# Create secrets baseline
+detect-secrets scan > .secrets.baseline
+```
+
+**Run hooks manually:**
+
+```bash
+# Run on all files
+pre-commit run --all-files
+
+# Run on staged files only
+pre-commit run
+```
+
+**What gets checked:**
+- YAML syntax and formatting
+- Kubernetes/Flux manifest validation
+- Kustomize overlay validation
+- Flux API version compatibility
+- Secret detection (AWS keys, private keys, etc.)
+- Markdown and shell script linting
+- File formatting (trailing whitespace, EOF)
+
+For detailed documentation, see [Pre-commit Hooks Guide](docs/PRE_COMMIT_HOOKS.md).

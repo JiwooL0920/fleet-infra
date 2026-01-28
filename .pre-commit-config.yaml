@@ -1,0 +1,143 @@
+# Pre-commit hooks for FluxCD GitOps repository
+# See https://pre-commit.com for more information
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Prevent committing large files
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+        exclude: '\.sops\.ya?ml$'
+      
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      
+      # Check YAML syntax
+      - id: check-yaml
+        args: [--allow-multiple-documents, --unsafe]
+        exclude: 'templates/.*\.ya?ml$'
+      
+      # Check for merge conflicts
+      - id: check-merge-conflict
+      
+      # Check for broken symlinks
+      - id: check-symlinks
+      
+      # Prevent commits to main branch
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master]
+      
+      # Detect AWS credentials
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+      
+      # Detect private keys
+      - id: detect-private-key
+      
+      # Check case conflicts
+      - id: check-case-conflict
+
+  # YAML formatting and linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.0
+    hooks:
+      - id: yamllint
+        args:
+          - --config-data
+          - |
+            extends: default
+            rules:
+              line-length:
+                max: 120
+                level: warning
+              document-start: disable
+              truthy:
+                allowed-values: ['true', 'false', 'on', 'off']
+              comments:
+                min-spaces-from-content: 1
+        exclude: 'templates/.*\.ya?ml$'
+
+  # Validate Kubernetes manifests
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      # Forbid tabs in YAML files
+      - id: forbid-tabs
+        exclude_types: [makefile, binary]
+
+  # Flux-specific validation
+  - repo: local
+    hooks:
+      # Validate Flux manifests with kubeconform
+      - id: kubeconform
+        name: Validate Kubernetes/Flux manifests with kubeconform
+        entry: bash -c 'scripts/validate-manifests.sh'
+        language: system
+        files: '\.ya?ml$'
+        pass_filenames: false
+        
+      # Check for proper Flux CRD versions
+      - id: flux-check-versions
+        name: Check Flux API versions
+        entry: bash -c 'scripts/check-flux-versions.sh'
+        language: system
+        files: '(kustomization|helmrelease|gitrepository|helmrepository).*\.ya?ml$'
+        pass_filenames: false
+        
+      # Validate kustomization overlays
+      - id: kustomize-build
+        name: Validate Kustomize overlays
+        entry: bash -c 'scripts/validate-kustomize.sh'
+        language: system
+        files: 'kustomization\.ya?ml$'
+        pass_filenames: false
+
+  # Secret scanning (SOPS encrypted files should be excluded)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - --baseline
+          - .secrets.baseline
+          - --exclude-files
+          - '\.sops\.ya?ml$'
+          - --exclude-files
+          - 'secrets\.env$'
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.43.0
+    hooks:
+      - id: markdownlint
+        args: [--config, .markdownlint.yaml]
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+# Global settings
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+# Fail fast - stop on first failure
+fail_fast: false
+
+# Files to exclude from all hooks
+exclude: |
+  (?x)^(
+      .*\.sops\.ya?ml|
+      \.git/|
+      clusters/.*/flux-system/.*|
+      .*\.md\.backup|
+      \.secrets\.baseline
+  )$

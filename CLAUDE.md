@@ -4,25 +4,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **21 services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
+This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **16 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
+
+**Note**: 5 services are currently disabled (Crossplane suite, Loki, Promtail) and can be re-enabled as needed.
 
 ## Common Commands
 
 ### Local Development Setup
 ```bash
-# Start port forwarding for all services
-make port-forward
+# Setup local DNS entries for Traefik ingress (RECOMMENDED)
+make setup-dns
 
-# Verify service startup order and health
-make verify-startup
+# Alternative: Start port forwarding for all services
+make port-forward
 
 # Fix control plane IP after Colima restart
 make fix-control-plane
+
+# Complete post-restart setup
+make post-colima-restart
 ```
 
 **Note:** Secrets are automatically initialized by LocalStack startup hooks. No manual initialization needed.
 
-### Port Forwarding
+### Accessing Services
+
+**Option 1: Local DNS (Recommended)**
+```bash
+# One-time setup: Add .local domain entries to /etc/hosts
+make setup-dns
+
+# Access services via Traefik at .local domains:
+# http://traefik.local - Traefik Dashboard
+# http://grafana.local - Grafana
+# http://prometheus.local - Prometheus
+# http://alertmanager.local - AlertManager
+# http://n8n.local - N8N
+# http://temporal.local - Temporal UI
+# http://pgadmin.local - pgAdmin4
+# http://redis.local - RedisInsight
+# http://weave.local - Weave GitOps
+# http://localstack.local - LocalStack
+```
+
+**Option 2: Port Forwarding**
 ```bash
 # Start port forwarding for all services
 make port-forward
@@ -61,20 +86,20 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 
 ### Available Scripts
 ```bash
+# Setup local DNS entries for Traefik ingress
+./scripts/setup-local-dns.sh
+
 # Start port forwarding for all services
 ./scripts/port-forward.sh
-
-# Verify service startup order and health
-./scripts/verify-startup.sh
 
 # Fix control plane IP after Colima restart
 ./scripts/fix-control-plane-ip.sh
 
-# Test Crossplane installation
-./scripts/test-crossplane.sh
+# Validate Kustomize configurations
+./scripts/validate-kustomize.sh
 
-# Validate configuration
-./scripts/validate-config-simple.sh
+# Validate Kubernetes manifests
+./scripts/validate-manifests.sh
 ```
 
 ## Architecture and Structure
@@ -93,32 +118,26 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 - Different sync intervals: dev (1m), prod (10m)
 
 #### Fine-Grained Service Architecture
-**21 services** organized in precise dependency layers enabling maximum parallel deployment:
+**16 active services** organized in precise dependency layers enabling maximum parallel deployment:
 
-**Foundation Services (5 - start immediately, no dependencies):**
+**Foundation Services (7 - start immediately, no dependencies):**
 - **Traefik**: Ingress controller and load balancer
 - **LocalStack**: AWS services emulation for development
 - **CNPG Operator**: CloudNative PostgreSQL operator
 - **External Secrets Operator**: Kubernetes secrets management
-- **Metrics Server**: Cluster resource metrics
-
-**Infrastructure & Configuration (5 - depend on foundation):**
-- **Crossplane**: Infrastructure as Code platform
-- **Crossplane Config/Providers**: IaC compositions and providers
 - **External Secrets Config**: ClusterSecretStore configuration
 - **Traefik Config**: Ingress middleware and configuration
+- **Metrics Server**: Cluster resource metrics
 
-**Monitoring & Observability (4 - parallel deployment):**
+**Monitoring & Observability (2 - depend on foundation):**
 - **Kube-Prometheus-Stack**: Complete monitoring solution (Prometheus, Grafana, AlertManager)
 - **Weave GitOps**: GitOps dashboard and management
-- **Loki**: Log aggregation system
-- **Promtail**: Log shipping agent
 
 **Database Services (2 - depend on operators):**
-- **PostgreSQL Cluster**: 3-node HA cluster with automated backups
-- **Redis**: In-memory data store with authentication
+- **PostgreSQL Cluster**: HA cluster with automated backups (1 instance in dev, 3 in prod)
+- **Redis Sentinel**: In-memory data store with authentication and HA
 
-**Application Services (2 - depend on databases):**
+**Application Services (3 - depend on databases):**
 - **N8N**: Workflow automation engine with PostgreSQL backend
 - **Temporal**: Workflow orchestration platform with PostgreSQL backend
 
@@ -126,32 +145,36 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 - **pgAdmin4**: PostgreSQL web interface (depends only on PostgreSQL)
 - **RedisInsight**: Redis management interface (depends only on Redis)
 
-**Infrastructure Support:**
-- **LocalStack Init**: Secret initialization scripts
+**Disabled Services (available but not deployed):**
+- **Crossplane**: Infrastructure as Code platform (disabled)
+- **Crossplane Config/Providers**: IaC compositions and providers (disabled)
+- **Loki**: Log aggregation system (disabled)
+- **Promtail**: Log shipping agent (disabled)
 
 #### Database Architecture
 - PostgreSQL 16 with CloudNative PG operator
-- High availability with 3 instances
+- High availability: 1 instance in dev, 3 instances in production
 - Automated backups to LocalStack S3
-- Pre-configured databases: `appdb`, `temporal`, `temporal_visibility`
+- Pre-configured databases: `appdb`, `n8n`, `temporal`, `temporal_visibility`
 - Auto-generated secure credentials stored in Kubernetes secrets
+- Redis Sentinel HA with master-replica configuration
 
 ### Directory Structure Logic
 
 ```
 base/services/              # Fine-grained service kustomizations (DEPLOYED SYSTEM)
-├── kustomization.yaml      # All 21 services with dependency orchestration  
+├── kustomization.yaml      # 16 active services with dependency orchestration  
 ├── environment.env         # Base environment variables for ConfigMap generation
-├── traefik.yaml           # Foundation services (5 - no dependencies)
+├── traefik.yaml           # Foundation services (7 - no dependencies)
 ├── postgresql-cluster.yaml # Database services (2 - depend on operators)  
-├── n8n.yaml               # Application services (2 - depend on databases)
-└── [18 other services]    # Each with precise service-level dependencies
+├── n8n.yaml               # Application services (3 - depend on databases)
+└── [13 other services]    # Each with precise service-level dependencies
 
 apps/base/                  # Service Kubernetes manifests (referenced by above)
 ├── traefik/               # HelmRelease, namespace, kustomization per service
-├── postgresql-cluster/    # Individual service definitions
+├── postgresql-cluster/    # Individual service definitions (cloudnative-pg)
 ├── n8n/                   # Application configurations  
-└── [18 other services]/   # Complete Kubernetes resources per service
+└── [18 other services]/   # Complete Kubernetes resources per service (includes disabled)
 
 clusters/stages/            # Environment-specific configurations
 ├── dev/clusters/services-amer/  # Development environment
@@ -162,15 +185,18 @@ clusters/stages/            # Environment-specific configurations
 
 scripts/                   # Automation and utilities
 ├── port-forward.sh        # Service port forwarding
-├── verify-startup.sh      # Health verification
-└── init-*-secrets.sh      # LocalStack secret initialization
+├── setup-local-dns.sh     # Local DNS entries for Traefik ingress
+├── fix-control-plane-ip.sh # Fix control plane IP after Colima restart
+├── validate-kustomize.sh  # Validate Kustomize configurations
+└── validate-manifests.sh  # Validate Kubernetes manifests
 ```
 
 **Key Architecture Concepts:**
 - **`base/services/`**: Primary deployment system using fine-grained kustomizations
 - **`apps/base/`**: Individual service Kubernetes manifests referenced by fine-grained system
 - **Service Dependencies**: Each `.yaml` file in `base/services/` declares precise `dependsOn` relationships
-- **Parallel Deployment**: 15+ services can deploy concurrently when dependencies are satisfied
+- **Parallel Deployment**: 10+ services can deploy concurrently when dependencies are satisfied
+- **Local DNS**: Use Traefik ingress with .local domains instead of port forwarding (recommended)
 
 ### Branch and Environment Mapping
 - `develop` branch → Dev environment → Path: `./clusters/stages/dev/clusters/services-amer`
@@ -183,14 +209,40 @@ scripts/                   # Automation and utilities
 - Prometheus: 9090
 - Alertmanager: 9093
 - Node Exporter: 9100
+- Loki: 3100 (service disabled by default)
 - Weave GitOps: 9001
 - Temporal UI: 8090
 - pgAdmin4: 8080
 - PostgreSQL: 5432
-- Redis: 6379
+- Redis Sentinel: 6379
 - RedisInsight: 8001
 
+### Domain Mappings (when using local DNS - recommended)
+- Traefik Dashboard: http://traefik.local
+- Grafana: http://grafana.local
+- Prometheus: http://prometheus.local
+- AlertManager: http://alertmanager.local
+- N8N: http://n8n.local
+- Temporal UI: http://temporal.local
+- pgAdmin4: http://pgadmin.local
+- RedisInsight: http://redis.local
+- Weave GitOps: http://weave.local
+- LocalStack: http://localstack.local
+
 ## Key Development Workflows
+
+### Accessing Services Locally
+
+**Recommended: Traefik Ingress with Local DNS**
+1. One-time setup: `make setup-dns` (adds .local domains to /etc/hosts)
+2. Access all services via friendly domain names (e.g., http://grafana.local)
+3. Traefik handles routing automatically
+4. No need to remember port numbers
+
+**Alternative: Port Forwarding**
+1. Run `make port-forward` to start forwarding all service ports
+2. Access services at localhost with specific ports
+3. Requires keeping port-forward process running
 
 ### Making Infrastructure Changes
 1. Create feature branch from `develop`
@@ -236,10 +288,29 @@ spec:
         name: cluster-vars
 ```
 
+### Enabling/Disabling Services
+To disable a service, comment it out in `base/services/kustomization.yaml`:
+```yaml
+resources:
+  # - crossplane.yaml  # Disabled - uncomment to enable
+```
+
+To enable a disabled service, uncomment it in `base/services/kustomization.yaml` and commit the change. The service will deploy automatically after Flux reconciliation.
+
 ### Environment Configuration Differences
-- Use cluster-vars-patch.yaml files for environment-specific overrides
+- Use cluster-vars-patch.yaml and environment.env files for environment-specific overrides
 - Base configurations in `apps/base/` should be environment-agnostic
 - Environment-specific values in `clusters/stages/*/clusters/services-amer/`
+- **Development**: Cost-optimized (single replicas, reduced resources, shorter retention)
+  - PostgreSQL: 1 instance, 10Gi storage, 7-day backup retention
+  - Redis: 1 replica, 8Gi storage
+  - Prometheus: 20Gi storage, 7-day retention
+  - Traefik: 1 replica
+- **Production**: High availability (multiple replicas, full resources, extended retention)
+  - PostgreSQL: 3 instances, 20Gi storage, 30-day backup retention
+  - Redis: 2+ replicas, larger storage
+  - Prometheus: 50Gi storage, 30-day retention
+  - Traefik: 3 replicas
 
 ## Security and Operations
 
@@ -265,18 +336,23 @@ spec:
 - **Secrets are automatically initialized by LocalStack** - no manual initialization needed
 - Monitor Flux reconciliation status when making changes
 - PostgreSQL databases are created automatically via database configs in `apps/base/cloudnative-pg/databases/`
-- All applications use PostgreSQL from the shared 3-node cluster
+- All applications use PostgreSQL from the shared cluster (1 instance in dev, 3 in prod)
 - External Secrets Operator manages secret synchronization between external systems and Kubernetes
 - **Fine-grained deployment**: Services deploy via `base/services/kustomization.yaml` with precise dependencies
 - **Service dependencies**: Each service kustomization declares exact `dependsOn` relationships
-- **Parallel deployment**: 15+ services can deploy concurrently when dependencies are satisfied
+- **Parallel deployment**: 10+ services can deploy concurrently when dependencies are satisfied
+- **Local DNS recommended**: Use `make setup-dns` for better UX than port forwarding
+- **Disabled services**: Crossplane (IaC), Loki, and Promtail are available but not deployed by default
 
 ### After Colima Restart
-When restarting Colima, services now start in proper dependency order:
-1. Run `make verify-startup` to check service health
+When restarting Colima, services start automatically in proper dependency order:
+1. Run `make post-colima-restart` to fix control plane IP configuration
 2. Dependencies are automatically handled by Flux `dependsOn` clauses
 3. Extended timeouts (10-15m) allow for slower startups
 4. Health checks prevent services from starting before dependencies are ready
+5. Secrets are automatically restored from LocalStack persistence
+
+**Optional**: Run `make setup-dns` once to enable accessing services via .local domains instead of port forwarding.
 
 ## Environment-Specific Configuration
 
@@ -295,10 +371,11 @@ When restarting Colima, services now start in proper dependency order:
 ### Makefile Targets
 ```bash
 # Available make targets
-make help             # Show available targets
-make port-forward     # Start port forwarding for all services
-make verify-startup   # Verify service startup order and health
-make fix-control-plane # Fix control plane IP after Colima restart
+make help                # Show available targets
+make setup-dns           # Setup local DNS entries for Traefik ingress (recommended)
+make port-forward        # Start port forwarding for all services (alternative to DNS)
+make fix-control-plane   # Fix control plane IP after Colima restart
+make post-colima-restart # Complete post-restart setup (fix IP only)
 ```
 
 ## External Secrets Integration
@@ -312,8 +389,8 @@ The repository uses LocalStack to simulate AWS Secrets Manager for local develop
 - **ClusterSecretStore**: External Secrets Operator syncs from LocalStack to Kubernetes secrets
 
 ### Secrets Created Automatically
-- **Crossplane**: AWS credentials for infrastructure provisioning
-- **Redis**: Authentication password
+- **Crossplane**: AWS credentials for infrastructure provisioning (service disabled)
+- **Redis Sentinel**: Authentication password
 - **pgAdmin4**: Admin email and password
 - **Grafana**: Admin username and password
 - **Traefik**: Dashboard credentials (username, password, htpasswd)
@@ -347,4 +424,30 @@ kubectl annotate externalsecret <secret-name> -n <namespace> force-sync=$(date +
 
 # Check Flux reconciliation status
 flux get all --status-selector ready=false
+
+# Check HelmRelease status
+kubectl get helmrelease --all-namespaces
+
+# View service logs
+kubectl logs -n <namespace> <pod-name> -f
+
+# Check PostgreSQL cluster status
+kubectl get cluster -n cnpg-system
+kubectl describe cluster postgresql-cluster -n cnpg-system
+
+# Check Redis Sentinel status
+kubectl get pods -n redis-sentinel
+kubectl logs -n redis-sentinel <redis-pod-name>
 ```
+
+### Service Access Issues
+If services are not accessible via .local domains:
+1. Verify DNS entries: `cat /etc/hosts | grep "Kubernetes local services"`
+2. Re-run setup if needed: `make setup-dns`
+3. Check Traefik is running: `kubectl get pods -n traefik`
+4. Verify Traefik IngressRoutes: `kubectl get ingressroute --all-namespaces`
+
+If port forwarding fails:
+1. Check service exists: `kubectl get svc -n <namespace>`
+2. Kill processes on occupied ports: `lsof -ti:<port> | xargs kill -9`
+3. Restart port forwarding: `make port-forward`
