@@ -10,20 +10,20 @@ resources:
   - localstack.yaml
   - cnpg-operator.yaml
   - external-secrets-operator.yaml
-  - external-secrets-config.yaml  # ClusterSecretStore and PushSecrets
+  - external-secrets-config.yaml  # ClusterSecretStore (secrets auto-created by LocalStack init hooks)
   - traefik-config.yaml  # Traefik middleware and configuration
   - metrics-server.yaml
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml
   
-  # Infrastructure as Code services
-  - crossplane.yaml
-  - crossplane-providers.yaml
-  - crossplane-config.yaml
-  
-  # Logging stack services
-  - loki.yaml
-  - promtail.yaml
+  # Infrastructure as Code services (disabled)
+  # - crossplane.yaml
+  # - crossplane-providers.yaml
+  # - crossplane-config.yaml
+
+  # Logging stack services (disabled)
+  # - loki.yaml
+  # - promtail.yaml
   
   # Database services (depend on operators)
   - postgresql-cluster.yaml

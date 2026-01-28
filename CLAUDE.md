@@ -10,15 +10,17 @@ This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-
 
 ### Local Development Setup
 ```bash
-# Initialize AWS secrets in LocalStack (required for External Secrets)
-make init-aws-secrets
-
 # Start port forwarding for all services
 make port-forward
 
 # Verify service startup order and health
 make verify-startup
+
+# Fix control plane IP after Colima restart
+make fix-control-plane
 ```
+
+**Note:** Secrets are automatically initialized by LocalStack startup hooks. No manual initialization needed.
 
 ### Port Forwarding
 ```bash
@@ -59,15 +61,20 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 
 ### Available Scripts
 ```bash
-# Initialize secrets in LocalStack for pgAdmin4 and Redis
-./scripts/init-pgadmin-secrets.sh
-./scripts/init-redis-secret.sh
-
 # Start port forwarding for all services
 ./scripts/port-forward.sh
 
 # Verify service startup order and health
 ./scripts/verify-startup.sh
+
+# Fix control plane IP after Colima restart
+./scripts/fix-control-plane-ip.sh
+
+# Test Crossplane installation
+./scripts/test-crossplane.sh
+
+# Validate configuration
+./scripts/validate-config-simple.sh
 ```
 
 ## Architecture and Structure
@@ -255,7 +262,7 @@ spec:
 
 - Never commit database credentials or secrets to Git
 - Always test changes in development environment first
-- Use `make init-aws-secrets` before starting services locally
+- **Secrets are automatically initialized by LocalStack** - no manual initialization needed
 - Monitor Flux reconciliation status when making changes
 - PostgreSQL databases are created automatically via database configs in `apps/base/cloudnative-pg/databases/`
 - All applications use PostgreSQL from the shared 3-node cluster
@@ -288,27 +295,40 @@ When restarting Colima, services now start in proper dependency order:
 ### Makefile Targets
 ```bash
 # Available make targets
-make help           # Show available targets
-make port-forward   # Start port forwarding for all services
-make verify-startup # Verify service startup order and health
-make init-aws-secrets # Initialize AWS secrets in LocalStack
+make help             # Show available targets
+make port-forward     # Start port forwarding for all services
+make verify-startup   # Verify service startup order and health
+make fix-control-plane # Fix control plane IP after Colima restart
 ```
 
 ## External Secrets Integration
 
 ### LocalStack Secrets Manager
-The repository uses LocalStack to simulate AWS Secrets Manager for local development:
-- **pgAdmin4**: Requires `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD`
-- **Redis**: Requires `REDIS_PASSWORD` for authentication
-- **ClusterSecretStore**: Configured to sync secrets from LocalStack to Kubernetes secrets
+The repository uses LocalStack to simulate AWS Secrets Manager for local development with **automatic secret initialization**:
 
-### Secret Initialization Workflow
+- **Automatic Initialization**: Secrets are created via LocalStack startup hooks (`enableStartupScripts`)
+- **Persistence**: LocalStack persists secrets across pod restarts
+- **Idempotent**: Startup scripts check for existing secrets before creating new ones
+- **ClusterSecretStore**: External Secrets Operator syncs from LocalStack to Kubernetes secrets
+
+### Secrets Created Automatically
+- **Crossplane**: AWS credentials for infrastructure provisioning
+- **Redis**: Authentication password
+- **pgAdmin4**: Admin email and password
+- **Grafana**: Admin username and password
+- **Traefik**: Dashboard credentials (username, password, htpasswd)
+
+### Verifying Secrets
 ```bash
-# The init-aws-secrets target automatically:
-# 1. Starts LocalStack port forwarding if needed
-# 2. Waits for LocalStack health check
-# 3. Creates secrets in LocalStack Secrets Manager
-# 4. External Secrets Operator syncs them to Kubernetes
+# Port forward to LocalStack
+kubectl port-forward -n localstack svc/localstack 4566:4566
+
+# List all secrets
+aws --endpoint-url=http://localhost:4566 secretsmanager list-secrets --region us-east-1
+
+# Get a specific secret
+aws --endpoint-url=http://localhost:4566 secretsmanager get-secret-value \
+  --secret-id redis/credentials/password --region us-east-1
 ```
 
 ## Troubleshooting

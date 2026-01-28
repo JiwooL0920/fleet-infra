@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-vars
+  namespace: flux-system
+data:
+  CLUSTER_NAME: prod-cluster
+  ENVIRONMENT: production
+  # Real AWS configuration for production
+  AWS_ENDPOINT_URL: ""
+  SKIP_CREDENTIALS_VALIDATION: "false"
+  SKIP_REQUESTING_ACCOUNT_ID: "false"
+  S3_USE_PATH_STYLE: "false"

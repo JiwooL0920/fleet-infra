@@ -1,0 +1,16 @@
+---
+# Weave GitOps IngressRoute
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: weave-gitops
+  namespace: weave-gitops
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`weave.local`)
+      kind: Rule
+      services:
+        - name: weave-gitops
+          port: 9001

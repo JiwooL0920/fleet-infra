@@ -29,7 +29,7 @@ spec:
   chart:
     spec:
       chart: crossplane
-      version: "1.18.0" # Latest stable version
+      version: "${CROSSPLANE_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: crossplane
@@ -44,11 +44,11 @@ spec:
     # Resources for core controller
     resourcesCrossplane:
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: "${CROSSPLANE_CPU_LIMIT}"
+        memory: "${CROSSPLANE_MEMORY_LIMIT}"
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: "${CROSSPLANE_CPU_REQUEST}"
+        memory: "${CROSSPLANE_MEMORY_REQUEST}"
 
     # RBAC Manager configuration
     rbacManager:
@@ -57,11 +57,11 @@ spec:
       leaderElection: true
       resourcesRBACManager:
         limits:
-          cpu: 100m
-          memory: 512Mi
+          cpu: "${CROSSPLANE_CPU_LIMIT}"
+          memory: "${CROSSPLANE_MEMORY_LIMIT}"
         requests:
-          cpu: 100m
-          memory: 256Mi
+          cpu: "${CROSSPLANE_CPU_REQUEST}"
+          memory: "${CROSSPLANE_MEMORY_REQUEST}"
 
     # Enable webhooks for validation
     webhooks:

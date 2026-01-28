@@ -29,7 +29,7 @@ spec:
   chart:
     spec:
       chart: external-secrets
-      version: "0.18.2"
+      version: "${EXTERNAL_SECRETS_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: secrets-manager
@@ -37,6 +37,26 @@ spec:
       interval: 5m
   values:
     installCRDs: true
+    
+    # Resource limits for controller
+    resources:
+      limits:
+        cpu: "${EXTERNAL_SECRETS_CPU_LIMIT}"
+        memory: "${EXTERNAL_SECRETS_MEMORY_LIMIT}"
+      requests:
+        cpu: "${EXTERNAL_SECRETS_CPU_REQUEST}"
+        memory: "${EXTERNAL_SECRETS_MEMORY_REQUEST}"
+    
+    # Webhook configuration
+    webhook:
+      replicaCount: ${EXTERNAL_SECRETS_WEBHOOK_REPLICA_COUNT}
+      resources:
+        limits:
+          cpu: "${EXTERNAL_SECRETS_CPU_LIMIT}"
+          memory: "${EXTERNAL_SECRETS_MEMORY_LIMIT}"
+        requests:
+          cpu: "${EXTERNAL_SECRETS_CPU_REQUEST}"
+          memory: "${EXTERNAL_SECRETS_MEMORY_REQUEST}"
     extraEnv:
       - name: AWS_REGION
         value: us-east-1

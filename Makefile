@@ -1,14 +1,22 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart help
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns help
 
 # Default target
 help:
 	@echo "Available targets:"
-	@echo "  port-forward         - Start port forwarding for all services"
+	@echo "  setup-dns            - Setup local DNS entries for Traefik ingress (recommended)"
+	@echo "  port-forward         - Start port forwarding for all services (alternative to DNS)"
 	@echo "  verify-startup       - Verify service startup order and health"
-	@echo "  init-aws-secrets     - Initialize AWS secrets in LocalStack"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
-	@echo "  post-colima-restart  - Complete post-restart setup (fix IP + init secrets)"
-	@echo "  help                - Show this help message"
+	@echo "  post-colima-restart  - Complete post-restart setup (fix IP only)"
+	@echo "  help                 - Show this help message"
+	@echo ""
+	@echo "NOTE: Secrets are automatically initialized via LocalStack startup hooks."
+	@echo "      No manual secret initialization is required."
+
+# Setup local DNS for Traefik ingress
+setup-dns:
+	@echo "Setting up local DNS entries for Traefik ingress..."
+	@./scripts/setup-local-dns.sh
 
 # Port forward target
 port-forward:
@@ -20,31 +28,17 @@ verify-startup:
 	@echo "Verifying service startup order and health..."
 	@./scripts/verify-startup.sh
 
-# Initialize AWS secrets target (Legacy - now automated via Wave 1 job)
-# NOTE: This is now automated via secret-init-job in Wave 1 infrastructure-core
-# You only need to run this manually if the automated job fails
+# Initialize AWS secrets target (Deprecated - secrets are now auto-initialized)
+# Secrets are auto-created when LocalStack starts via enableStartupScripts.
+# This target is kept for backward compatibility but does nothing.
 init-aws-secrets:
-	@echo "Initializing AWS secrets in LocalStack (Legacy mode)..."
-	@echo "Checking if LocalStack is accessible on port 4566..."
-	@if ! curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; then \
-		echo "Starting LocalStack port forwarding..."; \
-		kubectl port-forward -n localstack svc/localstack 4566:4566 & \
-		echo "Waiting for LocalStack to be accessible..."; \
-		for i in {1..30}; do \
-			if curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; then \
-				echo "LocalStack is ready!"; \
-				break; \
-			fi; \
-			sleep 2; \
-		done; \
-	else \
-		echo "LocalStack is already accessible on port 4566"; \
-	fi
-	@./scripts/init-pgadmin-secrets.sh
-	@./scripts/init-redis-secret.sh
-	@./scripts/init-traefik-secrets.sh
-	@./scripts/init-grafana-secrets.sh
-	@./scripts/init-crossplane-secrets.sh
+	@echo "⚠️  This target is deprecated."
+	@echo "Secrets are now automatically initialized by LocalStack startup hooks."
+	@echo "No manual initialization is needed."
+	@echo ""
+	@echo "To verify secrets were created:"
+	@echo "  kubectl port-forward -n localstack svc/localstack 4566:4566"
+	@echo "  aws --endpoint-url=http://localhost:4566 secretsmanager list-secrets --region us-east-1"
 
 # Fix control plane IP after Colima restart
 fix-control-plane:
@@ -52,8 +46,10 @@ fix-control-plane:
 	@./scripts/fix-control-plane-ip.sh
 
 # Complete post-restart setup (recommended after Colima restart)
-post-colima-restart: fix-control-plane init-aws-secrets
-	@echo "✅ Post-Colima restart setup completed!"
-	@echo "Your cluster should now be ready. You can run 'make verify-startup' to check."
+# Secrets are auto-initialized by LocalStack startup hooks - no manual init needed
+post-colima-restart: fix-control-plane
+	@echo "Post-Colima restart setup completed!"
+	@echo "Secrets will be auto-initialized when LocalStack starts (via init hooks + persistence)."
+	@echo "Run 'make verify-startup' to check service health."
 
 

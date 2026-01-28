@@ -5,3 +5,7 @@ metadata:
   namespace: flux-system
 data:
   CLUSTER_NAME: services-amer-dev
+  
+  # High Availability Override for Development Testing
+  # Override base config to test anti-affinity with minimum HA setup
+  TRAEFIK_REPLICA_COUNT: "2"

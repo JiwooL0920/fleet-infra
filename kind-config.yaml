@@ -3,6 +3,14 @@ apiVersion: kind.x-k8s.io/v1alpha4
 name: dev-services-amer
 nodes:
   - role: control-plane
+    # Port mappings for Traefik ingress
+    extraPortMappings:
+      - containerPort: 30080  # HTTP
+        hostPort: 80
+        protocol: TCP
+      - containerPort: 30443  # HTTPS
+        hostPort: 443
+        protocol: TCP
   - role: worker
   - role: worker
 

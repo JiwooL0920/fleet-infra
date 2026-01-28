@@ -29,7 +29,7 @@ spec:
   chart:
     spec:
       chart: cloudnative-pg
-      version: "0.24.0"
+      version: "${CNPG_OPERATOR_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: cloudnative-pg
@@ -48,11 +48,11 @@ spec:
     # Resources for operator
     resources:
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: "${CNPG_OPERATOR_CPU_LIMIT}"
+        memory: "${CNPG_OPERATOR_MEMORY_LIMIT}"
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: "${CNPG_OPERATOR_CPU_REQUEST}"
+        memory: "${CNPG_OPERATOR_MEMORY_REQUEST}"
     
     # Monitoring
     monitoring:

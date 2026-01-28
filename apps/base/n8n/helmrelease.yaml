@@ -20,7 +20,7 @@ spec:
   chart:
     spec:
       chart: ./charts/n8n
-      version: "1.0.10"
+      version: "${N8N_CHART_VERSION}"
       sourceRef:
         kind: GitRepository
         name: n8n-helm-chart
@@ -49,6 +49,8 @@ spec:
       
       # Database configuration from secrets
       extraEnv:
+        N8N_PORT:
+          value: "5678"
         DB_POSTGRESDB_HOST:
           valueFrom:
             secretKeyRef:
@@ -98,11 +100,11 @@ spec:
     # Resource limits
     resources:
       limits:
-        memory: "512Mi"
-        cpu: "500m"
+        memory: "${N8N_MEMORY_LIMIT}"
+        cpu: "${N8N_CPU_LIMIT}"
       requests:
-        memory: "256Mi"
-        cpu: "250m"
+        memory: "${N8N_MEMORY_REQUEST}"
+        cpu: "${N8N_CPU_REQUEST}"
 
     # Health checks
     probes:

@@ -7,7 +7,7 @@ metadata:
 spec:
   interval: 10m
   retryInterval: 1m
-  timeout: 5m  # Database cluster setup time
+  timeout: 15m  # Database cluster initialization can take 10-15 minutes (DB creation, init scripts, replica sync)
   sourceRef:
     kind: GitRepository
     name: flux-system

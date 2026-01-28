@@ -1,68 +1,68 @@
-# Fleet Infrastructure - Fine-Grained GitOps Platform
+GitOps infrastructure platform to manage 10+ services across multi-environment Kubernetes clusters with automated deployment, monitoring, and high availability. Used to host personal projects on local machine and quick POCs
 
-Modern GitOps infrastructure platform managing **21 services** across multi-environment Kubernetes clusters with **fine-grained dependency management**, automated deployment, monitoring, and high availability.
+# How to set up
 
-## 🚀 Architecture Highlights
+### Start Docker Engine
 
-- **Fine-Grained Dependencies**: Service-level dependency management for 65-75% faster deployments
-- **Parallel Deployment**: 15+ services deploy concurrently when dependencies are met
-- **Zero Legacy Code**: Clean architecture with no wave-based dependencies
-- **8-12 minute deployments** (down from 30-45 minutes)
-- **21 services** running with precise dependency chains
+- Adjust configuration for colima: `colima edit` or `vi ~/.colima/default/colima.yaml`
+- **Recommended resources:** 8 CPU, 16GB RAM, 80GB disk (6 CPU, 12GB RAM, 60GB disk minimum)
+- Run `colima start`
+- Check status with `colima list`
 
-## 📊 Service Stack
+### Create Kind Cluster
 
-### Foundation Layer (Start Immediately)
-- **Traefik**: Cloud-native reverse proxy and load balancer
-- **LocalStack**: AWS services emulation for local development
-- **CNPG Operator**: CloudNative PostgreSQL operator
-- **External Secrets Operator**: Kubernetes secrets management
-- **Metrics Server**: Cluster resource metrics
+- Run `kind create cluster --config kind-config.yaml`
+- Verify creation with `kind get clusters` and `kubectl get nodes`
 
-### Infrastructure & Monitoring
-- **Kube-Prometheus-Stack**: Complete monitoring solution (Prometheus, Grafana, AlertManager)
-- **Weave GitOps**: GitOps dashboard and management interface
-- **Crossplane**: Infrastructure as Code platform
-- **External Secrets Config**: Secret store configuration
-- **Traefik Config**: Ingress configuration and middleware
+### Bootstrap Flux on the Cluster
 
-### Database & Storage
-- **PostgreSQL Cluster**: 3-node HA PostgreSQL cluster via CloudNative PG
-- **Redis**: High-availability Redis with authentication
-
-### Logging Stack
-- **Loki**: Log aggregation and centralized logging
-- **Promtail**: Log shipping agent
-
-### Applications
-- **N8N**: Workflow automation platform
-- **Temporal**: Distributed workflow orchestration engine
-
-### Database Administration
-- **pgAdmin4**: PostgreSQL web administration
-- **RedisInsight**: Redis management interface
-
-## 🏗️ Architecture
-
-```
-Foundation (5 services) → Configuration (2 services) → Infrastructure (6 services)
-                                                     ↓
-Database Layer (2 services) → Applications (2 services) → Database UIs (2 services)
-                            ↓
-                 Logging Stack (2 services)
-```
-
-## 🛠️ Quick Start
+- Install flux controllers on your cluster
+- Connect Flux to your GitHub repo
+- Track the `develop` branch
+- Deploy everything in `clusters/stages/dev/clusters/services-amer`
 
 ```bash
-# Initialize and start all services
-make init-aws-secrets
-make port-forward
-make verify-startup
-
-# Monitor deployment
-flux get kustomizations
-kubectl get pods --all-namespaces
+flux bootstrap github \
+    --owner=<your-github-username> \
+    --repository=fleet-infra \
+    --branch=develop \
+    --path=./clusters/stages/dev/clusters/services-amer \
+    --personal
 ```
 
-Built with modern DevOps practices and GitOps excellence 🌟
+### Wait for Flux to Deploy Everything
+
+- `flux get all --watch`
+- `flux get kustomizations`
+- `flux get helmreleases -A`
+
+### Run post-setup scripts
+
+- Fix controlplane IP (if needed): `make fix-control-plane`
+- Verify services are starting properly: `make verify-startup`
+
+**Note:** Secrets are now automatically initialized by LocalStack startup hooks. No manual initialization needed.
+
+### Setup Local DNS for Traefik Ingress (Recommended)
+
+Setup local DNS entries to access services via Traefik without port forwarding:
+
+```bash
+make setup-dns
+```
+
+This adds `.local` domain entries to `/etc/hosts`, allowing you to access services at:
+- `http://grafana.local` - Grafana
+- `http://prometheus.local` - Prometheus
+- `http://n8n.local` - N8N
+- `http://temporal.local` - Temporal UI
+- `http://traefik.local` - Traefik Dashboard
+- And more...
+
+**Note:** Traefik must be configured with NodePort for this to work (already configured in dev environment).
+
+### Alternative: Start Port Forwarding
+
+If you prefer traditional port forwarding instead of DNS setup:
+
+- `make port-forward`

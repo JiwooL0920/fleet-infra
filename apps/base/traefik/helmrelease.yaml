@@ -21,7 +21,7 @@ spec:
   chart:
     spec:
       chart: traefik
-      version: 25.0.0
+      version: "${TRAEFIK_CHART_VERSION}"
       sourceRef:
         kind: HelmRepository
         name: traefik
@@ -29,38 +29,55 @@ spec:
       interval: 1m
   values:
     deployment:
-      replicas: 1
+      replicas: ${TRAEFIK_REPLICA_COUNT}
+    
+    # High Availability Configuration - Pod Anti-Affinity
+    # Implements hard anti-affinity to prevent single point of failure
+    # Based on Kubernetes official documentation: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+              app.kubernetes.io/instance: traefik
+          topologyKey: kubernetes.io/hostname
     
     resources:
       requests:
-        cpu: "100m"
-        memory: "128Mi"
+        cpu: "${TRAEFIK_CPU_REQUEST}"
+        memory: "${TRAEFIK_MEMORY_REQUEST}"
       limits:
-        cpu: "200m"
-        memory: "256Mi"
+        cpu: "${TRAEFIK_CPU_LIMIT}"
+        memory: "${TRAEFIK_MEMORY_LIMIT}"
     
     # Enable secure dashboard with authentication
     api:
       dashboard: true
       insecure: false
     
-    # Use ClusterIP service
+    # Use NodePort for local development (Kind cluster)
     service:
-      type: ClusterIP
+      type: NodePort
     
-    # Configure ports
+    # Configure ports - updated for Traefik v32.1.1 schema
     ports:
       web:
         port: 8000
-        expose: true
+        expose:
+          default: true
         exposedPort: 80
+        nodePort: 30080
       websecure:
         port: 8443
-        expose: true
+        expose:
+          default: true
         exposedPort: 443
+        nodePort: 30443
       traefik:
         port: 9000
-        expose: true
+        expose:
+          default: true
         exposedPort: 9000
     
     # Configure providers

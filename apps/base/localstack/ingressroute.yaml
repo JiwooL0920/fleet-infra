@@ -1,0 +1,16 @@
+---
+# LocalStack IngressRoute (for debugging)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: localstack
+  namespace: localstack
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`localstack.local`)
+      kind: Rule
+      services:
+        - name: localstack
+          port: 4566
