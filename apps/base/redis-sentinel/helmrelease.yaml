@@ -28,6 +28,12 @@ spec:
         namespace: flux-system
   values:
     fullnameOverride: redis-sentinel
+    
+    # Image configuration - use latest stable tags
+    image:
+      registry: docker.io
+      repository: bitnami/redis
+      tag: 7.4.1-debian-12-r5
 
     # Enable Redis Sentinel architecture for high availability
     architecture: replication
@@ -52,16 +58,20 @@ spec:
       maxmemory ${REDIS_MAXMEMORY}
       maxmemory-policy allkeys-lru
 
-    # RBAC configuration (required for master service tracking)
+    # RBAC configuration
     rbac:
-      create: true
+      create: false  # Not needed without master service tracking
 
     # Redis Sentinel configuration
     sentinel:
       enabled: true
+      image:
+        registry: docker.io
+        repository: bitnami/redis-sentinel
+        tag: 7.4.1-debian-12-r4
       masterSet: "mymaster"
       masterService:
-        enabled: true
+        enabled: false  # Disabled to avoid kubectl sidecar dependency
       downAfterMilliseconds: ${REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS}
       failoverTimeout: ${REDIS_SENTINEL_FAILOVER_TIMEOUT}
       parallelSyncs: ${REDIS_SENTINEL_PARALLEL_SYNCS}
@@ -92,7 +102,7 @@ spec:
       replicaCount: ${REDIS_REPLICA_COUNT}
       # Use soft anti-affinity for local dev (hard requires multiple nodes)
       podAntiAffinityPreset: soft
-      automountServiceAccountToken: true # required for master service tracking
+      automountServiceAccountToken: false  # Not needed without master service
       persistence:
         enabled: true
         size: ${REDIS_STORAGE_SIZE}
@@ -110,3 +120,4 @@ spec:
       serviceMonitor:
         enabled: ${REDIS_METRICS_ENABLED}
         interval: 30s
+

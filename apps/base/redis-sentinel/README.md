@@ -39,29 +39,56 @@ Redis with Sentinel architecture providing high availability, automatic failover
 - **Resources**: Separate resource limits for master, replicas, and sentinels
 
 ### Service Endpoints
-- `redis-sentinel-master`: Always points to current master (recommended for writes)
-- `redis-sentinel-replicas`: Load-balanced read replicas
-- `redis-sentinel`: Sentinel service for monitoring
+- `redis-sentinel-headless`: Headless service for Sentinel discovery
+- `redis-sentinel`: Sentinel service for monitoring (port 26379)
+
+Applications should use Sentinel-aware Redis clients that automatically discover the master through Sentinel.
 
 ## Connecting to Redis
 
-```bash
-# Connect to master (for writes)
-redis-cli -h redis-sentinel-master.redis-sentinel.svc.cluster.local -p 6379
+### Using Sentinel-Aware Clients (Recommended)
 
-# Connect to replicas (for reads)
-redis-cli -h redis-sentinel-replicas.redis-sentinel.svc.cluster.local -p 6379
+Applications should use Redis clients with Sentinel support that automatically discover the master:
+
+```bash
+# Sentinel endpoints
+redis-sentinel.redis-sentinel.svc.cluster.local:26379
+
+# Master set name
+mymaster
+```
+
+### Direct Connection (for testing)
+
+```bash
+# Find current master via Sentinel
+redis-cli -h redis-sentinel.redis-sentinel.svc.cluster.local -p 26379 sentinel get-master-addr-by-name mymaster
+
+# Connect directly to a node (use headless service)
+redis-cli -h redis-sentinel-node-0.redis-sentinel-headless.redis-sentinel.svc.cluster.local -p 6379
 
 # Check replication status
-redis-cli -h redis-sentinel-master.redis-sentinel.svc.cluster.local -p 6379 info replication
+redis-cli -h redis-sentinel-node-0.redis-sentinel-headless.redis-sentinel.svc.cluster.local -p 6379 info replication
 ```
 
 ## Port Forwarding
 
 ```bash
-# Forward master port
-kubectl port-forward -n redis-sentinel svc/redis-sentinel-master 6379:6379
+# Forward to first Redis node
+kubectl port-forward -n redis-sentinel redis-sentinel-node-0 6379:6379
 
 # Forward sentinel port
 kubectl port-forward -n redis-sentinel svc/redis-sentinel 26379:26379
+
+# Query Sentinel for master
+redis-cli -p 26379 sentinel get-master-addr-by-name mymaster
 ```
+
+## Authentication
+
+Redis Sentinel is configured **without authentication** for simplicity. This is suitable for:
+- Local development environments
+- Internal/private networks
+- Testing and prototyping
+
+For production deployments requiring authentication, enable `auth.enabled: true` and configure passwords via External Secrets.
