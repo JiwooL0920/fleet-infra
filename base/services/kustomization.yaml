@@ -27,7 +27,7 @@ resources:
   
   # Database services (depend on operators)
   - postgresql-cluster.yaml
-  - redis.yaml
+  - redis-sentinel.yaml
   
   # Application services (depend on databases)  
   - n8n.yaml

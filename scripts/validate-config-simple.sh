@@ -80,14 +80,16 @@ done
 # Step 3: Validate HelmRelease migrations
 print_status "Step 3: Validating HelmRelease migrations"
 
-# Redis validation
-REDIS_HELMRELEASE="apps/base/redis/helmrelease.yaml"
+# Redis Sentinel validation
+REDIS_HELMRELEASE="apps/base/redis-sentinel/helmrelease.yaml"
 if [[ -f "$REDIS_HELMRELEASE" ]]; then
     REDIS_VARIABLES=(
         '\${REDIS_CHART_VERSION}'
         '\${REDIS_MASTER_MEMORY_LIMIT}'
         '\${REDIS_REPLICA_COUNT}'
         '\${REDIS_STORAGE_SIZE}'
+        '\${REDIS_MAXMEMORY}'
+        '\${REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS}'
     )
     
     REDIS_VARIABLES_FOUND=0
@@ -98,13 +100,13 @@ if [[ -f "$REDIS_HELMRELEASE" ]]; then
     done
     
     if [[ $REDIS_VARIABLES_FOUND -gt 0 ]]; then
-        print_success "✓ Redis HelmRelease contains $REDIS_VARIABLES_FOUND variable substitutions"
+        print_success "✓ Redis Sentinel HelmRelease contains $REDIS_VARIABLES_FOUND variable substitutions"
     else
-        print_error "✗ Redis HelmRelease contains no variable substitutions"
+        print_error "✗ Redis Sentinel HelmRelease contains no variable substitutions"
         exit 1
     fi
 else
-    print_error "✗ Redis HelmRelease not found: $REDIS_HELMRELEASE"
+    print_error "✗ Redis Sentinel HelmRelease not found: $REDIS_HELMRELEASE"
     exit 1
 fi
 
@@ -228,7 +230,7 @@ echo "VALIDATION SUMMARY"
 echo "=================================="
 echo "Configuration files: ✓ Valid"
 echo "Environment files: ✓ Valid syntax"  
-echo "HelmRelease migrations: ✓ Redis and Loki variables implemented"
+echo "HelmRelease migrations: ✓ Redis Sentinel and Loki variables implemented"
 echo "Variable definitions: ✓ Complete"
 echo "Environment overrides: ✓ Configured"
 echo "Kustomization structure: ✓ Valid"
