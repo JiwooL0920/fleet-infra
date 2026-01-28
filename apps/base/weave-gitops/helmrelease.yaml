@@ -1,14 +1,12 @@
-# Weave GitOps Git Repository
+# Weave GitOps Helm Repository
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: GitRepository
+kind: HelmRepository
 metadata:
   name: weave-gitops
   namespace: flux-system
 spec:
-  interval: 1m
-  url: https://github.com/weaveworks/weave-gitops
-  ref:
-    branch: main
+  interval: 1h
+  url: https://helm.gitops.weave.works
 ---
 # Weave GitOps HelmRelease
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -22,10 +20,10 @@ spec:
   targetNamespace: weave-gitops
   chart:
     spec:
-      chart: charts/gitops-server
+      chart: weave-gitops
       version: "${WEAVE_GITOPS_CHART_VERSION}"
       sourceRef:
-        kind: GitRepository
+        kind: HelmRepository
         name: weave-gitops
         namespace: flux-system
       interval: 1m
