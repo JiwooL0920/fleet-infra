@@ -23,4 +23,4 @@ spec:
     - apiVersion: apps/v1
       kind: Deployment
       name: ww-gitops-weave-gitops
-      namespace: flux-system
+      namespace: weave-gitops
