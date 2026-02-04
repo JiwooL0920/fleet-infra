@@ -51,9 +51,9 @@ spec:
         memory: "${SCYLLA_OPERATOR_MEMORY_REQUEST}"
 
     # Webhook configuration
-    # Disabled for Kind cluster (cert-manager not required)
+    # Using self-signed certificate via cert-manager
     webhook:
-      createSelfSignedCertificate: false
+      createSelfSignedCertificate: true
 
     # Logging configuration
     logLevel: 2
