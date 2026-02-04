@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **16 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
+This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **19 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
 
 **Note**: 5 services are currently disabled (Crossplane suite, Loki, Promtail) and can be re-enabled as needed.
 
@@ -45,6 +45,7 @@ make setup-dns
 # http://redis.local - RedisInsight
 # http://weave.local - Weave GitOps
 # http://localstack.local - LocalStack
+# http://scylla.local - ScyllaDB Alternator (DynamoDB API)
 ```
 
 **Option 2: Port Forwarding**
@@ -82,6 +83,15 @@ kubectl describe cluster postgresql-cluster -n cnpg-system
 # Get database credentials
 kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.username}' | base64 -d
 kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.password}' | base64 -d
+
+# Check ScyllaDB cluster
+kubectl get scyllacluster -n scylla
+kubectl get pods -n scylla
+kubectl get pods -n scylla-operator
+kubectl get pods -n scylla-manager
+
+# Test ScyllaDB Alternator endpoint (DynamoDB API)
+curl http://scylla.local/
 ```
 
 ### Available Scripts
@@ -118,12 +128,13 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 - Different sync intervals: dev (1m), prod (10m)
 
 #### Fine-Grained Service Architecture
-**16 active services** organized in precise dependency layers enabling maximum parallel deployment:
+**19 active services** organized in precise dependency layers enabling maximum parallel deployment:
 
-**Foundation Services (7 - start immediately, no dependencies):**
+**Foundation Services (8 - start immediately, no dependencies):**
 - **Traefik**: Ingress controller and load balancer
 - **LocalStack**: AWS services emulation for development
 - **CNPG Operator**: CloudNative PostgreSQL operator
+- **Scylla Operator**: ScyllaDB Kubernetes operator for managing clusters
 - **External Secrets Operator**: Kubernetes secrets management
 - **External Secrets Config**: ClusterSecretStore configuration
 - **Traefik Config**: Ingress middleware and configuration
@@ -133,15 +144,19 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 - **Kube-Prometheus-Stack**: Complete monitoring solution (Prometheus, Grafana, AlertManager)
 - **Weave GitOps**: GitOps dashboard and management
 
-**Database Services (2 - depend on operators):**
+**Database Management Services (1 - depend on operators):**
+- **Scylla Manager**: ScyllaDB backup and repair automation
+
+**Database Services (3 - depend on operators):**
 - **PostgreSQL Cluster**: HA cluster with automated backups (1 instance in dev, 3 in prod)
 - **Redis Sentinel**: In-memory data store with authentication and HA
+- **ScyllaDB Cluster**: NoSQL database with Alternator (DynamoDB API) for chat history
 
 **Application Services (3 - depend on databases):**
 - **N8N**: Workflow automation engine with PostgreSQL backend
 - **Temporal**: Workflow orchestration platform with PostgreSQL backend
 
-**Database Management (2 - precise dependencies):**
+**Database Management UIs (2 - precise dependencies):**
 - **pgAdmin4**: PostgreSQL web interface (depends only on PostgreSQL)
 - **RedisInsight**: Redis management interface (depends only on Redis)
 
@@ -158,20 +173,30 @@ kubectl get secret postgresql-cluster-app -n cnpg-system -o jsonpath='{.data.pas
 - Pre-configured databases: `appdb`, `n8n`, `temporal`, `temporal_visibility`
 - Auto-generated secure credentials stored in Kubernetes secrets
 - Redis Sentinel HA with master-replica configuration
+- ScyllaDB with Alternator (DynamoDB-compatible API) for chat history and session storage
+  - Discord-proven at trillion+ message scale
+  - Native TTL support for automatic data retention
+  - Scylla Manager for backup and repair automation
 
 ### Directory Structure Logic
 
 ```
 base/services/              # Fine-grained service kustomizations (DEPLOYED SYSTEM)
-├── kustomization.yaml      # 16 active services with dependency orchestration
+├── kustomization.yaml      # 19 active services with dependency orchestration
 ├── environment.env         # Base environment variables for ConfigMap generation
-├── traefik.yaml           # Foundation services (7 - no dependencies)
-├── postgresql-cluster.yaml # Database services (2 - depend on operators)
+├── traefik.yaml           # Foundation services (8 - no dependencies)
+├── scylla-operator.yaml   # ScyllaDB operator (foundation)
+├── scylla-manager.yaml    # ScyllaDB backup/repair (depends on operator)
+├── scylla-cluster.yaml    # ScyllaDB with Alternator (depends on operator + manager)
+├── postgresql-cluster.yaml # Database services (3 - depend on operators)
 ├── n8n.yaml               # Application services (3 - depend on databases)
 └── [13 other services]    # Each with precise service-level dependencies
 
 apps/base/                  # Service Kubernetes manifests (referenced by above)
 ├── traefik/               # HelmRelease, namespace, kustomization per service
+├── scylla-operator/       # ScyllaDB Kubernetes operator
+├── scylla-manager/        # ScyllaDB backup and repair automation
+├── scylla/                # ScyllaDB cluster with Alternator
 ├── postgresql-cluster/    # Individual service definitions (cloudnative-pg)
 ├── n8n/                   # Application configurations
 └── [18 other services]/   # Complete Kubernetes resources per service (includes disabled)
@@ -228,6 +253,7 @@ scripts/                   # Automation and utilities
 - RedisInsight: http://redis.local
 - Weave GitOps: http://weave.local
 - LocalStack: http://localstack.local
+- ScyllaDB Alternator: http://scylla.local
 
 ## Key Development Workflows
 
@@ -438,6 +464,11 @@ kubectl describe cluster postgresql-cluster -n cnpg-system
 # Check Redis Sentinel status
 kubectl get pods -n redis-sentinel
 kubectl logs -n redis-sentinel <redis-pod-name>
+
+# Check ScyllaDB status
+kubectl get scyllacluster -n scylla
+kubectl describe scyllacluster scylla -n scylla
+kubectl logs -n scylla <scylla-pod-name>
 ```
 
 ### Service Access Issues

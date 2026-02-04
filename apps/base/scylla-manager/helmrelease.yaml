@@ -1,0 +1,82 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: scylla-manager
+  namespace: flux-system
+spec:
+  interval: 5m
+  releaseName: scylla-manager
+  targetNamespace: scylla-manager
+  install:
+    createNamespace: true
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: scylla-manager
+      version: "${SCYLLA_MANAGER_CHART_VERSION}"
+      sourceRef:
+        kind: HelmRepository
+        name: scylla
+        namespace: flux-system
+      interval: 5m
+  values:
+    # Scylla Manager image configuration
+    image:
+      repository: scylladb
+      pullPolicy: IfNotPresent
+
+    # Scylla Manager resources
+    resources:
+      limits:
+        cpu: "${SCYLLA_MANAGER_CPU_LIMIT}"
+        memory: "${SCYLLA_MANAGER_MEMORY_LIMIT}"
+      requests:
+        cpu: "${SCYLLA_MANAGER_CPU_REQUEST}"
+        memory: "${SCYLLA_MANAGER_MEMORY_REQUEST}"
+
+    # Scylla Manager Controller configuration
+    controllerImage:
+      repository: scylladb
+      pullPolicy: IfNotPresent
+
+    controllerResources:
+      limits:
+        cpu: "${SCYLLA_MANAGER_CPU_LIMIT}"
+        memory: "${SCYLLA_MANAGER_MEMORY_LIMIT}"
+      requests:
+        cpu: "${SCYLLA_MANAGER_CPU_REQUEST}"
+        memory: "${SCYLLA_MANAGER_MEMORY_REQUEST}"
+
+    # Internal Scylla cluster for Manager's backend storage
+    # Using minimal configuration for development
+    scylla:
+      developerMode: true
+      datacenter: manager-dc
+      racks:
+        - name: manager-rack
+          members: 1
+          storage:
+            capacity: 5Gi
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 512Mi
+
+    # Service account
+    serviceAccount:
+      create: true
+
+    # Node selector and tolerations if needed
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}

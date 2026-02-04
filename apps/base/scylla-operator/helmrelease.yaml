@@ -1,0 +1,72 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: scylla
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://scylla-operator-charts.storage.googleapis.com/stable
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: scylla-operator
+  namespace: flux-system
+spec:
+  interval: 5m
+  releaseName: scylla-operator
+  targetNamespace: scylla-operator
+  install:
+    createNamespace: true
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: scylla-operator
+      version: "${SCYLLA_OPERATOR_CHART_VERSION}"
+      sourceRef:
+        kind: HelmRepository
+        name: scylla
+        namespace: flux-system
+      interval: 5m
+  values:
+    # Image configuration
+    image:
+      repository: scylladb
+      pullPolicy: IfNotPresent
+
+    # Resources for operator
+    resources:
+      limits:
+        cpu: "${SCYLLA_OPERATOR_CPU_LIMIT}"
+        memory: "${SCYLLA_OPERATOR_MEMORY_LIMIT}"
+      requests:
+        cpu: "${SCYLLA_OPERATOR_CPU_REQUEST}"
+        memory: "${SCYLLA_OPERATOR_MEMORY_REQUEST}"
+
+    # Webhook configuration
+    # Using self-signed certificate via cert-manager
+    webhook:
+      createSelfSignedCertificate: true
+
+    # Logging configuration
+    logLevel: 2
+
+    # Leader election
+    leaderElection:
+      enabled: true
+
+    # Service account
+    serviceAccount:
+      create: true
+
+    # Node selector and tolerations if needed
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
