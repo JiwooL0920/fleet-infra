@@ -59,9 +59,9 @@ spec:
 
     # Enable Alternator (DynamoDB-compatible API)
     # This is the key feature for chat history storage
+    # Note: Port 8000 is the default and is no longer configurable (deprecated field removed)
     alternator:
       enabled: true
-      port: 8000
       writeIsolation: only_rmw_uses_lwt
 
     # Service Monitor for Prometheus integration
