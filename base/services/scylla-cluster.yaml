@@ -16,7 +16,7 @@ spec:
   wait: true
   dependsOn:
     - name: scylla-operator   # Needs operator for ScyllaCluster CRD
-    - name: scylla-manager    # Manager should be ready for backup/repair
+    # - name: scylla-manager  # Optional: Manager disabled for dev (high resource requirements)
     - name: traefik-config    # Needs IngressRoute CRD and middleware
   postBuild:
     substituteFrom:
