@@ -52,22 +52,25 @@ spec:
                   fi
 
                   echo ""
-                  echo "--- Step 2: Remove not-ready pod sandboxes ---"
-                  SANDBOXES=$(nsenter -t 1 -m -u -i -n -p -- crictl pods -q --state notready 2>/dev/null || true)
-                  if [ -n "$SANDBOXES" ]; then
-                    echo "Removing $(echo "$SANDBOXES" | wc -w) stale sandboxes..."
-                    echo "$SANDBOXES" | xargs -r nsenter -t 1 -m -u -i -n -p -- crictl rmp 2>/dev/null || true
-                  else
-                    echo "No stale sandboxes"
-                  fi
+                  echo "--- Step 2: Remove stale pod sandboxes (>10min old) ---"
+                  CUTOFF=$(date -d '10 minutes ago' +%s 2>/dev/null || date -v-10M +%s)
+                  for POD_ID in $(nsenter -t 1 -m -u -i -n -p -- crictl pods -q --state notready 2>/dev/null || true); do
+                    CREATED=$(nsenter -t 1 -m -u -i -n -p -- crictl inspectp "$POD_ID" 2>/dev/null | grep -o '"createdAt":[0-9]*' | cut -d: -f2 | cut -c1-10 || echo "0")
+                    if [ "$CREATED" -gt 0 ] && [ "$CREATED" -lt "$CUTOFF" ]; then
+                      echo "Removing stale sandbox $POD_ID (created $(date -d @$CREATED 2>/dev/null || date -r $CREATED))"
+                      nsenter -t 1 -m -u -i -n -p -- crictl rmp "$POD_ID" 2>/dev/null || true
+                    fi
+                  done
+                  echo "Stale sandbox cleanup complete"
 
                   echo ""
                   echo "--- Step 3: Prune unused images ---"
                   nsenter -t 1 -m -u -i -n -p -- crictl rmi --prune 2>&1 || true
 
                   echo ""
-                  echo "--- Step 4: Trigger containerd GC ---"
-                  nsenter -t 1 -m -u -i -n -p -- ctr -n k8s.io content ls -q 2>/dev/null | head -5 || true
+                  echo "--- Step 4: Prune containerd content store ---"
+                  nsenter -t 1 -m -u -i -n -p -- ctr -n k8s.io content prune 2>&1 || true
+                  echo "Content store pruned"
 
                   echo ""
                   echo "=== Cleanup Complete ==="
