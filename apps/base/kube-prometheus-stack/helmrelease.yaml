@@ -90,9 +90,26 @@ spec:
         - name: Loki
           type: loki
           access: proxy
-          url: http://monitoring-loki:3100
+          url: http://loki-gateway.monitoring.svc.cluster.local:80
           jsonData:
             maxLines: 1000
+        - name: Jaeger
+          type: jaeger
+          access: proxy
+          url: http://jaeger-query.jaeger.svc.cluster.local:16686
+          jsonData:
+            tracesToLogsV2:
+              datasourceUid: loki
+              spanStartTimeShift: '-1h'
+              spanEndTimeShift: '1h'
+              filterByTraceID: true
+              filterBySpanID: true
+            tracesToMetrics:
+              datasourceUid: prometheus
+              spanStartTimeShift: '-1h'
+              spanEndTimeShift: '1h'
+            nodeGraph:
+              enabled: true
 
 
     # AlertManager configuration

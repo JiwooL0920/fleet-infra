@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **19 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
+This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **23 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
 
-**Note**: 5 services are currently disabled (Crossplane suite, Loki, Promtail) and can be re-enabled as needed.
+**Note**: 4 services are currently disabled (Crossplane suite, Scylla Manager) and can be re-enabled as needed.
 
 ## Common Commands
 
@@ -46,6 +46,7 @@ make setup-dns
 # http://weave.local - Weave GitOps
 # http://localstack.local - LocalStack
 # http://scylla.local - ScyllaDB Alternator (DynamoDB API)
+# http://jaeger.local - Jaeger Tracing UI
 ```
 
 **Option 2: Port Forwarding**
@@ -144,6 +145,12 @@ curl http://scylla.local/
 - **Kube-Prometheus-Stack**: Complete monitoring solution (Prometheus, Grafana, AlertManager)
 - **Weave GitOps**: GitOps dashboard and management
 
+**Logging & Tracing (4 - depend on foundation/monitoring):**
+- **Loki**: Log aggregation system
+- **Promtail**: Log shipping agent (DaemonSet)
+- **Jaeger**: Distributed tracing backend
+- **OpenTelemetry Collector**: Unified telemetry collection pipeline (traces, metrics, logs)
+
 **Database Management Services (1 - depend on operators):**
 - **Scylla Manager**: ScyllaDB backup and repair automation
 
@@ -163,8 +170,7 @@ curl http://scylla.local/
 **Disabled Services (available but not deployed):**
 - **Crossplane**: Infrastructure as Code platform (disabled)
 - **Crossplane Config/Providers**: IaC compositions and providers (disabled)
-- **Loki**: Log aggregation system (disabled)
-- **Promtail**: Log shipping agent (disabled)
+- **Scylla Manager**: ScyllaDB backup and repair automation (disabled)
 
 #### Database Architecture
 - PostgreSQL 16 with CloudNative PG operator
@@ -254,6 +260,7 @@ scripts/                   # Automation and utilities
 - Weave GitOps: http://weave.local
 - LocalStack: http://localstack.local
 - ScyllaDB Alternator: http://scylla.local
+- Jaeger Tracing UI: http://jaeger.local
 
 ## Key Development Workflows
 
@@ -368,7 +375,7 @@ To enable a disabled service, uncomment it in `base/services/kustomization.yaml`
 - **Service dependencies**: Each service kustomization declares exact `dependsOn` relationships
 - **Parallel deployment**: 10+ services can deploy concurrently when dependencies are satisfied
 - **Local DNS recommended**: Use `make setup-dns` for better UX than port forwarding
-- **Disabled services**: Crossplane (IaC), Loki, and Promtail are available but not deployed by default
+- **Disabled services**: Crossplane (IaC) and Scylla Manager are available but not deployed by default
 
 ### After Colima Restart
 When restarting Colima, services start automatically in proper dependency order:

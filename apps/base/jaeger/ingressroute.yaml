@@ -1,0 +1,14 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: jaeger-ui
+  namespace: jaeger
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`jaeger.local`)
+      kind: Rule
+      services:
+        - name: jaeger-query
+          port: 16686

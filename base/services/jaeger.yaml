@@ -2,26 +2,26 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: loki
+  name: jaeger
   namespace: flux-system
 spec:
-  interval: 10m0s
+  interval: 10m
+  retryInterval: 1m
+  timeout: 10m
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/base/loki
+  path: ./apps/base/jaeger
   prune: true
   wait: true
-  timeout: 10m0s
   dependsOn:
-    - name: external-secrets-config
-    - name: kube-prometheus-stack
-  healthChecks:
-    - apiVersion: apps/v1
-      kind: StatefulSet
-      name: loki
-      namespace: monitoring
+    - name: traefik-config
   postBuild:
     substituteFrom:
       - kind: ConfigMap
         name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: jaeger
+      namespace: jaeger

@@ -22,9 +22,13 @@ resources:
   # - crossplane-providers.yaml
   # - crossplane-config.yaml
 
-  # Logging stack services (disabled)
-  # - loki.yaml
-  # - promtail.yaml
+  # Logging stack services
+  - loki.yaml
+  - promtail.yaml
+
+  # Distributed tracing services
+  - jaeger.yaml
+  - opentelemetry-collector.yaml
 
   # Database management services (depend on operators)
   # - scylla-manager.yaml  # ScyllaDB backup/repair automation (disabled for dev - high resource requirements)
