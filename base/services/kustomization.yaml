@@ -30,6 +30,9 @@ resources:
   - jaeger.yaml
   - opentelemetry-collector.yaml
 
+  # Grafana Operator (for declarative dashboard management)
+  - grafana-operator.yaml
+
   # Database management services (depend on operators)
   # - scylla-manager.yaml  # ScyllaDB backup/repair automation (disabled for dev - high resource requirements)
 
