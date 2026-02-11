@@ -161,17 +161,11 @@ spec:
           resource_to_telemetry_conversion:
             enabled: true
 
-        # Loki exporter for logs
-        loki:
-          endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push
-          labels:
-            attributes:
-              k8s.namespace.name: "namespace"
-              k8s.pod.name: "pod"
-              k8s.container.name: "container"
-            resource:
-              k8s.cluster.name: "cluster"
-              service.name: "service"
+        # OTLP HTTP exporter for logs to Loki (Loki 3.0+ supports native OTLP)
+        otlphttp/loki:
+          endpoint: http://monitoring-loki.monitoring.svc.cluster.local:3100/otlp
+          tls:
+            insecure: true
 
       extensions:
         health_check:
@@ -200,7 +194,7 @@ spec:
           logs:
             receivers: [otlp]
             processors: [memory_limiter, k8sattributes, batch]
-            exporters: [loki, debug]
+            exporters: [otlphttp/loki, debug]
 
         telemetry:
           logs:
