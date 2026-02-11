@@ -32,6 +32,7 @@ resources:
 
   # Grafana Operator (for declarative dashboard management)
   - grafana-operator.yaml
+  - grafana-config.yaml  # Grafana instance CR (depends on grafana-operator for CRDs)
 
   # Database management services (depend on operators)
   # - scylla-manager.yaml  # ScyllaDB backup/repair automation (disabled for dev - high resource requirements)
