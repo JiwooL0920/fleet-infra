@@ -38,24 +38,41 @@ spec:
                 - -c
                 - |
                   set -e
-                  echo "Starting image garbage collection on $(hostname)"
+                  echo "=== Node Cleanup: $(hostname) ==="
+                  echo "Disk before: $(nsenter -t 1 -m -u -i -n -p -- df -h / | tail -1)"
 
-                  # Install crictl if not available
-                  if ! command -v crictl &> /dev/null; then
-                    echo "crictl not found in container, using nsenter to host"
+                  echo ""
+                  echo "--- Step 1: Remove stopped containers ---"
+                  STOPPED=$(nsenter -t 1 -m -u -i -n -p -- crictl ps -a -q --state exited 2>/dev/null || true)
+                  if [ -n "$STOPPED" ]; then
+                    echo "Removing $(echo "$STOPPED" | wc -w) stopped containers..."
+                    echo "$STOPPED" | xargs -r nsenter -t 1 -m -u -i -n -p -- crictl rm 2>/dev/null || true
+                  else
+                    echo "No stopped containers"
                   fi
 
-                  # Use nsenter to run crictl on the host
-                  echo "Pruning unused images..."
+                  echo ""
+                  echo "--- Step 2: Remove not-ready pod sandboxes ---"
+                  SANDBOXES=$(nsenter -t 1 -m -u -i -n -p -- crictl pods -q --state notready 2>/dev/null || true)
+                  if [ -n "$SANDBOXES" ]; then
+                    echo "Removing $(echo "$SANDBOXES" | wc -w) stale sandboxes..."
+                    echo "$SANDBOXES" | xargs -r nsenter -t 1 -m -u -i -n -p -- crictl rmp 2>/dev/null || true
+                  else
+                    echo "No stale sandboxes"
+                  fi
+
+                  echo ""
+                  echo "--- Step 3: Prune unused images ---"
                   nsenter -t 1 -m -u -i -n -p -- crictl rmi --prune 2>&1 || true
 
-                  echo "Current image count:"
-                  nsenter -t 1 -m -u -i -n -p -- crictl images | wc -l
+                  echo ""
+                  echo "--- Step 4: Trigger containerd GC ---"
+                  nsenter -t 1 -m -u -i -n -p -- ctr -n k8s.io content ls -q 2>/dev/null | head -5 || true
 
-                  echo "Disk usage after cleanup:"
-                  nsenter -t 1 -m -u -i -n -p -- df -h / | tail -1
-
-                  echo "Image GC completed successfully"
+                  echo ""
+                  echo "=== Cleanup Complete ==="
+                  echo "Images remaining: $(nsenter -t 1 -m -u -i -n -p -- crictl images -q | wc -l)"
+                  echo "Disk after: $(nsenter -t 1 -m -u -i -n -p -- df -h / | tail -1)"
               resources:
                 requests:
                   cpu: 10m
