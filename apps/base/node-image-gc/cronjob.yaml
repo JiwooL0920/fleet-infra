@@ -1,0 +1,65 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: node-image-gc
+  namespace: node-maintenance
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          serviceAccountName: node-image-gc
+          restartPolicy: OnFailure
+          hostPID: true
+          tolerations:
+            - operator: Exists  # Run on all nodes including control-plane
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/os
+                        operator: In
+                        values:
+                          - linux
+          containers:
+            - name: image-gc
+              image: docker.io/library/alpine:3.19
+              securityContext:
+                privileged: true
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "Starting image garbage collection on $(hostname)"
+
+                  # Install crictl if not available
+                  if ! command -v crictl &> /dev/null; then
+                    echo "crictl not found in container, using nsenter to host"
+                  fi
+
+                  # Use nsenter to run crictl on the host
+                  echo "Pruning unused images..."
+                  nsenter -t 1 -m -u -i -n -p -- crictl rmi --prune 2>&1 || true
+
+                  echo "Current image count:"
+                  nsenter -t 1 -m -u -i -n -p -- crictl images | wc -l
+
+                  echo "Disk usage after cleanup:"
+                  nsenter -t 1 -m -u -i -n -p -- df -h / | tail -1
+
+                  echo "Image GC completed successfully"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi

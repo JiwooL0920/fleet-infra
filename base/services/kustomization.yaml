@@ -17,6 +17,9 @@ resources:
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml
 
+  # Node maintenance (no dependencies - runs on schedule)
+  - node-image-gc.yaml  # Prunes unused container images every 6 hours
+
   # Infrastructure as Code services (disabled)
   # - crossplane.yaml
   # - crossplane-providers.yaml
