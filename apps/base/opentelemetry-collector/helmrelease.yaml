@@ -34,6 +34,10 @@ spec:
     remediation:
       retries: 3
   values:
+    # Image configuration (required in v0.108.0+)
+    image:
+      repository: otel/opentelemetry-collector-contrib
+
     # Deployment mode - standalone for dev, daemonset for production node-level collection
     mode: deployment
 
