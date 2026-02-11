@@ -53,12 +53,17 @@ spec:
 
                   echo ""
                   echo "--- Step 2: Remove stale pod sandboxes (>10min old) ---"
-                  CUTOFF=$(($(date +%s) - 600))
+                  NOW=$(date +%s)
+                  CUTOFF=$((NOW - 600))
                   for POD_ID in $(nsenter -t 1 -m -u -i -n -p -- crictl pods -q --state notready 2>/dev/null || true); do
-                    CREATED=$(nsenter -t 1 -m -u -i -n -p -- crictl inspectp "$POD_ID" 2>/dev/null | grep -o '"createdAt":[0-9]*' | cut -d: -f2 | cut -c1-10 || echo "0")
-                    if [ "$CREATED" -gt 0 ] && [ "$CREATED" -lt "$CUTOFF" ]; then
-                      echo "Removing stale sandbox $POD_ID (age: $(( ($(date +%s) - CREATED) / 60 ))min)"
-                      nsenter -t 1 -m -u -i -n -p -- crictl rmp "$POD_ID" 2>/dev/null || true
+                    RAW_TS=$(nsenter -t 1 -m -u -i -n -p -- crictl inspectp "$POD_ID" 2>/dev/null | grep -o '"createdAt":[0-9]*' | head -1 | cut -d: -f2 || echo "")
+                    if [ -n "$RAW_TS" ]; then
+                      CREATED=$(echo "$RAW_TS" | cut -c1-10)
+                      if [ "$CREATED" -lt "$CUTOFF" ] 2>/dev/null; then
+                        AGE=$(( (NOW - CREATED) / 60 ))
+                        echo "Removing stale sandbox $POD_ID (age: ${AGE}min)"
+                        nsenter -t 1 -m -u -i -n -p -- crictl rmp "$POD_ID" 2>/dev/null || true
+                      fi
                     fi
                   done
                   echo "Stale sandbox cleanup complete"
@@ -69,7 +74,7 @@ spec:
 
                   echo ""
                   echo "--- Step 4: Prune containerd content store ---"
-                  nsenter -t 1 -m -u -i -n -p -- ctr -n k8s.io content prune 2>&1 || true
+                  nsenter -t 1 -m -u -i -n -p -- ctr -n k8s.io content prune references 2>&1 || true
                   echo "Content store pruned"
 
                   echo ""
