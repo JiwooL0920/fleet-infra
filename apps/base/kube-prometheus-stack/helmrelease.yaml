@@ -57,6 +57,15 @@ spec:
         retention: "${PROMETHEUS_RETENTION_TIME}"
         retentionSize: "${PROMETHEUS_RETENTION_SIZE}"
 
+        # Scrape Mac host GPU exporter (runs on host.docker.internal:9101)
+        additionalScrapeConfigs:
+          - job_name: 'mac-gpu-exporter'
+            static_configs:
+              - targets: ['host.docker.internal:9101']
+                labels:
+                  instance: 'mac-host'
+            scrape_interval: 5s
+
     # Grafana configuration
     grafana:
       enabled: true
