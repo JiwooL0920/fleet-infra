@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns help precommit-install precommit-run precommit-update precommit-clean
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns get-ui-credentials help precommit-install precommit-run precommit-update precommit-clean
 
 # Default target
 help:
@@ -10,6 +10,7 @@ help:
 	@echo "  verify-startup       - Verify service startup order and health"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
 	@echo "  post-colima-restart  - Complete post-restart setup (fix IP only)"
+	@echo "  get-ui-credentials   - Show login credentials for all UI services"
 	@echo ""
 	@echo "Pre-commit Hooks:"
 	@echo "  precommit-install    - Install pre-commit hooks and required tools"
@@ -67,6 +68,9 @@ post-colima-restart: fix-control-plane
 	@echo "Post-Colima restart setup completed!"
 	@echo "Secrets will be auto-initialized when LocalStack starts (via init hooks + persistence)."
 	@echo "Run 'make verify-startup' to check service health."
+
+get-ui-credentials:
+	@./scripts/get-ui-credentials.sh
 
 # ==============================================================================
 # Pre-commit Hooks

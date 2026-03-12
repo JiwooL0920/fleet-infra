@@ -38,7 +38,7 @@ spec:
     # pgAdmin4 configuration
     env:
       # Email must be set here - chart does NOT support loading email from existingSecret
-      email: admin@fleet-infra.local
+      email: admin@fleet-infra.dev
       # PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION is set to "False" by chart default
       # (required for pgAdmin behind reverse proxy / ingress)
       PGADMIN_CONFIG_LOGIN_BANNER: "PostgreSQL Administration - Fleet Infrastructure"
