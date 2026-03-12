@@ -71,6 +71,12 @@ start_port_forward "redis-sentinel" "redis-sentinel-master" "6379" "6379" "Redis
 # --- redisinsight ---
 start_port_forward "redisinsight" "redisinsight" "8001" "8080" "RedisInsight"
 
+# --- jaeger ---
+start_port_forward "jaeger" "jaeger-query" "16686" "16686" "Jaeger UI"
+
+# --- scylladb alternator ---
+start_port_forward "scylla" "scylla-client" "8000" "8000" "ScyllaDB Alternator"
+
 echo ""
 echo "Port forwards started successfully!"
 echo ""
@@ -88,6 +94,8 @@ echo "  Temporal UI:   http://localhost:8090"
 echo "  pgAdmin4:      http://localhost:8080"
 echo "  Redis Sentinel: localhost:6379"
 echo "  RedisInsight:  http://localhost:8001"
+echo "  Jaeger UI:     http://localhost:16686"
+echo "  ScyllaDB:      http://localhost:8000"
 echo ""
 echo "Press Ctrl+C to stop all port forwards."
 

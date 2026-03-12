@@ -153,10 +153,8 @@ spec:
           "$TRAEFIK_PWD" \
           "Traefik dashboard password"
 
-      # Traefik htpasswd (Basic Auth) - use printf to avoid Flux $${} escaping issues
-      SALT=$(head -c 8 /dev/urandom | base64 | tr -d '=+/' | head -c 8)
-      HASH=$(printf '%s%s' "$TRAEFIK_PWD" "$SALT" | md5sum | cut -d' ' -f1)
-      HTPASSWD=$(printf 'admin:$apr1$%s$%s' "$SALT" "$HASH")
+      # Traefik htpasswd (Basic Auth) - use openssl for proper apr1 hash
+      HTPASSWD="admin:$(openssl passwd -apr1 "$TRAEFIK_PWD")"
       create_secret "traefik/dashboard/credentials/htpasswd" \
           "$HTPASSWD" \
           "Traefik dashboard htpasswd"

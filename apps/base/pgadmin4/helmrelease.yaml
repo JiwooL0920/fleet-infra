@@ -37,16 +37,17 @@ spec:
   values:
     # pgAdmin4 configuration
     env:
-      # Credentials managed by External Secret (no hardcoded values)
-      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
+      # Email must be set here - chart does NOT support loading email from existingSecret
+      email: admin@fleet-infra.local
+      # PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION is set to "False" by chart default
+      # (required for pgAdmin behind reverse proxy / ingress)
       PGADMIN_CONFIG_LOGIN_BANNER: "PostgreSQL Administration - Fleet Infrastructure"
       PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: "20"
 
-    # Use external secret for credentials
+    # Use external secret for password only (chart only supports password from secret)
     existingSecret: "pgadmin4-credentials"
     secretKeys:
       pgadminPasswordKey: password
-      pgadminEmailKey: email
 
     # Service configuration
     service:
