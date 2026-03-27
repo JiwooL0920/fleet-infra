@@ -50,6 +50,10 @@ resources:
   - n8n.yaml
   - temporal.yaml
 
+  # AI agent platform
+  - ollama.yaml    # Local LLM inference (foundation, no dependencies)
+  - kagent.yaml    # Kubernetes-native AI agent platform (depends on ollama, cnpg-operator, external-secrets-config, traefik)
+
   # Database UI services (fine-grained dependencies)
   - pgadmin4.yaml
   - redisinsight.yaml

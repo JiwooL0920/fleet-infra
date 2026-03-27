@@ -25,6 +25,7 @@ HOSTS_ENTRIES=(
   "127.0.0.1 localstack.local"
   "127.0.0.1 scylla.local"
   "127.0.0.1 jaeger.local"
+  "127.0.0.1 kagent.local"
 )
 
 # Marker to identify our entries
@@ -37,14 +38,14 @@ echo ""
 if grep -q "$MARKER" /etc/hosts 2>/dev/null; then
   echo -e "${YELLOW}DNS entries already exist in /etc/hosts${NC}"
   echo "Entries found:"
-  grep -A 12 "$MARKER" /etc/hosts
+  grep -A 13 "$MARKER" /etc/hosts
   echo ""
   read -p "Do you want to remove and re-add them? (y/n) " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Removing existing entries...${NC}"
-    # Remove marker and next 12 lines (our entries)
-    sudo sed -i.bak "/$MARKER/,+12d" /etc/hosts
+    # Remove marker and next 13 lines (our entries)
+    sudo sed -i.bak "/$MARKER/,+13d" /etc/hosts
     echo -e "${GREEN}Existing entries removed${NC}"
   else
     echo -e "${GREEN}Keeping existing entries. Exiting.${NC}"
@@ -78,5 +79,6 @@ echo -e "${YELLOW}  http://weave.local${NC} - Weave GitOps"
 echo -e "${YELLOW}  http://localstack.local${NC} - LocalStack"
 echo -e "${YELLOW}  http://scylla.local${NC} - ScyllaDB Alternator (DynamoDB API)"
 echo -e "${YELLOW}  http://jaeger.local${NC} - Jaeger Tracing UI"
+echo -e "${YELLOW}  http://kagent.local${NC} - kagent AI Agent Dashboard"
 echo ""
 echo -e "${GREEN}Note:${NC} Make sure Traefik is configured with NodePort and Flux has reconciled the changes."
