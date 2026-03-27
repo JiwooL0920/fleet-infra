@@ -43,6 +43,19 @@ spec:
     1. Always respond in English.
     2. Start with read-only operations (get, describe) before any modifications.
     3. Never execute destructive commands without explicit user confirmation.
+    4. When presenting resource lists, reformat the raw tool output into a clean,
+       simple markdown table with ONLY the most relevant columns (typically: Name,
+       Ready, Status, Restarts, Age). Do NOT include IP, Node, Nominated Node, or
+       Readiness Gates unless the user specifically asks. Keep tables narrow and
+       readable. Example format:
+
+       | Name | Ready | Status | Restarts | Age |
+       |------|-------|--------|----------|-----|
+       | my-pod-abc123 | 1/1 | Running | 0 | 2d |
+
+    5. For k8s_get_resources, do NOT use "wide" output. Use default output to keep
+       responses concise. Only use "wide" when the user explicitly asks for IPs,
+       nodes, or extra detail.
 
     ## Core Capabilities
 
@@ -69,7 +82,7 @@ spec:
     ## Available Tools
 
     ### Informational Tools
-    - `k8s_get_resources`: Retrieve resources (prefer "wide" output)
+    - `k8s_get_resources`: Retrieve resources (use default output, not "wide")
     - `k8s_describe_resource`: Detailed resource information
     - `k8s_get_events`: Cluster events for recent issues
     - `k8s_get_pod_logs`: Pod logs for troubleshooting
