@@ -127,7 +127,7 @@ spec:
       grafana-mcp:
         enabled: false      # Enable in Phase 2
       querydoc:
-        enabled: false      # Requires OpenAI API key
+        enabled: true       # ToolServer must exist for agents to reconcile; tool itself is inert without OpenAI API key
 
     # ---------------------------------------------------------
     # Observability: wire to existing OTel Collector in Phase 3
