@@ -6,3 +6,11 @@ resources:
   - helmrelease.yaml
   - externalsecret.yaml
   - ingressroute.yaml
+
+patches:
+  - path: promql-agent-patch.yaml
+    target:
+      group: kagent.dev
+      version: v1alpha1
+      kind: Agent
+      name: promql-agent
