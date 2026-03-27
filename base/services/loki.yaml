@@ -14,9 +14,8 @@ spec:
   wait: true
   timeout: 10m0s
   dependsOn:
-    - name: external-secrets-config  # For ClusterSecretStore and Redis password
-    - name: localstack  # S3 storage backend
-    - name: redis  # Redis cache for query results
+    - name: external-secrets-config
+    - name: kube-prometheus-stack
   healthChecks:
     - apiVersion: apps/v1
       kind: StatefulSet

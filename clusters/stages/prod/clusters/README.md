@@ -15,7 +15,7 @@ Americas production cluster for application services and infrastructure.
 - **Resource Profile**: Performance-optimized with high availability
 
 **Services Deployed:**
-- Core infrastructure (Traefik, PostgreSQL, Redis)  
+- Core infrastructure (Traefik, PostgreSQL, Redis)
 - Application services (N8N, Temporal)
 - Monitoring stack (Prometheus, Grafana, Loki)
 - Database management tools (pgAdmin4, RedisInsight)

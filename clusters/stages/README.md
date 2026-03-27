@@ -9,10 +9,12 @@ Organizes different deployment stages with **fine-grained service dependencies**
 ## Structure
 
 - `dev/` - Development environment (tracks `develop` branch)
-  - Deploys all 21 services with fine-grained dependencies
+  - Deploys 16 active services (21 total) with fine-grained dependencies
   - Fast parallel deployment for rapid development cycles
-- `prod/` - Production environment (tracks `main` branch)  
-  - Same 21-service architecture with production configuration overrides
+  - Cost-optimized resources (single replicas, reduced storage)
+- `prod/` - Production environment (tracks `main` branch)
+  - Same service architecture with production configuration overrides
+  - High availability (multiple replicas, extended retention)
   - Identical fine-grained dependency benefits in production
 
 ## Benefits
@@ -21,3 +23,4 @@ Organizes different deployment stages with **fine-grained service dependencies**
 - **Fast Feedback**: 8-12 minute deployments enable rapid iteration
 - **Branch Isolation**: Complete separation via Git branch tracking
 - **Performance Consistency**: Fine-grained benefits in all environments
+- **Cost Optimization**: Dev uses minimal resources, prod scales appropriately

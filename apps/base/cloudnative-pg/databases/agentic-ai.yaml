@@ -1,0 +1,16 @@
+---
+# Agentic AI Platform Database
+# PostgreSQL database with pgvector extension for RAG/embeddings
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: agentic-ai
+  namespace: cnpg-system
+spec:
+  name: agentic
+  owner: app
+  cluster:
+    name: postgresql-cluster
+  extensions:
+    - name: vector
+      ensure: present

@@ -1,0 +1,90 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: node-image-gc
+  namespace: node-maintenance
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 3600
+      template:
+        spec:
+          serviceAccountName: node-image-gc
+          restartPolicy: OnFailure
+          hostPID: true
+          tolerations:
+            - operator: Exists  # Run on all nodes including control-plane
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/os
+                        operator: In
+                        values:
+                          - linux
+          containers:
+            - name: image-gc
+              image: docker.io/library/alpine:3.19
+              securityContext:
+                privileged: true
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "=== Node Cleanup: $(hostname) ==="
+                  echo "Disk before: $(nsenter -t 1 -m -u -i -n -p -- df -h / | tail -1)"
+
+                  echo ""
+                  echo "--- Step 1: Remove stopped containers ---"
+                  STOPPED=$(nsenter -t 1 -m -u -i -n -p -- crictl ps -a -q --state exited 2>/dev/null || true)
+                  if [ -n "$STOPPED" ]; then
+                    echo "Removing $(echo "$STOPPED" | wc -w) stopped containers..."
+                    echo "$STOPPED" | xargs -r nsenter -t 1 -m -u -i -n -p -- crictl rm 2>/dev/null || true
+                  else
+                    echo "No stopped containers"
+                  fi
+
+                  echo ""
+                  echo "--- Step 2: Remove stale pod sandboxes (>10min old) ---"
+                  NOW=$(date +%s)
+                  CUTOFF=$((NOW - 600))
+                  for POD_ID in $(nsenter -t 1 -m -u -i -n -p -- crictl pods -q --state notready 2>/dev/null || true); do
+                    RAW_TS=$(nsenter -t 1 -m -u -i -n -p -- crictl inspectp "$POD_ID" 2>/dev/null | grep -o '"createdAt":[0-9]*' | head -1 | cut -d: -f2 || echo "")
+                    if [ -n "$RAW_TS" ]; then
+                      CREATED=$(echo "$RAW_TS" | cut -c1-10)
+                      if [ "$CREATED" -lt "$CUTOFF" ] 2>/dev/null; then
+                        AGE=$(( (NOW - CREATED) / 60 ))
+                        echo "Removing stale sandbox $POD_ID (age: ${AGE}min)"
+                        nsenter -t 1 -m -u -i -n -p -- crictl rmp "$POD_ID" 2>/dev/null || true
+                      fi
+                    fi
+                  done
+                  echo "Stale sandbox cleanup complete"
+
+                  echo ""
+                  echo "--- Step 3: Prune unused images ---"
+                  nsenter -t 1 -m -u -i -n -p -- crictl rmi --prune 2>&1 || true
+
+                  echo ""
+                  echo "--- Step 4: Prune containerd content store ---"
+                  nsenter -t 1 -m -u -i -n -p -- ctr -n k8s.io content prune references 2>&1 || true
+                  echo "Content store pruned"
+
+                  echo ""
+                  echo "=== Cleanup Complete ==="
+                  echo "Images remaining: $(nsenter -t 1 -m -u -i -n -p -- crictl images -q | wc -l)"
+                  echo "Disk after: $(nsenter -t 1 -m -u -i -n -p -- df -h / | tail -1)"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi

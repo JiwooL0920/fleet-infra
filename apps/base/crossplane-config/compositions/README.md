@@ -267,7 +267,7 @@ patches:
    ```bash
    # Check composition status
    kubectl describe composition xbuckets.aws.platform.io
-   
+
    # Check XRD
    kubectl get xrd xbuckets.storage.platform.io
    ```
@@ -276,7 +276,7 @@ patches:
    ```bash
    # Check composite resource
    kubectl describe xbucket my-app-bucket
-   
+
    # Check composed resources
    kubectl get managed -l crossplane.io/composite=my-app-bucket
    ```

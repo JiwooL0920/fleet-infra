@@ -1,11 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Crossplane Configuration  
+# Crossplane Configuration
 # Contains native AWS ProviderConfigs, ExternalSecrets, and test resources
 resources:
   - provider-config.yaml
-  # Test resources for LocalStack integration  
+  # Test resources for LocalStack integration
   - test-bucket.yaml
   # Note: infrastructure secrets are now managed by Wave 1 job
   # Note: compositions directory needs kustomization.yaml to be included

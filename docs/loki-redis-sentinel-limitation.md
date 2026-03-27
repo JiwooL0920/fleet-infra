@@ -26,7 +26,7 @@ In a properly secured Redis Sentinel deployment, there are **two distinct authen
    - Authentication command: `AUTH <sentinel-password>`
 
 2. **Redis Data Server Authentication**: Controls access to actual Redis data servers
-   - Configured via `requirepass` directive in Redis server configuration  
+   - Configured via `requirepass` directive in Redis server configuration
    - Used by clients to read/write data after master discovery
    - Authentication command: `AUTH <redis-password>`
 
@@ -82,7 +82,7 @@ auth:
   existingSecret: "redis-password"
   existingSecretPasswordKey: "password"
 
-# Redis Sentinel configuration  
+# Redis Sentinel configuration
 sentinel:
   enabled: true
   masterSet: "mymaster"
@@ -115,7 +115,7 @@ redis: 2025/08/16 20:49:18 sentinel.go:514: sentinel: GetMasterAddrByName master
 
 Multiple cache layers affected:
 - `frontend.redis`
-- `frontend.index-stats-results-cache.redis` 
+- `frontend.index-stats-results-cache.redis`
 - `frontend.volume-results-cache.redis`
 - `frontend.series-results-cache.redis`
 - `frontend.label-results-cache.redis`
@@ -140,7 +140,7 @@ For production environments, Redis recommends:
 
 **Security Implications**:
 - ❌ Sentinel instances remain unauthenticated, exposing master discovery API
-- ❌ Potential for unauthorized Sentinel queries and topology discovery  
+- ❌ Potential for unauthorized Sentinel queries and topology discovery
 - ✅ Redis data servers remain properly authenticated
 
 **Operational Implications**:
@@ -156,7 +156,7 @@ For production environments, Redis recommends:
 ```yaml
 auth:
   sentinel: false      # Official parameter per Bitnami docs
-  
+
 sentinel:
   usePassword: false   # Alternative parameter found in research
   auth:
@@ -268,7 +268,7 @@ cache:
 - Deployment: 1 master + 2 replicas with 2 Sentinel instances
 
 **Loki Deployment**:
-- Chart: `grafana/loki` v6.16.0  
+- Chart: `grafana/loki` v6.16.0
 - Loki Version: 3.1.1
 - Mode: `SingleBinary` deployment
 - Cache Configuration: Multi-layer Redis caching (4 databases)
@@ -327,7 +327,7 @@ chunk_store_config:
   write_dedupe_cache_config:
     redis:
       endpoint: redis.redis.svc.cluster.local:26379
-      master_name: mymaster  
+      master_name: mymaster
       password: "${REDIS_PASSWORD}"
       db: 2
       # ... additional settings
@@ -342,7 +342,7 @@ storage_config:
       # ... additional settings
 ```
 
-### Current Redis Configuration  
+### Current Redis Configuration
 
 **File**: `/Users/jiwoolee/Project/fleet-infra/apps/base/redis/helmrelease.yaml`
 
@@ -350,8 +350,8 @@ storage_config:
 values:
   # Enable Redis Sentinel architecture
   architecture: replication
-  
-  # Authentication configuration  
+
+  # Authentication configuration
   auth:
     enabled: true
     sentinel: false                    # ❌ Not working
@@ -403,7 +403,7 @@ After comprehensive testing, we have **definitively identified** the root cause 
 
 **Test Results**:
 1. ✅ **Redis Authentication**: Working correctly with password `admin`
-2. ✅ **Sentinel Authentication**: Working correctly with same password `admin`  
+2. ✅ **Sentinel Authentication**: Working correctly with same password `admin`
 3. ✅ **Manual Sentinel Connection**: Successfully tested with redis-cli
 4. ❌ **Loki Sentinel Connection**: Fails due to missing `SentinelPassword` configuration
 
@@ -415,7 +415,7 @@ After comprehensive testing, we have **definitively identified** the root cause 
 kubectl exec -n redis redis-node-0 -c redis -- redis-cli -h redis.redis.svc.cluster.local -p 26379 -a admin ping
 # Output: PONG
 
-# Test Sentinel master discovery with password  
+# Test Sentinel master discovery with password
 kubectl exec -n redis redis-node-0 -c redis -- redis-cli -h redis.redis.svc.cluster.local -p 26379 -a admin sentinel get-master-addr-by-name mymaster
 # Output: redis-node-0.redis-headless.redis.svc.cluster.local 6379
 ```
@@ -433,7 +433,7 @@ redis: 2025/08/16 21:29:02 sentinel.go:514: sentinel: GetMasterAddrByName master
 ```yaml
 auth:
   sentinel: false          # ❌ Failed - Parameter ignored
-  
+
 sentinel:
   usePassword: false       # ❌ Failed - Parameter ignored
 ```
@@ -451,7 +451,7 @@ auth:
   existingSecretPasswordKey: "password"
 ```
 
-**Result**: 
+**Result**:
 - ✅ **Redis servers**: Authenticate successfully with password `admin`
 - ✅ **Sentinel instances**: Authenticate successfully with same password `admin`
 - ❌ **Loki connection**: Still fails because go-redis client needs explicit `SentinelPassword` parameter
@@ -500,7 +500,7 @@ type RedisConfig struct {
 #### **Current Security Posture**: ✅ **Good**
 
 - ✅ Redis data servers properly authenticated
-- ✅ Sentinel instances properly authenticated  
+- ✅ Sentinel instances properly authenticated
 - ✅ Same strong password (`admin`) for both services
 - ✅ Network-level isolation in Kubernetes
 
@@ -580,12 +580,12 @@ cache:
 
 **Root Cause Confirmed**: Loki's Redis cache implementation is missing the `SentinelPassword` configuration parameter that the underlying go-redis client supports and requires for authenticated Sentinel environments.
 
-**Current Status**: 
+**Current Status**:
 - ✅ **Security**: Redis and Sentinel properly secured with authentication
 - ❌ **Functionality**: Loki caching disabled due to authentication incompatibility
 - 🔄 **Solution**: Requires Loki enhancement to add missing `SentinelPassword` parameter
 
-**Next Steps**: 
+**Next Steps**:
 1. File enhancement request with Grafana Loki team
 2. Reference successful Tempo implementation as blueprint
 3. Monitor Loki releases for feature addition
@@ -598,7 +598,7 @@ cache:
 
 ---
 
-**Document Created**: 2025-08-16  
-**Last Updated**: 2025-08-16 (Final Investigation Complete)  
-**Environment**: Development (fleet-infra repository)  
+**Document Created**: 2025-08-16
+**Last Updated**: 2025-08-16 (Final Investigation Complete)
+**Environment**: Development (fleet-infra repository)
 **Status**: Root Cause Confirmed - Solution Path Identified

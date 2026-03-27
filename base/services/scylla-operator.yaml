@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: scylla-operator
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  timeout: 10m  # Operator installation with CRDs
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/scylla-operator
+  prune: true
+  wait: true
+  # No dependsOn - foundation operator, starts immediately
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: scylla-operator
+      namespace: scylla-operator

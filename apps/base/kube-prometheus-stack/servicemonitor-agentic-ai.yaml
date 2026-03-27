@@ -1,0 +1,25 @@
+# ServiceMonitor for Agentic AI Platform
+# Scrapes LLM metrics from the agentic-ai-core backend
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: agentic-ai-core
+  namespace: monitoring
+  labels:
+    app: agentic-ai
+    # Required label for Prometheus Operator to discover this ServiceMonitor
+    release: monitoring-kube-prometheus-stack
+spec:
+  # Target the agentic-ai namespace
+  namespaceSelector:
+    matchNames:
+      - agentic-ai
+  # Select services with app=agentic-ai-core label
+  selector:
+    matchLabels:
+      app: agentic-ai-core
+  endpoints:
+    - port: http
+      path: /metrics/
+      interval: 15s
+      scrapeTimeout: 10s

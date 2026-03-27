@@ -101,7 +101,7 @@ sentinel:
   masterService:
     enabled: true
 
-# Redis Replica configuration  
+# Redis Replica configuration
 replica:
   replicaCount: 2
   podAntiAffinityPreset: hard
@@ -113,8 +113,8 @@ replica:
 
 **Initial Error Encountered:**
 ```
-Helm upgrade failed for release redis/redis-redis with chart redis@20.3.0: 
-execution error at (redis/templates/NOTES.txt:198:4): 
+Helm upgrade failed for release redis/redis-redis with chart redis@20.3.0:
+execution error at (redis/templates/NOTES.txt:198:4):
 VALUES VALIDATION:
 
 redis: sentinel.masterService.enabled
@@ -339,7 +339,7 @@ curl -s "http://localhost:3101/loki/api/v1/query_range" \
 # Labels query
 curl -s "http://localhost:3101/loki/api/v1/labels" > /dev/null
 
-# Label values query  
+# Label values query
 curl -s "http://localhost:3101/loki/api/v1/label/namespace/values" > /dev/null
 
 # Instant query
@@ -391,7 +391,7 @@ loki_cache_request_duration_seconds_count{method="chunksredis.store",name="chunk
 ```bash
 # Check all database sizes
 kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin -n 0 dbsize 2>/dev/null  # Results cache
-kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin -n 1 dbsize 2>/dev/null  # Chunk cache  
+kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin -n 1 dbsize 2>/dev/null  # Chunk cache
 kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin -n 2 dbsize 2>/dev/null  # Write dedup cache
 kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin -n 3 dbsize 2>/dev/null  # Index queries cache
 ```
@@ -400,7 +400,7 @@ kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin -n 3 dbsize 2>
 ```
 Database 0 (results cache): 0
 Database 1 (chunk cache): 2
-Database 2 (write dedup cache): 0  
+Database 2 (write dedup cache): 0
 Database 3 (index queries cache): 0
 ```
 
@@ -424,7 +424,7 @@ fake/72eaaf0eaa7c09d9/198b4fb7991:198b57c6192:9f595f54
 # Check data on master (redis-node-1)
 kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin -n 1 dbsize 2>/dev/null
 
-# Check data on replica (redis-node-0)  
+# Check data on replica (redis-node-0)
 kubectl exec -n redis redis-node-0 -c redis -- redis-cli -a admin -n 1 dbsize 2>/dev/null
 ```
 
@@ -483,9 +483,9 @@ kubectl get pods -n redis -o wide
 
 **Results:**
 ```
-NAME           READY   STATUS    RESTARTS   AGE   IP            NODE                        
-redis-node-0   3/3     Running   0          14m   10.244.1.39   dev-services-amer-worker    
-redis-node-1   3/3     Running   0          14m   10.244.2.43   dev-services-amer-worker2   
+NAME           READY   STATUS    RESTARTS   AGE   IP            NODE
+redis-node-0   3/3     Running   0          14m   10.244.1.39   dev-services-amer-worker
+redis-node-1   3/3     Running   0          14m   10.244.2.43   dev-services-amer-worker2
 ```
 
 **Role Verification:**
@@ -493,7 +493,7 @@ redis-node-1   3/3     Running   0          14m   10.244.2.43   dev-services-ame
 # Check redis-node-1 role
 kubectl exec -n redis redis-node-1 -c redis -- redis-cli -a admin info replication 2>/dev/null | grep role
 
-# Check redis-node-0 role  
+# Check redis-node-0 role
 kubectl exec -n redis redis-node-0 -c redis -- redis-cli -a admin info replication 2>/dev/null | grep role
 ```
 
@@ -520,24 +520,24 @@ Replica role (redis-node-0): role:slave
 
 ### Cache Performance Metrics
 
-✅ **Active Chunk Cache**: 2 keys stored in database 1  
-✅ **Successful Operations**: 2 fetch + 2 store operations with 200 status codes  
-✅ **Sub-millisecond Response**: Cache operations completing in <1ms  
-✅ **Data Replication**: Perfect consistency between master and replica  
-✅ **Query Processing**: 91 lines processed, 16.5KB data, 3.6ms execution time  
+✅ **Active Chunk Cache**: 2 keys stored in database 1
+✅ **Successful Operations**: 2 fetch + 2 store operations with 200 status codes
+✅ **Sub-millisecond Response**: Cache operations completing in <1ms
+✅ **Data Replication**: Perfect consistency between master and replica
+✅ **Query Processing**: 91 lines processed, 16.5KB data, 3.6ms execution time
 
 ### Service Architecture Benefits
 
-✅ **Write Safety**: Critical write operations guaranteed to reach master via `redis-master` service  
-✅ **Read Performance**: Load balancing across master + replica via `redis` service for 2x read capacity  
-✅ **High Availability**: Automatic master tracking during failovers without manual intervention  
-✅ **Operational Simplicity**: Direct Redis connections eliminating Sentinel authentication complexity  
+✅ **Write Safety**: Critical write operations guaranteed to reach master via `redis-master` service
+✅ **Read Performance**: Load balancing across master + replica via `redis` service for 2x read capacity
+✅ **High Availability**: Automatic master tracking during failovers without manual intervention
+✅ **Operational Simplicity**: Direct Redis connections eliminating Sentinel authentication complexity
 
 ### Cache Database Status
 ```
 Database 0 (results_cache):        0 keys  [triggered by specific query types]
 Database 1 (chunk_cache):          2 keys  ✅ ACTIVELY CACHING
-Database 2 (write_dedupe_cache):   0 keys  [triggered during log ingestion]  
+Database 2 (write_dedupe_cache):   0 keys  [triggered during log ingestion]
 Database 3 (index_queries_cache):  0 keys  [triggered by index-heavy queries]
 ```
 
@@ -551,7 +551,7 @@ Database 3 (index_queries_cache):  0 keys  [triggered by index-heavy queries]
 - **Data Consistency**: Maintained through Redis replication regardless of initial routing
 
 **Read Operations**:
-- **Via `redis-master` service**: Always served from master 
+- **Via `redis-master` service**: Always served from master
 - **Via `redis` service**: Load-balanced between master and replica for 2x read capacity
 - **Performance**: Reduces master load for read-heavy workloads
 
@@ -579,7 +579,7 @@ Database 3 (index_queries_cache):  0 keys  [triggered by index-heavy queries]
 
 ### Security Implications
 - ✅ Strong authentication maintained on all Redis services
-- ✅ Network isolation through Kubernetes namespaces  
+- ✅ Network isolation through Kubernetes namespaces
 - ✅ No credentials stored in Git (External Secrets integration)
 - ⚠️ Consider TLS encryption for production environments
 
@@ -597,7 +597,7 @@ Database 3 (index_queries_cache):  0 keys  [triggered by index-heavy queries]
 redis_master_connection_failures_total
 redis_master_operation_duration_seconds
 
-# Cache Performance  
+# Cache Performance
 loki_cache_request_duration_seconds
 loki_cache_request_total{status="success|error"}
 loki_cache_hits vs loki_cache_fetched_keys
@@ -647,7 +647,7 @@ loki_cache_corrupt_chunks_total
 The implementation successfully resolves the Redis Sentinel authentication limitation while providing an optimal caching architecture using native Bitnami Redis chart capabilities. Key achievements include:
 
 - ✅ **Built-in Solution**: Uses Bitnami chart's native `masterService` feature (not manual workarounds)
-- ✅ **Verified Functionality**: Active cache with 2 keys stored and sub-millisecond response times  
+- ✅ **Verified Functionality**: Active cache with 2 keys stored and sub-millisecond response times
 - ✅ **Production Ready**: Proper authentication, replication, and service segregation
 - ✅ **High Availability**: Automatic master tracking during failovers
 - ✅ **Performance Optimized**: Load-balanced reads with master-only writes

@@ -1,0 +1,19 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: scylla-alternator
+  namespace: scylla
+  labels:
+    app.kubernetes.io/name: scylla
+    app.kubernetes.io/component: alternator
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`scylla.local`)
+      kind: Rule
+      services:
+        - name: scylla-client
+          port: 8000
+          passHostHeader: true

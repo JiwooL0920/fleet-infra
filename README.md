@@ -1,5 +1,49 @@
 GitOps infrastructure platform to manage 10+ services across multi-environment Kubernetes clusters with automated deployment, monitoring, and high availability. Used to host personal projects on local machine and quick POCs
 
+# Prerequisites
+
+Before setting up the infrastructure, install the required tools:
+
+## Core Tools
+
+```bash
+# Kubernetes tools
+brew install kubectl kind flux
+
+# Container runtime
+brew install colima
+# or use Docker Desktop
+```
+
+## Development Tools
+
+```bash
+# Pre-commit and validation tools
+brew install pre-commit kubeconform kustomize yq
+
+# Linters
+brew install yamllint shellcheck markdownlint-cli
+
+# Security scanning
+brew install detect-secrets
+
+# AWS CLI (for LocalStack)
+brew install awscli
+```
+
+## Verification
+
+```bash
+# Check tool versions
+kubectl version --client
+kind version
+flux version
+pre-commit --version
+kubeconform -v
+kustomize version
+yq --version
+```
+
 # How to set up
 
 ### Start Docker Engine
@@ -39,7 +83,6 @@ flux bootstrap github \
 ### Run post-setup scripts
 
 - Fix controlplane IP (if needed): `make fix-control-plane`
-- Verify services are starting properly: `make verify-startup`
 
 **Note:** Secrets are now automatically initialized by LocalStack startup hooks. No manual initialization needed.
 
@@ -66,3 +109,64 @@ This adds `.local` domain entries to `/etc/hosts`, allowing you to access servic
 If you prefer traditional port forwarding instead of DNS setup:
 
 - `make port-forward`
+
+## Development Workflow
+
+### Pre-commit Hooks
+
+This repository uses pre-commit hooks to validate changes before committing. This ensures code quality and catches issues early.
+
+**Installation:**
+
+```bash
+# Option 1: Use Makefile (recommended)
+make precommit-install
+
+# Option 2: Manual installation
+brew install pre-commit kubeconform kustomize yq yamllint shellcheck markdownlint-cli detect-secrets
+pre-commit install
+detect-secrets scan > .secrets.baseline
+```
+
+**Usage:**
+
+```bash
+# Run on all files
+make precommit-run
+# or
+pre-commit run --all-files
+
+# Run on staged files only
+make precommit-run-staged
+# or
+pre-commit run
+
+# Update hooks to latest versions
+make precommit-update
+
+# Clean and reinstall
+make precommit-clean
+```
+
+**What gets checked:**
+- YAML syntax and formatting
+- Kubernetes/Flux manifest validation
+- Kustomize overlay validation
+- Flux API version compatibility
+- Secret detection (AWS keys, private keys, etc.)
+- Markdown and shell script linting
+- File formatting (trailing whitespace, EOF)
+
+**Validation only (without pre-commit):**
+
+```bash
+# Validate all manifests
+make validate-all
+
+# Individual validations
+make validate-manifests  # Kubeconform validation
+make validate-flux       # Flux API version check
+make validate-kustomize  # Kustomize overlay build
+```
+
+For detailed documentation, see [Pre-commit Hooks Guide](docs/PRE_COMMIT_HOOKS.md).

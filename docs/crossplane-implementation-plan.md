@@ -103,8 +103,8 @@ base/infrastructure/operators/
 # Wave 2 Dependencies
 dependsOn:
   - name: infrastructure-core    # LocalStack must be ready
-  
-# Crossplane Dependencies  
+
+# Crossplane Dependencies
 dependsOn:
   - name: external-secrets-operator  # For AWS credentials
 ```

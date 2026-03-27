@@ -289,4 +289,3 @@ The Crossplane implementation provides a robust, scalable, and secure infrastruc
 3. Expand provider coverage based on application needs
 4. Implement policy controls for governance
 5. Regular training sessions for development teams
-

@@ -36,7 +36,7 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
-              
+
               # Bucket name from metadata
               - type: FromCompositeFieldPath
                 fromFieldPath: metadata.name
@@ -45,7 +45,7 @@ spec:
                   - type: string
                     string:
                       fmt: "%s-bucket"
-              
+
               # Tags
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.tags
@@ -53,7 +53,7 @@ spec:
                 policy:
                   mergeOptions:
                     appendSlice: true
-              
+
               # Add standard tags
               - type: CombineFromComposite
                 toFieldPath: spec.forProvider.tags.ManagedBy
@@ -63,20 +63,20 @@ spec:
                   strategy: string
                   string:
                     fmt: "crossplane"
-              
+
               # Status fields
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.id
                 toFieldPath: status.bucketName
-              
+
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.arn
                 toFieldPath: status.bucketArn
-              
+
               - type: ToCompositeFieldPath
                 fromFieldPath: status.atProvider.bucketDomainName
                 toFieldPath: status.bucketDomainName
-          
+
           # Versioning Configuration
           - name: s3-versioning
             base:
@@ -94,7 +94,7 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.versioning
                 toFieldPath: spec.forProvider.versioningConfiguration[0].status
@@ -103,7 +103,7 @@ spec:
                     map:
                       "true": Enabled
                       "false": Suspended
-          
+
           # Server-Side Encryption
           - name: s3-encryption
             base:
@@ -122,11 +122,11 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.encryption
                 toFieldPath: spec.forProvider.rule[0].applyServerSideEncryptionByDefault[0].sseAlgorithm
-          
+
           # Public Access Block
           - name: s3-public-access-block
             base:
@@ -146,23 +146,23 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.publicAccessBlock
                 toFieldPath: spec.forProvider.blockPublicAcls
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.publicAccessBlock
                 toFieldPath: spec.forProvider.blockPublicPolicy
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.publicAccessBlock
                 toFieldPath: spec.forProvider.ignorePublicAcls
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.publicAccessBlock
                 toFieldPath: spec.forProvider.restrictPublicBuckets
-          
+
           # Lifecycle Configuration (Conditional)
           - name: s3-lifecycle
             base:
@@ -183,11 +183,11 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.lifecycleDays
                 toFieldPath: spec.forProvider.rule[0].expiration[0].days
-              
+
               # Disable lifecycle if days is 0
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.lifecycleDays
@@ -197,7 +197,7 @@ spec:
                     map:
                       "0": Disabled
                     default: Enabled
-          
+
           # CORS Configuration (Conditional)
           - name: s3-cors
             base:
@@ -227,11 +227,11 @@ spec:
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.region
                 toFieldPath: spec.forProvider.region
-              
+
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.corsOrigins
                 toFieldPath: spec.forProvider.corsRule[0].allowedOrigins
-              
+
               # Only create CORS if enabled
               - type: FromCompositeFieldPath
                 fromFieldPath: spec.parameters.cors
@@ -241,7 +241,7 @@ spec:
                     map:
                       "false": "true"
                       "true": "false"
-    
+
     # Step 2: Auto Ready (marks composite as ready when all resources are ready)
     - step: auto-ready
       functionRef:

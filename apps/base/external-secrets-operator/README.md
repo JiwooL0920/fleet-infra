@@ -17,6 +17,6 @@ Kubernetes secrets management operator enabling secure credential synchronizatio
 ## Components
 
 - External Secrets operator deployment via HelmRelease
-- ClusterSecretStore for LocalStack integration  
+- ClusterSecretStore for LocalStack integration
 - Push secret configurations for PostgreSQL credentials
 - Namespace and RBAC configurations

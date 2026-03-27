@@ -33,14 +33,14 @@ spec:
   values:
     # Deployment mode - SingleBinary for local dev simplicity
     deploymentMode: SingleBinary
-    
+
     loki:
       auth_enabled: false
-      
+
       commonConfig:
         path_prefix: /var/loki
         replication_factor: 1
-      
+
       schemaConfig:
         configs:
           - from: "2024-04-01"
@@ -50,13 +50,13 @@ spec:
             index:
               prefix: loki_index_
               period: 24h
-      
+
       storage:
         type: 'filesystem'
         filesystem:
           chunks_directory: /var/loki/chunks
           rules_directory: /var/loki/rules
-      
+
       limits_config:
         retention_period: ${LOKI_RETENTION_PERIOD}
         reject_old_samples: true
@@ -67,7 +67,7 @@ spec:
         ingestion_burst_size_mb: 1024
         max_streams_per_user: 10000
         max_line_size: 256000
-    
+
     # SingleBinary configuration
     singleBinary:
       replicas: 1
@@ -82,12 +82,12 @@ spec:
         requests:
           cpu: "500m"
           memory: "1Gi"
-    
+
     # Gateway configuration
     gateway:
       enabled: true
       replicas: 1
-    
+
     # Disable all scalable components for SingleBinary mode
     write:
       replicas: 0
@@ -113,31 +113,31 @@ spec:
       replicas: 0
     bloomGateway:
       replicas: 0
-    
+
     # Disable MinIO
     minio:
       enabled: false
-    
+
     # Monitoring configuration
     monitoring:
       serviceMonitor:
         enabled: true
         namespace: monitoring
         interval: 30s
-    
+
     # Test configuration
     test:
       enabled: false
-    
+
     lokiCanary:
       enabled: false
-    
+
     # Disable cache components
     resultsCache:
       enabled: false
     chunksCache:
       enabled: false
-    
+
     # Disable memcached components
     memcached:
       enabled: false

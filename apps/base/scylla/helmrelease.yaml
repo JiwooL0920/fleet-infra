@@ -1,0 +1,74 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: scylla
+  namespace: flux-system
+spec:
+  interval: 10m
+  releaseName: scylla
+  targetNamespace: scylla
+  install:
+    createNamespace: true
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: scylla
+      version: "${SCYLLA_CHART_VERSION}"
+      sourceRef:
+        kind: HelmRepository
+        name: scylla
+        namespace: flux-system
+      interval: 10m
+  values:
+    # ScyllaDB image configuration
+    scyllaImage:
+      repository: scylladb/scylla
+      tag: "${SCYLLA_IMAGE_TAG}"
+
+    # Scylla Manager Agent sidecar
+    agentImage:
+      repository: scylladb/scylla-manager-agent
+      tag: "${SCYLLA_AGENT_TAG}"
+
+    # Developer mode for Kind cluster (relaxed requirements)
+    developerMode: ${SCYLLA_DEVELOPER_MODE}
+
+    # Datacenter configuration
+    datacenter: dc1
+
+    # Rack configuration
+    racks:
+      - name: rack1
+        members: ${SCYLLA_RACK_MEMBERS}
+        storage:
+          capacity: ${SCYLLA_STORAGE_SIZE}
+        resources:
+          limits:
+            cpu: "${SCYLLA_CPU_LIMIT}"
+            memory: "${SCYLLA_MEMORY_LIMIT}"
+          requests:
+            cpu: "${SCYLLA_CPU_REQUEST}"
+            memory: "${SCYLLA_MEMORY_REQUEST}"
+
+    # Enable Alternator (DynamoDB-compatible API)
+    # This is the key feature for chat history storage
+    # Note: Port 8000 is the default and is no longer configurable (deprecated field removed)
+    alternator:
+      enabled: true
+      writeIsolation: only_rmw_uses_lwt
+
+    # Service Monitor for Prometheus integration
+    serviceMonitor:
+      create: false
+
+    # Node selector and tolerations if needed
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}

@@ -130,16 +130,16 @@ graph LR
     Start --> CNPG[CNPG Operator]
     Start --> Monitoring[Kube-Prometheus]
     Start --> Weave[Weave GitOps]
-    
+
     LocalStack --> ES[External Secrets]
     ES --> Redis
-    
+
     CNPG --> PG[PostgreSQL Cluster]
     PG --> PGDB[PostgreSQL DBs]
     PGDB --> N8N
     PGDB --> Temporal
     PG --> pgAdmin4
-    
+
     Redis --> RedisInsight
 ```
 
@@ -349,7 +349,7 @@ flux get all --status-selector ready=true
 
 **Services Starting Immediately** (T+0):
 - Traefik
-- LocalStack  
+- LocalStack
 - CNPG Operator
 - Kube-Prometheus Stack
 - Weave GitOps

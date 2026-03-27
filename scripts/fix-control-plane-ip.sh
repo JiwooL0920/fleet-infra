@@ -71,16 +71,16 @@ fix_kubelet_config() {
     local container_name=$1
     local old_ip=$2
     local new_ip=$3
-    
+
     echo -e "${YELLOW}🔄 Updating kubelet configuration: ${old_ip} -> ${new_ip}${NC}"
-    
+
     # Update kubelet.conf
     docker exec "$container_name" sed -i "s|server: https://${old_ip}:6443|server: https://${new_ip}:6443|" /etc/kubernetes/kubelet.conf
-    
+
     # Restart kubelet
     echo -e "${YELLOW}🔄 Restarting kubelet service...${NC}"
     docker exec "$container_name" systemctl restart kubelet
-    
+
     echo -e "${GREEN}✅ Kubelet configuration updated and service restarted${NC}"
 }
 
@@ -89,20 +89,20 @@ wait_for_node_ready() {
     local node_name=$1
     local max_attempts=30
     local attempt=1
-    
+
     echo -e "${YELLOW}⏳ Waiting for control plane node to become Ready...${NC}"
-    
+
     while [ $attempt -le $max_attempts ]; do
         if ! is_control_plane_not_ready "$node_name"; then
             echo -e "${GREEN}✅ Control plane node is now Ready!${NC}"
             return 0
         fi
-        
+
         echo -e "${YELLOW}   Attempt ${attempt}/${max_attempts}: Node still not ready...${NC}"
         sleep 2
         ((attempt++))
     done
-    
+
     echo -e "${RED}❌ Control plane node did not become Ready within ${max_attempts} attempts${NC}"
     return 1
 }
@@ -110,10 +110,10 @@ wait_for_node_ready() {
 # Function to check and fix DNS issues
 fix_dns_issues() {
     echo -e "${BLUE}🔍 Checking DNS (CoreDNS) health...${NC}"
-    
+
     # Check if CoreDNS pods are running
     local coredns_pods=$(kubectl get pods -n kube-system -l k8s-app=kube-dns --no-headers 2>/dev/null | grep -c "Running" || echo "0")
-    
+
     if [[ $coredns_pods -lt 2 ]]; then
         echo -e "${YELLOW}⚠️  CoreDNS pods not running properly. Restarting...${NC}"
         kubectl rollout restart deployment/coredns -n kube-system || true
@@ -126,19 +126,19 @@ fix_dns_issues() {
 # Function to fix webhook connectivity issues
 fix_webhook_issues() {
     echo -e "${BLUE}🔍 Checking webhook health...${NC}"
-    
+
     # Restart External Secrets webhook if it exists
     if kubectl get deployment secrets-manager-external-secrets-webhook -n secrets-manager &>/dev/null; then
         echo -e "${YELLOW}🔄 Restarting External Secrets webhook...${NC}"
         kubectl rollout restart deployment/secrets-manager-external-secrets-webhook -n secrets-manager
     fi
-    
+
     # Restart CNPG operator if it exists
     if kubectl get deployment -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg &>/dev/null; then
         echo -e "${YELLOW}🔄 Restarting CNPG operator...${NC}"
         kubectl rollout restart deployment -n cnpg-system -l app.kubernetes.io/name=cloudnative-pg
     fi
-    
+
     echo -e "${YELLOW}⏳ Waiting for webhooks to stabilize...${NC}"
     sleep 15
 }
@@ -146,10 +146,10 @@ fix_webhook_issues() {
 # Function to clean up crashing pods
 cleanup_crashing_pods() {
     echo -e "${BLUE}🔍 Cleaning up crashing pods...${NC}"
-    
+
     # Find and delete CrashLoopBackOff pods in kube-system (especially kube-proxy)
     local crashing_pods=$(kubectl get pods -n kube-system --no-headers | grep "CrashLoopBackOff" | awk '{print $1}' || true)
-    
+
     if [[ -n "$crashing_pods" ]]; then
         echo -e "${YELLOW}🧹 Deleting crashing pods: $crashing_pods${NC}"
         echo "$crashing_pods" | xargs -r kubectl delete pod -n kube-system
@@ -162,54 +162,54 @@ cleanup_crashing_pods() {
 # Function to trigger Flux reconciliation
 trigger_flux_reconciliation() {
     echo -e "${BLUE}🔄 Triggering Flux reconciliation...${NC}"
-    
+
     # Check if flux command is available
     if ! command -v flux &> /dev/null; then
         echo -e "${YELLOW}⚠️  Flux CLI not found. Skipping Flux reconciliation.${NC}"
         return 0
     fi
-    
+
     # Reconcile Git source first
     echo -e "${YELLOW}🔄 Reconciling Git source...${NC}"
     flux reconcile source git flux-system --timeout=30s || true
-    
+
     # Reconcile core kustomizations
     echo -e "${YELLOW}🔄 Reconciling core kustomizations...${NC}"
     flux reconcile kustomization flux-system --timeout=30s || true
     flux reconcile kustomization infrastructure-operators --timeout=30s || true
-    
+
     # Suspend and resume problematic kustomizations to reset their state
     local problem_kustomizations="external-secrets-config database-workloads infrastructure-config"
-    
+
     echo -e "${YELLOW}🔄 Resetting problematic kustomizations...${NC}"
     flux suspend kustomization $problem_kustomizations || true
     sleep 2
     flux resume kustomization $problem_kustomizations || true
-    
+
     echo -e "${GREEN}✅ Flux reconciliation triggered${NC}"
 }
 
 # Function to wait for system stabilization
 wait_for_system_stability() {
     echo -e "${BLUE}⏳ Waiting for system to stabilize...${NC}"
-    
+
     local max_attempts=20
     local attempt=1
-    
+
     while [ $attempt -le $max_attempts ]; do
         local ready_kustomizations=$(flux get kustomizations 2>/dev/null | grep -c "True" || echo "0")
         local total_kustomizations=$(flux get kustomizations 2>/dev/null | grep -c "flux-system\|infrastructure\|database\|services" || echo "1")
-        
+
         if [[ $ready_kustomizations -gt $((total_kustomizations / 2)) ]]; then
             echo -e "${GREEN}✅ System appears to be stabilizing (${ready_kustomizations}/${total_kustomizations} kustomizations ready)${NC}"
             return 0
         fi
-        
+
         echo -e "${YELLOW}   Attempt ${attempt}/${max_attempts}: ${ready_kustomizations}/${total_kustomizations} kustomizations ready...${NC}"
         sleep 10
         ((attempt++))
     done
-    
+
     echo -e "${YELLOW}⚠️  System may still be stabilizing. Check with 'flux get all' or 'make verify-startup'${NC}"
 }
 
@@ -217,57 +217,57 @@ wait_for_system_stability() {
 main() {
     echo -e "${BLUE}🔍 Checking cluster accessibility...${NC}"
     check_kubectl
-    
+
     echo -e "${BLUE}🔍 Verifying this is a Kind cluster...${NC}"
     check_kind_cluster
-    
+
     echo -e "${BLUE}🔍 Getting control plane node information...${NC}"
     CONTROL_PLANE_NODE=$(get_control_plane_node)
-    
+
     if [[ -z "$CONTROL_PLANE_NODE" ]]; then
         echo -e "${RED}❌ No control plane node found${NC}"
         exit 1
     fi
-    
+
     echo -e "${GREEN}📍 Control plane node: ${CONTROL_PLANE_NODE}${NC}"
-    
+
     # Check if control plane is already Ready
     if ! is_control_plane_not_ready "$CONTROL_PLANE_NODE"; then
         echo -e "${GREEN}✅ Control plane node is already Ready.${NC}"
-        
+
         # Still perform light health checks and Flux reconciliation
         echo -e "${BLUE}🔍 Performing health checks and Flux reconciliation...${NC}"
         cleanup_crashing_pods
         trigger_flux_reconciliation
-        
+
         echo -e "${GREEN}🎉 Health check and reconciliation completed!${NC}"
         echo -e "${BLUE}💡 Run 'make verify-startup' to check application health${NC}"
         exit 0
     fi
-    
+
     echo -e "${YELLOW}⚠️  Control plane node is NotReady. Checking IP configuration...${NC}"
-    
+
     CONTAINER_NAME=$(get_control_plane_container "$CONTROL_PLANE_NODE")
-    
+
     # Get current and configured IPs
     CURRENT_IP=$(get_container_current_ip "$CONTAINER_NAME")
     CONFIG_IP=$(get_kubelet_config_ip "$CONTAINER_NAME")
-    
+
     echo -e "${BLUE}📍 Container current IP: ${CURRENT_IP}${NC}"
     echo -e "${BLUE}📍 Kubelet config IP: ${CONFIG_IP}${NC}"
-    
+
     if [[ "$CURRENT_IP" == "$CONFIG_IP" ]]; then
         echo -e "${YELLOW}⚠️  IP addresses match, but node is still NotReady. Running comprehensive recovery...${NC}"
-        
+
         # Perform comprehensive recovery even without IP mismatch
         fix_dns_issues
         cleanup_crashing_pods
         fix_webhook_issues
-        
+
         # Wait a bit for recovery
         echo -e "${YELLOW}⏳ Waiting for recovery to take effect...${NC}"
         sleep 20
-        
+
         if wait_for_node_ready "$CONTROL_PLANE_NODE"; then
             echo -e "${GREEN}✅ Node recovered without IP fix!${NC}"
             trigger_flux_reconciliation
@@ -282,21 +282,21 @@ main() {
         fi
         return 0
     fi
-    
+
     echo -e "${RED}🔧 IP mismatch detected! Fixing configuration...${NC}"
     fix_kubelet_config "$CONTAINER_NAME" "$CONFIG_IP" "$CURRENT_IP"
-    
+
     # Wait for node to become Ready
     if wait_for_node_ready "$CONTROL_PLANE_NODE"; then
         echo -e "${GREEN}✅ Control plane IP fix completed!${NC}"
-        
+
         # Perform additional recovery steps
         fix_dns_issues
         cleanup_crashing_pods
         fix_webhook_issues
         trigger_flux_reconciliation
         wait_for_system_stability
-        
+
         echo -e "${GREEN}🎉 Post-Colima restart recovery completed successfully!${NC}"
         echo -e "${BLUE}📊 Final cluster status:${NC}"
         kubectl get nodes

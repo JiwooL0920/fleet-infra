@@ -7,15 +7,15 @@ metadata:
   namespace: cnpg-system
 spec:
   instances: 3
-  
+
   # PostgreSQL image
   imageName: ghcr.io/cloudnative-pg/postgresql:16
-  
-  
+
+
   # Storage configuration
   storage:
     size: 10Gi
-  
+
   # Resource limits and requests
   resources:
     requests:
@@ -24,7 +24,7 @@ spec:
     limits:
       memory: "2Gi"
       cpu: 1000m
-  
+
   # PostgreSQL configuration
   postgresql:
     parameters:
@@ -33,26 +33,26 @@ spec:
       effective_cache_size: "1GB"
       work_mem: "4MB"
       maintenance_work_mem: "64MB"
-      
+
       # Connection settings
       max_connections: "200"
-      
+
       # WAL settings
       wal_level: replica
       max_wal_senders: "10"
       max_replication_slots: "10"
-      
+
       # Logging
       log_min_messages: "warning"
       log_statement: "none"
-      
+
       # Checkpoint settings
       checkpoint_completion_target: "0.9"
-  
+
   # Monitoring configuration
   monitoring:
     enablePodMonitor: true
-    
+
   # Service configuration
   managed:
     services:

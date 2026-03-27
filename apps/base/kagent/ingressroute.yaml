@@ -1,0 +1,16 @@
+---
+# kagent IngressRoute
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: kagent
+  namespace: kagent
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`kagent.local`)
+      kind: Rule
+      services:
+        - name: kagent-ui
+          port: 8080

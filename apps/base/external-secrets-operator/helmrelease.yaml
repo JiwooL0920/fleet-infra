@@ -37,7 +37,7 @@ spec:
       interval: 5m
   values:
     installCRDs: true
-    
+
     # Resource limits for controller
     resources:
       limits:
@@ -46,7 +46,7 @@ spec:
       requests:
         cpu: "${EXTERNAL_SECRETS_CPU_REQUEST}"
         memory: "${EXTERNAL_SECRETS_MEMORY_REQUEST}"
-    
+
     # Webhook configuration
     webhook:
       replicaCount: ${EXTERNAL_SECRETS_WEBHOOK_REPLICA_COUNT}

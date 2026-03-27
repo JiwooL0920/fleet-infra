@@ -12,7 +12,7 @@ Application-specific database definitions automatically created within the Postg
 ## Databases
 
 - `n8n.yaml` - Database for N8N workflow automation platform
-- `temporal.yaml` - Database for Temporal workflow orchestration engine  
+- `temporal.yaml` - Database for Temporal workflow orchestration engine
 - `youtube-automation.yaml` - Database for YouTube automation workflows
 - Additional application databases as needed
 

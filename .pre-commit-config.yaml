@@ -1,0 +1,109 @@
+# Pre-commit hooks for Flux CD GitOps repository
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # Prevent giant files from being committed
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+
+      # Fix end of files
+      - id: end-of-file-fixer
+        exclude: '\.sops\.ya?ml$'
+
+      # Trim trailing whitespace
+      - id: trailing-whitespace
+        exclude: '\.sops\.ya?ml$'
+
+      # Check YAML syntax
+      - id: check-yaml
+        args: [--unsafe]
+        exclude: 'templates/.*\.ya?ml$'
+
+      # Check for merge conflicts
+      - id: check-merge-conflict
+
+      # Check for broken symlinks
+      - id: check-symlinks
+
+      # Prevent commits to main/master
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master]
+
+      # Check for case conflicts
+      - id: check-case-conflict
+
+  # YAML formatting and linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.0
+    hooks:
+      - id: yamllint
+        args: [--config-data, "{extends: relaxed, rules: {line-length: {max: 200}}}"]
+        exclude: 'templates/.*\.ya?ml$'
+
+  # Validate Kubernetes manifests
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.5
+    hooks:
+      # Forbid tabs in YAML files
+      - id: forbid-tabs
+        exclude_types: [makefile, binary]
+        files: '\.ya?ml$'
+        exclude: '^(docs/|\.)'
+
+  # Flux-specific validation
+  - repo: local
+    hooks:
+      # Validate Flux manifests with kubeconform
+      - id: kubeconform
+        name: Validate Kubernetes/Flux manifests with kubeconform
+        entry: bash -c 'scripts/pre-commit/validate-manifests.sh'
+        language: system
+        files: '\.ya?ml$'
+        pass_filenames: false
+
+      # Check for proper Flux CRD versions
+      - id: flux-check-versions
+        name: Check Flux API versions
+        entry: bash -c 'scripts/pre-commit/check-flux-versions.sh'
+        language: system
+        files: '(kustomization|helmrelease|gitrepository|helmrepository).*\.ya?ml$'
+        pass_filenames: false
+
+      # Validate kustomization overlays
+      - id: kustomize-build
+        name: Validate Kustomize overlays
+        entry: bash -c 'scripts/pre-commit/validate-kustomize.sh'
+        language: system
+        files: 'kustomization\.ya?ml$'
+        exclude: '^(clusters/|base/services/)'  # Skip Flux Kustomization CRDs
+        pass_filenames: false
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: [--severity=error]  # Only fail on errors, not warnings
+        exclude: '^scripts/(fix-control-plane-ip|port-forward|setup-local-dns)\.sh$'
+
+# Global settings
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+# Fail fast - stop on first failure
+fail_fast: false
+
+# Files to exclude from all hooks
+exclude: |
+  (?x)^(
+      .*\.sops\.ya?ml|
+      \.git/|
+      clusters/.*/flux-system/.*|
+      .*\.md\.backup|
+      node_modules/
+  )

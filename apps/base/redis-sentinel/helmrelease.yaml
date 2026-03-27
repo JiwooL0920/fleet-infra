@@ -1,0 +1,122 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: redis-sentinel
+  namespace: flux-system
+spec:
+  type: oci
+  interval: 5m
+  url: oci://registry-1.docker.io/bitnamicharts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta2
+kind: HelmRelease
+metadata:
+  name: redis-sentinel
+  namespace: flux-system
+spec:
+  targetNamespace: redis-sentinel
+  interval: 30m
+  chart:
+    spec:
+      chart: redis
+      reconcileStrategy: Revision
+      version: ${REDIS_CHART_VERSION}
+      sourceRef:
+        kind: HelmRepository
+        name: redis-sentinel
+        namespace: flux-system
+  values:
+    fullnameOverride: redis-sentinel
+
+    # Image configuration - use latest for simplicity
+    image:
+      registry: docker.io
+      repository: bitnami/redis
+      tag: latest
+
+    # Enable Redis Sentinel architecture for high availability
+    architecture: replication
+
+    # Authentication configuration
+    auth:
+      enabled: false
+
+    commonConfiguration: |-
+      # RDB Snapshot Configuration - Save every 3 hours if at least 1 key changed
+      save 10800 1
+      rdbcompression yes
+      rdbchecksum yes
+      stop-writes-on-bgsave-error no
+      dbfilename dump.rdb
+      dir /data
+
+      # Disable AOF for better performance (RDB snapshots only)
+      appendonly no
+
+      # Memory management for cache workload
+      maxmemory ${REDIS_MAXMEMORY}
+      maxmemory-policy allkeys-lru
+
+    # RBAC configuration
+    rbac:
+      create: false  # Not needed without master service tracking
+
+    # Redis Sentinel configuration
+    sentinel:
+      enabled: true
+      image:
+        registry: docker.io
+        repository: bitnami/redis-sentinel
+        tag: latest
+      masterSet: "mymaster"
+      masterService:
+        enabled: false  # Disabled to avoid kubectl sidecar dependency
+      downAfterMilliseconds: ${REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS}
+      failoverTimeout: ${REDIS_SENTINEL_FAILOVER_TIMEOUT}
+      parallelSyncs: ${REDIS_SENTINEL_PARALLEL_SYNCS}
+      resources:
+        requests:
+          memory: ${REDIS_SENTINEL_MEM_REQ}
+          cpu: ${REDIS_SENTINEL_CPU_REQ}
+        limits:
+          memory: ${REDIS_SENTINEL_MEM_LIM}
+          cpu: ${REDIS_SENTINEL_CPU_LIM}
+
+    # Redis Master configuration
+    master:
+      count: 1
+      persistence:
+        enabled: true
+        size: ${REDIS_STORAGE_SIZE}
+      resources:
+        requests:
+          memory: ${REDIS_MASTER_MEMORY_REQUEST}
+          cpu: ${REDIS_MASTER_CPU_REQUEST}
+        limits:
+          memory: ${REDIS_MASTER_MEMORY_LIMIT}
+          cpu: ${REDIS_MASTER_CPU_LIMIT}
+
+    # Redis Replica configuration
+    replica:
+      replicaCount: ${REDIS_REPLICA_COUNT}
+      # Use soft anti-affinity for local dev (hard requires multiple nodes)
+      podAntiAffinityPreset: soft
+      automountServiceAccountToken: false  # Not needed without master service
+      persistence:
+        enabled: true
+        size: ${REDIS_STORAGE_SIZE}
+      resources:
+        requests:
+          memory: ${REDIS_REPLICA_MEMORY_REQUEST}
+          cpu: ${REDIS_REPLICA_CPU_REQUEST}
+        limits:
+          memory: ${REDIS_REPLICA_MEMORY_LIMIT}
+          cpu: ${REDIS_REPLICA_CPU_LIMIT}
+
+    # Metrics configuration
+    metrics:
+      enabled: ${REDIS_METRICS_ENABLED}
+      serviceMonitor:
+        enabled: ${REDIS_METRICS_ENABLED}
+        interval: 30s

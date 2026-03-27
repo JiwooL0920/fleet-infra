@@ -85,7 +85,7 @@ sentinel:
 #### 2. Loki Cache Strategy
 - **Write Deduplication Cache**: `redis-master` (master-only for consistency)
 - **Query Results Cache**: `redis` (load-balanced for performance)
-- **Chunk Metadata Cache**: `redis` (load-balanced for performance)  
+- **Chunk Metadata Cache**: `redis` (load-balanced for performance)
 - **Index Queries Cache**: `redis` (load-balanced for performance)
 
 #### 3. Service Discovery

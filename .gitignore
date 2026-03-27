@@ -18,6 +18,14 @@ Thumbs.db
 *.temp
 *~
 
+# Pre-commit
+.pre-commit-cache/
+
+# Secret detection baseline
+.secrets.baseline
+
+# Flux CRD schemas (downloaded during validation)
+/tmp/flux-crd-schemas/
 
 .tree
 

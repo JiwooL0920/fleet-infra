@@ -4,7 +4,7 @@ Fine-grained service-level deployment configurations for the fleet infrastructur
 
 ## Architecture
 
-Orchestrates **21 services** using precise service-level dependencies for optimal parallel deployment, eliminating the need for coarse wave-based waiting.
+Orchestrates **16 active services** (21 total, 5 disabled) using precise service-level dependencies for optimal parallel deployment, eliminating the need for coarse wave-based waiting.
 
 ## Structure
 
@@ -12,29 +12,31 @@ Orchestrates **21 services** using precise service-level dependencies for optima
   - Individual service definitions with precise dependencies
   - Parallel deployment opportunities maximized
   - 8-12 minute deployment times achieved
+  - Flexible service enable/disable capability
 
 ## Services Directory
 
-Contains individual `.yaml` files for each of the 21 services:
+Contains individual `.yaml` files for each of the 21 services (16 active by default):
 
-### Foundation (No Dependencies)
+### Active Services
 
-- `traefik.yaml`, `localstack.yaml`, `cnpg-operator.yaml`, `external-secrets-operator.yaml`, `metrics-server.yaml`
+#### Foundation (No Dependencies)
 
-### Infrastructure & Configuration
+- `traefik.yaml`, `localstack.yaml`, `cnpg-operator.yaml`, `external-secrets-operator.yaml`, `external-secrets-config.yaml`, `traefik-config.yaml`, `metrics-server.yaml`
 
-- `crossplane.yaml`, `crossplane-config.yaml`, `crossplane-providers.yaml`
-- `external-secrets-config.yaml`, `traefik-config.yaml`
+#### Monitoring & Observability
 
-### Monitoring & Observability
+- `kube-prometheus-stack.yaml`, `weave-gitops.yaml`
 
-- `kube-prometheus-stack.yaml`, `weave-gitops.yaml`, `loki.yaml`, `promtail.yaml`
+#### Data & Applications
 
-### Data & Applications
+- `postgresql-cluster.yaml`, `redis-sentinel.yaml`, `n8n.yaml`, `temporal.yaml`
 
-- `postgresql-cluster.yaml`, `redis.yaml`, `n8n.yaml`, `temporal.yaml`
-
-### Database Management
+#### Database Management
 
 - `pgadmin4.yaml`, `redisinsight.yaml`
 
+### Disabled Services (Available for Deployment)
+
+- `crossplane.yaml`, `crossplane-config.yaml`, `crossplane-providers.yaml` (Infrastructure as Code)
+- `loki.yaml`, `promtail.yaml` (Log aggregation stack)

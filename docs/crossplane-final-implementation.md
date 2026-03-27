@@ -369,10 +369,10 @@ spec:
    ```bash
    # Watch Flux apply changes
    flux get kustomizations crossplane-config
-   
+
    # Check resource status
    kubectl get <resource-type> -n crossplane-system
-   
+
    # View resource details
    kubectl describe <resource-type> <resource-name> -n crossplane-system
    ```
@@ -418,7 +418,7 @@ aws iam list-roles --endpoint-url=http://localhost:4566
    ```bash
    # Check provider status
    kubectl describe provider provider-aws-s3
-   
+
    # Solution: Wait for installation or check image pull issues
    ```
 
@@ -426,7 +426,7 @@ aws iam list-roles --endpoint-url=http://localhost:4566
    ```bash
    # Check resource events
    kubectl describe <resource-type> <resource-name>
-   
+
    # Common causes:
    # - LocalStack not running
    # - Incorrect ProviderConfig
@@ -438,7 +438,7 @@ aws iam list-roles --endpoint-url=http://localhost:4566
    # Check LocalStack health
    kubectl get pods -n localstack
    curl http://localhost:4566/_localstack/health
-   
+
    # Restart LocalStack if needed
    kubectl rollout restart deployment/localstack -n localstack
    ```
@@ -497,4 +497,3 @@ This implementation serves as a production-ready template for Crossplane adoptio
 - [Upbound AWS Providers](https://marketplace.upbound.io/providers/upbound/provider-aws)
 - [LocalStack Documentation](https://docs.localstack.cloud/)
 - [Flux CD GitOps](https://fluxcd.io/docs/)
-

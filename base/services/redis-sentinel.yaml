@@ -1,0 +1,35 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: redis-sentinel
+  namespace: flux-system
+spec:
+  interval: 5m
+  retryInterval: 1m
+  timeout: 5m  # Redis Sentinel needs time for initial setup
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/redis-sentinel
+  prune: true
+  wait: true
+  dependsOn:
+    - name: external-secrets-config  # Needs ClusterSecretStore for password
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: redis-sentinel-master
+      namespace: redis-sentinel
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: redis-sentinel-replicas
+      namespace: redis-sentinel
+    - apiVersion: v1
+      kind: Secret
+      name: redis-password
+      namespace: redis-sentinel

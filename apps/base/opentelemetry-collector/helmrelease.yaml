@@ -1,0 +1,253 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: open-telemetry
+  namespace: flux-system
+spec:
+  interval: 10m
+  url: https://open-telemetry.github.io/opentelemetry-helm-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: opentelemetry-collector
+  namespace: flux-system
+spec:
+  interval: 10m
+  releaseName: opentelemetry-collector
+  targetNamespace: opentelemetry
+  chart:
+    spec:
+      chart: opentelemetry-collector
+      version: "${OTEL_COLLECTOR_CHART_VERSION}"
+      sourceRef:
+        kind: HelmRepository
+        name: open-telemetry
+        namespace: flux-system
+      interval: 10m
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  values:
+    # Image configuration (required in v0.108.0+)
+    image:
+      repository: otel/opentelemetry-collector-contrib
+
+    # Deployment mode - standalone for dev, daemonset for production node-level collection
+    mode: deployment
+
+    # Replica configuration
+    replicaCount: ${OTEL_COLLECTOR_REPLICAS}
+
+    # Resource configuration
+    resources:
+      limits:
+        cpu: "${OTEL_COLLECTOR_CPU_LIMIT}"
+        memory: "${OTEL_COLLECTOR_MEMORY_LIMIT}"
+      requests:
+        cpu: "${OTEL_COLLECTOR_CPU_REQUEST}"
+        memory: "${OTEL_COLLECTOR_MEMORY_REQUEST}"
+
+    # Presets for common use cases
+    presets:
+      # Collect Kubernetes attributes
+      kubernetesAttributes:
+        enabled: true
+      # Collect cluster-level metrics
+      clusterMetrics:
+        enabled: true
+      # Collect kubelet metrics
+      kubeletMetrics:
+        enabled: true
+
+    # OpenTelemetry Collector configuration
+    config:
+      receivers:
+        # OTLP receiver for application telemetry (traces, metrics, logs)
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+
+        # Prometheus receiver to scrape metrics from services
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: 'otel-collector'
+                scrape_interval: 30s
+                static_configs:
+                  - targets: ['localhost:8888']
+
+        # Jaeger receiver for legacy Jaeger clients
+        jaeger:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:14250
+            thrift_http:
+              endpoint: 0.0.0.0:14268
+            thrift_compact:
+              endpoint: 0.0.0.0:6831
+            thrift_binary:
+              endpoint: 0.0.0.0:6832
+
+        # Zipkin receiver for legacy Zipkin clients
+        zipkin:
+          endpoint: 0.0.0.0:9411
+
+      processors:
+        # Batch processor for better performance
+        batch:
+          timeout: 10s
+          send_batch_size: 1024
+          send_batch_max_size: 2048
+
+        # Memory limiter to prevent OOM
+        memory_limiter:
+          check_interval: 5s
+          limit_percentage: 80
+          spike_limit_percentage: 25
+
+        # Resource detection for Kubernetes metadata
+        resourcedetection:
+          detectors: [env, system, docker, gcp, ec2, azure]
+          timeout: 5s
+          override: false
+
+        # K8s attributes processor
+        k8sattributes:
+          auth_type: "serviceAccount"
+          passthrough: false
+          extract:
+            metadata:
+              - k8s.namespace.name
+              - k8s.deployment.name
+              - k8s.statefulset.name
+              - k8s.daemonset.name
+              - k8s.cronjob.name
+              - k8s.job.name
+              - k8s.pod.name
+              - k8s.pod.uid
+              - k8s.node.name
+            labels:
+              - tag_name: app
+                key: app.kubernetes.io/name
+              - tag_name: component
+                key: app.kubernetes.io/component
+
+      exporters:
+        # Debug exporter for troubleshooting
+        debug:
+          verbosity: basic
+
+        # OTLP exporter to Jaeger for traces
+        otlp/jaeger:
+          endpoint: jaeger-collector.jaeger.svc.cluster.local:4317
+          tls:
+            insecure: true
+
+        # Prometheus exporter for metrics (existing Prometheus can scrape)
+        prometheus:
+          endpoint: 0.0.0.0:8889
+          namespace: otel
+          send_timestamps: true
+          metric_expiration: 180m
+          resource_to_telemetry_conversion:
+            enabled: true
+
+        # OTLP HTTP exporter for logs to Loki (Loki 3.0+ supports native OTLP)
+        otlphttp/loki:
+          endpoint: http://monitoring-loki.monitoring.svc.cluster.local:3100/otlp
+          tls:
+            insecure: true
+
+      extensions:
+        health_check:
+          endpoint: 0.0.0.0:13133
+        pprof:
+          endpoint: 0.0.0.0:1777
+        zpages:
+          endpoint: 0.0.0.0:55679
+
+      service:
+        extensions: [health_check, pprof, zpages]
+        pipelines:
+          # Traces pipeline
+          traces:
+            receivers: [otlp, jaeger, zipkin]
+            processors: [memory_limiter, k8sattributes, batch]
+            exporters: [otlp/jaeger, debug]
+
+          # Metrics pipeline
+          metrics:
+            receivers: [otlp, prometheus]
+            processors: [memory_limiter, k8sattributes, batch]
+            exporters: [prometheus, debug]
+
+          # Logs pipeline
+          logs:
+            receivers: [otlp]
+            processors: [memory_limiter, k8sattributes, batch]
+            exporters: [otlphttp/loki, debug]
+
+        telemetry:
+          logs:
+            level: info
+          metrics:
+            level: detailed
+            address: 0.0.0.0:8888
+
+    # Service configuration
+    service:
+      type: ClusterIP
+
+    # Ports configuration
+    ports:
+      otlp:
+        enabled: true
+        containerPort: 4317
+        servicePort: 4317
+        protocol: TCP
+      otlp-http:
+        enabled: true
+        containerPort: 4318
+        servicePort: 4318
+        protocol: TCP
+      jaeger-compact:
+        enabled: true
+        containerPort: 6831
+        servicePort: 6831
+        protocol: UDP
+      jaeger-thrift:
+        enabled: true
+        containerPort: 14268
+        servicePort: 14268
+        protocol: TCP
+      jaeger-grpc:
+        enabled: true
+        containerPort: 14250
+        servicePort: 14250
+        protocol: TCP
+      zipkin:
+        enabled: true
+        containerPort: 9411
+        servicePort: 9411
+        protocol: TCP
+      prometheus:
+        enabled: true
+        containerPort: 8889
+        servicePort: 8889
+        protocol: TCP
+
+    # ServiceMonitor for Prometheus scraping
+    serviceMonitor:
+      enabled: true
+      metricsEndpoints:
+        - port: prometheus
+          interval: 30s

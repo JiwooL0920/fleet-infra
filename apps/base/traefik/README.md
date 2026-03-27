@@ -9,7 +9,7 @@ Cloud-native reverse proxy and load balancer serving as the primary ingress cont
 ## Purpose
 
 - HTTP/HTTPS ingress routing for all 21 services
-- Load balancing and traffic management  
+- Load balancing and traffic management
 - SSL termination and certificate management
 - Main entry point for external traffic
 

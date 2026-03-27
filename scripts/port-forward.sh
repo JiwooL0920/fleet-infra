@@ -27,7 +27,7 @@ start_port_forward() {
     local local_port=$3
     local remote_port=$4
     local description=$5
-    
+
     if check_service "$namespace" "$service"; then
         # Kill any existing processes on this port
         kill_port "$local_port"
@@ -65,11 +65,21 @@ start_port_forward "temporal" "temporal-server-web" "8090" "8080" "Temporal UI"
 # --- pgadmin4 ---
 start_port_forward "pgadmin4" "pgadmin4" "8080" "80" "pgAdmin4"
 
-# --- redis ---
-start_port_forward "redis" "redis" "6379" "6379" "Redis"
+# --- redis-sentinel ---
+start_port_forward "redis-sentinel" "redis-sentinel" "6379" "6379" "Redis Sentinel"
+start_port_forward "redis-sentinel" "redis-sentinel" "26379" "26379" "Redis Sentinel (sentinel)"
 
 # --- redisinsight ---
 start_port_forward "redisinsight" "redisinsight" "8001" "8080" "RedisInsight"
+
+# --- jaeger ---
+start_port_forward "jaeger" "jaeger-query" "16686" "16686" "Jaeger UI"
+
+# --- scylladb alternator ---
+start_port_forward "scylla" "scylla-client" "8000" "8000" "ScyllaDB Alternator"
+
+# --- kagent ---
+start_port_forward "kagent" "kagent" "8088" "80" "kagent UI"
 
 echo ""
 echo "Port forwards started successfully!"
@@ -86,8 +96,12 @@ echo "  Weave GitOps:  http://localhost:9001"
 echo "  PostgreSQL:    localhost:5432"
 echo "  Temporal UI:   http://localhost:8090"
 echo "  pgAdmin4:      http://localhost:8080"
-echo "  Redis:         localhost:6379"
+echo "  Redis Sentinel: localhost:6379
+  Redis Sentinel: localhost:26379 (sentinel)"
 echo "  RedisInsight:  http://localhost:8001"
+echo "  Jaeger UI:     http://localhost:16686"
+echo "  ScyllaDB:      http://localhost:8000
+  kagent UI:     http://localhost:8088"
 echo ""
 echo "Press Ctrl+C to stop all port forwards."
 

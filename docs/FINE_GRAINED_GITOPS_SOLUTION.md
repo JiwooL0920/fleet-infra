@@ -30,7 +30,7 @@ Wave 1: Infrastructure Core (5m timeout)
 ├── Traefik
 └── LocalStack
         ↓ (Sequential wait)
-Wave 2: Infrastructure Operators (10m timeout)  
+Wave 2: Infrastructure Operators (10m timeout)
 ├── CNPG Operator
 └── External Secrets Operator
         ↓ (Sequential wait)
@@ -39,7 +39,7 @@ Wave 3: Infrastructure Configuration
         ↓ (Sequential wait)
 Wave 4: Parallel Deployment (all depend on Wave 3)
 ├── Kube-Prometheus-Stack
-├── Weave GitOps  
+├── Weave GitOps
 ├── PostgreSQL Cluster
 ├── Redis
 ├── N8N
@@ -71,7 +71,7 @@ Database Layer (Depends on operators):
 
 Applications (Fine-grained dependencies):
 ├── N8N ────────── (waits only for PostgreSQL)
-├── Temporal ───── (waits only for PostgreSQL)  
+├── Temporal ───── (waits only for PostgreSQL)
 ├── pgAdmin4 ───── (waits only for PostgreSQL)
 └── RedisInsight ─ (waits only for Redis)
 
@@ -83,7 +83,7 @@ Total: 8-12 minutes (parallel + smart waiting)
 Service              Direct Dependencies           Parallel Opportunity
 =================================================================
 traefik             None                          ✓ Start immediately
-localstack          None                          ✓ Start immediately  
+localstack          None                          ✓ Start immediately
 cnpg-operator       None                          ✓ Start immediately
 external-secrets    None                          ✓ Start immediately
 metrics-server      None                          ✓ Start immediately
@@ -93,7 +93,7 @@ postgresql-cluster  cnpg-operator                 ✓ Parallel with redis
 redis              external-secrets               ✓ Parallel with postgresql
 n8n                postgresql-cluster             ✓ Parallel with temporal
 temporal           postgresql-cluster             ✓ Parallel with n8n
-pgadmin4           postgresql-cluster             ✓ Parallel with redisinsight  
+pgadmin4           postgresql-cluster             ✓ Parallel with redisinsight
 redisinsight       redis                          ✓ Parallel with pgadmin4
 ```
 
@@ -139,7 +139,7 @@ configMapGenerator:
     files:
       - cluster-vars.yaml
 
-# Resource references  
+# Resource references
 resources:
   - ../../base/cloudnative-pg
 
@@ -179,7 +179,7 @@ configMapGenerator:
 # ✅ CORRECT - Full path to kustomization
 kustomize.toolkit.fluxcd.io/depends-on: base/cnpg-operator
 
-# ❌ INCORRECT - Resource name only  
+# ❌ INCORRECT - Resource name only
 kustomize.toolkit.fluxcd.io/depends-on: cnpg-operator
 
 # ✅ CORRECT - Multiple dependencies
@@ -193,7 +193,7 @@ kustomize.toolkit.fluxcd.io/depends-on: base/traefik,base/metrics-server
 spec:
   healthChecks:
     - apiVersion: v1
-      kind: Service  
+      kind: Service
       name: traefik
       namespace: traefik
 ```
@@ -209,7 +209,7 @@ spec:
 
 ### Parallel Execution Opportunities Identified
 1. **Foundation Services**: All 5 services can start simultaneously
-2. **Monitoring Stack**: Both services start after foundation ready  
+2. **Monitoring Stack**: Both services start after foundation ready
 3. **Database Services**: PostgreSQL and Redis start in parallel when operators ready
 4. **Application Layer**: Services start when their specific database is ready
 
@@ -217,7 +217,7 @@ spec:
 ```
 T+0:00  Foundation services start (traefik, localstack, cnpg-operator, external-secrets, metrics-server)
 T+2:30  Foundation services ready, monitoring stack starts
-T+3:00  Operators ready, database services start  
+T+3:00  Operators ready, database services start
 T+5:30  PostgreSQL ready, N8N/Temporal/pgAdmin4 start
 T+4:00  Redis ready, RedisInsight starts
 T+8:00  All services operational
@@ -229,7 +229,7 @@ T+8:00  All services operational
 
 **Smart Waiting Patterns**:
 - pgAdmin4 waits for PostgreSQL cluster, not entire Wave 4
-- RedisInsight waits for Redis, not entire Wave 4  
+- RedisInsight waits for Redis, not entire Wave 4
 - N8N waits for PostgreSQL, not monitoring stack
 - Parallel deployment where architecturally sound
 
@@ -241,7 +241,7 @@ T+8:00  All services operational
 - **Solution**: Local ConfigMap generation per service
 - **Implementation**: Add configMapGenerator to every service kustomization
 
-### Environment File Dependencies  
+### Environment File Dependencies
 **Pattern Discovered**: cluster-vars.yaml files must be present in each service directory
 - **Structure**: Identical content across services (managed via base reference)
 - **Purpose**: Enables local ConfigMap generation
@@ -273,7 +273,7 @@ kubectl apply -k base/services/
 
 **To Use Wave-Based Dependencies**:
 ```bash
-# Deploy using traditional wave kustomizations  
+# Deploy using traditional wave kustomizations
 kubectl apply -k base/infrastructure/
 ```
 
@@ -284,7 +284,7 @@ resources:
   # Fine-grained services
   - services/traefik
   - services/postgresql-cluster
-  
+
   # Wave-based infrastructure (legacy)
   - infrastructure.yaml
 ```
@@ -325,7 +325,7 @@ kustomize build base/services/postgresql-cluster/
 # Monitor kustomization reconciliation times
 flux get kustomizations --watch
 
-# Track service startup sequence  
+# Track service startup sequence
 kubectl get pods --all-namespaces --watch
 ```
 
@@ -398,7 +398,7 @@ flux diff kustomization apps --path ./base
 - **Resource Utilization**: Optimized (no idle waiting)
 
 ### Deployment Reliability Gains
-- **Failed Deployments**: Reduced from 15% to 2% 
+- **Failed Deployments**: Reduced from 15% to 2%
 - **Rollback Requirements**: Eliminated due to precise dependencies
 - **Debugging Time**: 60% reduction (clear dependency chains)
 - **Developer Feedback**: 70% faster iteration cycles
@@ -414,7 +414,7 @@ flux diff kustomization apps --path ./base
 The fine-grained GitOps dependency management solution delivers significant performance improvements while maintaining system reliability and developer experience. Key success factors:
 
 1. **Precise Dependencies**: Services wait only for what they actually need
-2. **Parallel Processing**: Architectural parallelism enables faster deployments  
+2. **Parallel Processing**: Architectural parallelism enables faster deployments
 3. **ConfigMap Generation**: Local generation eliminates cross-service dependencies
 4. **Coexistence Strategy**: Zero-disruption migration path
 5. **Operational Flexibility**: Teams choose appropriate approach per use case

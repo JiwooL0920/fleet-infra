@@ -1,0 +1,130 @@
+---
+# kagent main chart
+# Depends on kagent-crds HelmRelease being fully ready before applying
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kagent
+  namespace: flux-system
+spec:
+  interval: 10m
+  releaseName: kagent
+  targetNamespace: kagent
+  dependsOn:
+    - name: kagent-crds
+  install:
+    crds: Create
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    timeout: 15m
+    remediation:
+      retries: 3
+  chart:
+    spec:
+      chart: kagent
+      version: "${KAGENT_CHART_VERSION}"
+      sourceRef:
+        kind: HelmRepository
+        name: kagent-oci
+        namespace: flux-system
+      interval: 10m
+  values:
+    # ---------------------------------------------------------
+    # Database: external CNPG PostgreSQL with pgvector
+    # Credentials mounted via secret (official production recommendation:
+    # https://kagent.dev/docs/kagent/operations/operational-considerations)
+    # ---------------------------------------------------------
+    database:
+      postgres:
+        urlFile: /var/secrets/db-url/DATABASE_URL
+        vectorEnabled: true
+        bundled:
+          enabled: false
+
+    controller:
+      replicas: 1
+      resources:
+        requests:
+          cpu: "${KAGENT_CONTROLLER_CPU_REQUEST}"
+          memory: "${KAGENT_CONTROLLER_MEMORY_REQUEST}"
+        limits:
+          cpu: "${KAGENT_CONTROLLER_CPU_LIMIT}"
+          memory: "${KAGENT_CONTROLLER_MEMORY_LIMIT}"
+      # Mount the kagent-postgres-credentials secret (created by ExternalSecret)
+      # so kagent can read DATABASE_URL from a file instead of Helm values
+      volumes:
+        - name: kagent-db-url
+          secret:
+            secretName: kagent-postgres-credentials
+      volumeMounts:
+        - name: kagent-db-url
+          mountPath: /var/secrets/db-url
+          readOnly: true
+
+    ui:
+      replicas: 1
+      resources:
+        requests:
+          cpu: "${KAGENT_UI_CPU_REQUEST}"
+          memory: "${KAGENT_UI_MEMORY_REQUEST}"
+        limits:
+          cpu: "${KAGENT_UI_CPU_LIMIT}"
+          memory: "${KAGENT_UI_MEMORY_LIMIT}"
+
+    # ---------------------------------------------------------
+    # LLM Provider: Ollama (local, in-cluster)
+    # Model is served by the ollama service in the ollama namespace
+    # ---------------------------------------------------------
+    providers:
+      default: ollama
+      ollama:
+        provider: Ollama
+        model: "${OLLAMA_MODEL}"
+        config:
+          host: "${OLLAMA_HOST}"
+
+    # ---------------------------------------------------------
+    # Agents: all subcharts disabled; k8s-agent and promql-agent managed
+    # as standalone CRs via Kustomize (avoids querydoc ToolServer dependency)
+    # ---------------------------------------------------------
+    k8s-agent:
+      enabled: false
+    kgateway-agent:
+      enabled: false
+    istio-agent:
+      enabled: false
+    promql-agent:
+      enabled: false
+    observability-agent:
+      enabled: false
+    argo-rollouts-agent:
+      enabled: false
+    helm-agent:
+      enabled: false
+    cilium-policy-agent:
+      enabled: false
+    cilium-manager-agent:
+      enabled: false
+    cilium-debug-agent:
+      enabled: false
+
+    # ---------------------------------------------------------
+    # MCP Tools: disable grafana-mcp and querydoc for Phase 1
+    # ---------------------------------------------------------
+    tools:
+      grafana-mcp:
+        enabled: false      # Enable in Phase 2
+      querydoc:
+        enabled: false
+
+    # ---------------------------------------------------------
+    # Observability: wire to existing OTel Collector in Phase 3
+    # ---------------------------------------------------------
+    otel:
+      tracing:
+        enabled: false
+      logging:
+        enabled: false

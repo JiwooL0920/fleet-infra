@@ -1,0 +1,49 @@
+# Markdown linting configuration for pre-commit
+# See https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Enable all rules by default
+default: true
+
+# Customizations
+rules:
+  # MD013 - Line length - disabled for flexibility
+  MD013: false
+
+  # MD033 - Inline HTML - allow for flexibility in docs
+  MD033: false
+
+  # MD041 - First line in file should be a top-level heading
+  MD041: false
+
+  # MD024 - Multiple headings with the same content
+  MD024:
+    siblings_only: true
+
+  # MD046 - Code block style - prefer fenced
+  MD046:
+    style: fenced
+
+  # MD003 - Heading style - prefer ATX (#)
+  MD003:
+    style: atx
+
+  # MD022 - Headings should be surrounded by blank lines
+  MD022: false
+
+  # MD031 - Fenced code blocks should be surrounded by blank lines
+  MD031: false
+
+  # MD032 - Lists should be surrounded by blank lines
+  MD032: false
+
+  # MD036 - Emphasis used instead of a heading
+  MD036: false
+
+  # MD040 - Fenced code blocks should have a language specified
+  MD040: false
+
+  # MD001 - Heading levels should only increment by one level at a time
+  MD001: false
+
+  # MD029 - Ordered list item prefix
+  MD029: false

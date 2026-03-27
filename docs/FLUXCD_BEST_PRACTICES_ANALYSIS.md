@@ -1,6 +1,6 @@
 # FluxCD Best Practices Analysis
 
-> **Comprehensive analysis of fleet-infra repository against FluxCD official best practices**  
+> **Comprehensive analysis of fleet-infra repository against FluxCD official best practices**
 > *Analysis Date: January 28, 2026*
 
 ## Executive Summary
@@ -193,7 +193,7 @@ spec:
   path: ./infrastructure/controllers
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization  
+kind: Kustomization
 metadata:
   name: infra-configs        # Category: all configs
 spec:
@@ -282,16 +282,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      
+
       - name: Setup yq
         uses: fluxcd/pkg/actions/yq@main
-      
+
       - name: Setup kubeconform
         uses: fluxcd/pkg/actions/kubeconform@main
-      
+
       - name: Setup kustomize
         uses: fluxcd/pkg/actions/kustomize@main
-      
+
       - name: Validate manifests
         run: ./scripts/validate.sh
 ```

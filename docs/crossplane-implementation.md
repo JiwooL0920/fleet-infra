@@ -1029,4 +1029,3 @@ spec:
 - [Crossplane Tutorial](https://docs.crossplane.io/latest/getting-started/)
 - [AWS Provider Examples](https://github.com/upbound/provider-aws/tree/main/examples)
 - [Composition Patterns](https://docs.crossplane.io/knowledge-base/guides/composition-patterns/)
-

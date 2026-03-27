@@ -9,30 +9,51 @@ resources:
   - traefik.yaml
   - localstack.yaml
   - cnpg-operator.yaml
+  - scylla-operator.yaml  # ScyllaDB operator for managing clusters
   - external-secrets-operator.yaml
   - external-secrets-config.yaml  # ClusterSecretStore (secrets auto-created by LocalStack init hooks)
   - traefik-config.yaml  # Traefik middleware and configuration
   - metrics-server.yaml
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml
-  
+
+  # Node maintenance (no dependencies - runs on schedule)
+  - node-image-gc.yaml  # Prunes unused container images every 6 hours
+
   # Infrastructure as Code services (disabled)
   # - crossplane.yaml
   # - crossplane-providers.yaml
   # - crossplane-config.yaml
 
-  # Logging stack services (disabled)
-  # - loki.yaml
-  # - promtail.yaml
-  
+  # Logging stack services
+  - loki.yaml
+  - promtail.yaml
+
+  # Distributed tracing services
+  - jaeger.yaml
+  - opentelemetry-collector.yaml
+
+  # Grafana Operator (for declarative dashboard management)
+  - grafana-operator.yaml
+  - grafana-config.yaml
+  - grafana-dashboards.yaml
+
+  # Database management services (depend on operators)
+  # - scylla-manager.yaml  # ScyllaDB backup/repair automation (disabled for dev - high resource requirements)
+
   # Database services (depend on operators)
   - postgresql-cluster.yaml
-  - redis.yaml
-  
-  # Application services (depend on databases)  
+  - redis-sentinel.yaml
+  - scylla-cluster.yaml  # ScyllaDB with Alternator (DynamoDB API) for chat history
+
+  # Application services (depend on databases)
   - n8n.yaml
   - temporal.yaml
-  
+
+  # AI agent platform
+  - ollama.yaml    # Local LLM inference (foundation, no dependencies)
+  - kagent.yaml    # Kubernetes-native AI agent platform (depends on ollama, cnpg-operator, external-secrets-config, traefik)
+
   # Database UI services (fine-grained dependencies)
   - pgadmin4.yaml
   - redisinsight.yaml

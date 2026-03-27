@@ -19,26 +19,26 @@ Wave 1: Infrastructure Core (5m timeout)
 ├── localstack (AWS emulation)
 └── secret-init-job (initialization)
     ↓ [Sequential - wait: true]
-    
-Wave 2: Infrastructure Operators (10m timeout) 
+
+Wave 2: Infrastructure Operators (10m timeout)
 ├── cnpg-operator (PostgreSQL operator)
 ├── external-secrets-operator
 ├── crossplane (infrastructure provisioning)
 └── metrics-server
     ↓ [Sequential - wait: true]
-    
+
 Wave 3: Infrastructure Config (5m timeout)
 ├── external-secrets-config
-├── crossplane-providers  
+├── crossplane-providers
 ├── crossplane-config
 └── traefik-config
     ↓ [Sequential - wait: true]
-    
+
 Wave 4: Parallel Deployment [PROBLEM: Mixed Dependencies]
 ├── infrastructure-monitoring (depends on operators)
 │   ├── kube-prometheus-stack
 │   └── weave-gitops
-├── infrastructure-logging (depends on monitoring) 
+├── infrastructure-logging (depends on monitoring)
 │   ├── loki
 │   └── promtail
 ├── database-workloads (depends on operators)
@@ -48,7 +48,7 @@ Wave 4: Parallel Deployment [PROBLEM: Mixed Dependencies]
     ├── n8n
     └── temporal
     ↓ [Sequential - wait: true]
-    
+
 Wave 5: Database UI (10m timeout)
 ├── pgadmin4 (depends on database-workloads)
 └── redisinsight (depends on database-workloads)
@@ -152,7 +152,7 @@ dependsOn:
 #### ANTI-PATTERN 4: Overly Complex Directory Nesting
 **Issue**: 3-4 levels of indirection to find actual resources
 ```
-base/kustomization.yaml 
+base/kustomization.yaml
   → infrastructure-core.yaml
     → infrastructure/core/kustomization.yaml
       → traefik.yaml
@@ -483,7 +483,7 @@ Week 4: Validation and Cutover
 ```bash
 # Before: Complex tracing
 flux get ks infrastructure-core
-flux get ks infrastructure-operators  
+flux get ks infrastructure-operators
 flux get ks infrastructure-config
 # ... multiple steps to find issue
 
@@ -518,13 +518,13 @@ kubectl get pods -o json | jq '.items[].spec.containers[].env'
 ```
 
 ### Risk 3: Production Impact
-**Mitigation**: 
+**Mitigation**:
 - Test in dev/staging first
 - Canary deployment approach
 - Instant rollback plan
 
 ### Risk 4: Team Knowledge Gap
-**Mitigation**: 
+**Mitigation**:
 - Documentation first
 - Training sessions
 - Pair programming during migration
@@ -538,7 +538,7 @@ kubectl get pods -o json | jq '.items[].spec.containers[].env'
 # 5 files, 3 waves, sequential deployment
 # Wave 2: Operator
 infrastructure-operators.yaml → cnpg-operator.yaml
-# Wave 4: Database  
+# Wave 4: Database
 database-workloads.yaml → cloudnative-pg.yaml
 # Wave 5: UI
 database-ui.yaml → pgadmin4.yaml
