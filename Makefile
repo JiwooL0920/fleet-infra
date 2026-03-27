@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns get-ui-credentials help precommit-install precommit-run precommit-update precommit-clean
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns get-ui-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
 
 # Default target
 help:
@@ -11,6 +11,10 @@ help:
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
 	@echo "  post-colima-restart  - Complete post-restart setup (fix IP only)"
 	@echo "  get-ui-credentials   - Show login credentials for all UI services"
+	@echo ""
+	@echo "Ollama (Local LLM for kagent):"
+	@echo "  serve-ollama         - Start native Ollama bound to all interfaces (required for kagent in dev)"
+	@echo "  pull-ollama          - Pull the llama3.2 model into native Ollama"
 	@echo ""
 	@echo "Pre-commit Hooks:"
 	@echo "  precommit-install    - Install pre-commit hooks and required tools"
@@ -71,6 +75,17 @@ post-colima-restart: fix-control-plane
 
 get-ui-credentials:
 	@./scripts/get-ui-credentials.sh
+
+# Start native Ollama bound to all interfaces so Kind cluster pods can reach it via host.docker.internal
+serve-ollama:
+	@echo "Starting Ollama (bound to 0.0.0.0 for cluster access via host.docker.internal)..."
+	@OLLAMA_HOST=0.0.0.0 ollama serve
+
+# Pull the configured LLM model into native Ollama
+pull-ollama:
+	@echo "Pulling llama3.2 model into Ollama..."
+	@ollama pull llama3.2
+	@echo "Done. Run 'make serve-ollama' to start serving."
 
 # ==============================================================================
 # Pre-commit Hooks
