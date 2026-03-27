@@ -85,8 +85,6 @@ spec:
         model: "${OLLAMA_MODEL}"
         config:
           host: "${OLLAMA_HOST}"
-          options:
-            num_ctx: 32000
 
     # ---------------------------------------------------------
     # Agents: only k8s-agent enabled for Phase 1
