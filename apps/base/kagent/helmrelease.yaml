@@ -106,7 +106,7 @@ spec:
       istio-agent:
         enabled: false
       promql-agent:
-        enabled: false      # Enable in Phase 2
+        enabled: true
         systemMessage: |
           # PromQL Query Generator
 
