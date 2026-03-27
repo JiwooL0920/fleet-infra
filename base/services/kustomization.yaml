@@ -16,6 +16,7 @@ resources:
   - metrics-server.yaml
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml
+  - grafana-sa-setup.yaml  # One-time Job: creates Grafana SA token, stores in LocalStack for kagent
 
   # Node maintenance (no dependencies - runs on schedule)
   - node-image-gc.yaml  # Prunes unused container images every 6 hours

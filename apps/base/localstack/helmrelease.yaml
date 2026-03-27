@@ -159,4 +159,9 @@ spec:
           "$HTPASSWD" \
           "Traefik dashboard htpasswd"
 
+      # kagent Grafana SA token (populated by grafana-sa-setup Job after Grafana is healthy)
+      create_secret "kagent/grafana/api-key" \
+          "placeholder-run-grafana-sa-setup" \
+          "Grafana SA token for kagent mcp-grafana (auto-populated by grafana-sa-setup Job)"
+
       echo "=== Secret initialization complete ==="

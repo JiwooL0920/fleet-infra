@@ -112,11 +112,17 @@ spec:
       enabled: false
 
     # ---------------------------------------------------------
-    # MCP Tools: disable grafana-mcp and querydoc for Phase 1
+    # MCP Tools: enable grafana-mcp for observability-agent (Phase 2)
+    # URL points at the kube-prometheus-stack Grafana service in monitoring namespace.
+    # apiKey is injected via postBuild.substituteFrom from kagent-grafana-sa-token Secret
+    # (populated by grafana-sa-setup Job → LocalStack → ExternalSecret pipeline).
     # ---------------------------------------------------------
     tools:
       grafana-mcp:
-        enabled: false      # Enable in Phase 2
+        enabled: true
+      grafana:
+        url: "http://monitoring-kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+        apiKey: "${KAGENT_GRAFANA_API_KEY}"
       querydoc:
         enabled: false
 

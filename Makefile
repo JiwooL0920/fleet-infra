@@ -1,4 +1,7 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns get-ui-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
+
+# Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL ?= qwen2.5:72b
 
 # Default target
 help:
@@ -9,12 +12,14 @@ help:
 	@echo "  port-forward         - Start port forwarding for all services (alternative to DNS)"
 	@echo "  verify-startup       - Verify service startup order and health"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
-	@echo "  post-colima-restart  - Complete post-restart setup (fix IP only)"
+	@echo "  post-colima-restart  - Complete post-restart setup (fix IP + refresh credentials)"
 	@echo "  get-ui-credentials   - Show login credentials for all UI services"
+	@echo "  refresh-credentials  - Force-sync secrets from LocalStack and restart pods"
 	@echo ""
 	@echo "Ollama (Local LLM for kagent):"
 	@echo "  serve-ollama         - Start native Ollama bound to all interfaces (required for kagent in dev)"
-	@echo "  pull-ollama          - Pull the llama3.2 model into native Ollama"
+	@echo "  pull-ollama          - Pull OLLAMA_MODEL into native Ollama (default: $(OLLAMA_MODEL))"
+	@echo "                         Override: make pull-ollama OLLAMA_MODEL=llama3.2"
 	@echo ""
 	@echo "Pre-commit Hooks:"
 	@echo "  precommit-install    - Install pre-commit hooks and required tools"
@@ -68,13 +73,17 @@ fix-control-plane:
 
 # Complete post-restart setup (recommended after Colima restart)
 # Secrets are auto-initialized by LocalStack startup hooks - no manual init needed
-post-colima-restart: fix-control-plane
+post-colima-restart: fix-control-plane refresh-credentials
 	@echo "Post-Colima restart setup completed!"
-	@echo "Secrets will be auto-initialized when LocalStack starts (via init hooks + persistence)."
 	@echo "Run 'make verify-startup' to check service health."
+	@echo "Run 'make get-ui-credentials' to view current credentials."
 
 get-ui-credentials:
 	@./scripts/get-ui-credentials.sh
+
+# Force-sync all ExternalSecrets from LocalStack, restart pods, and verify credentials
+refresh-credentials:
+	@./scripts/refresh-credentials.sh
 
 # Start native Ollama bound to all interfaces so Kind cluster pods can reach it via host.docker.internal
 serve-ollama:
@@ -83,8 +92,8 @@ serve-ollama:
 
 # Pull the configured LLM model into native Ollama
 pull-ollama:
-	@echo "Pulling llama3.2 model into Ollama..."
-	@ollama pull llama3.2
+	@echo "Pulling $(OLLAMA_MODEL) model into Ollama..."
+	@ollama pull $(OLLAMA_MODEL)
 	@echo "Done. Run 'make serve-ollama' to start serving."
 
 # ==============================================================================

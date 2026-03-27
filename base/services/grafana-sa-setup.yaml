@@ -1,0 +1,29 @@
+---
+# grafana-sa-setup: one-time Job that creates a Grafana service account token
+# and stores it in LocalStack Secrets Manager at kagent/grafana/api-key.
+#
+# Must run after kube-prometheus-stack so Grafana is healthy and
+# grafana-admin-credentials Secret exists in the monitoring namespace.
+# kagent depends on this so the SA token is in LocalStack before ExternalSecret
+# syncs it into the kagent-grafana-sa-token Secret in flux-system.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: grafana-sa-setup
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/grafana-sa-setup
+  prune: true
+  wait: true
+  timeout: 5m0s
+  dependsOn:
+    - name: kube-prometheus-stack
+  healthChecks:
+    - apiVersion: batch/v1
+      kind: Job
+      name: create-grafana-sa-token
+      namespace: monitoring

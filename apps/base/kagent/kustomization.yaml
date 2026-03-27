@@ -5,6 +5,7 @@ resources:
   - helmrelease-crds.yaml
   - helmrelease.yaml
   - externalsecret.yaml
+  - externalsecret-grafana-sa.yaml
   - ingressroute.yaml
-  - promql-agent.yaml
+  - observability-agent.yaml
   - k8s-agent.yaml
