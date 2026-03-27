@@ -87,38 +87,36 @@ spec:
           host: "${OLLAMA_HOST}"
 
     # ---------------------------------------------------------
-    # Agents: only k8s-agent enabled for Phase 1
-    # Each agent runs as a separate pod (~256Mi-1Gi); disable unused ones
-    # to avoid unnecessary resource consumption
+    # Agents: subchart enable/disable flags (top-level keys per Chart.yaml conditions)
+    # Only k8s-agent enabled for Phase 1; promql-agent managed standalone
     # ---------------------------------------------------------
-    agents:
-      k8s-agent:
-        enabled: true
-        resources:
-          requests:
-            cpu: "${KAGENT_AGENT_CPU_REQUEST}"
-            memory: "${KAGENT_AGENT_MEMORY_REQUEST}"
-          limits:
-            cpu: "${KAGENT_AGENT_CPU_LIMIT}"
-            memory: "${KAGENT_AGENT_MEMORY_LIMIT}"
-      kgateway-agent:
-        enabled: false
-      istio-agent:
-        enabled: false
-      promql-agent:
-        enabled: false      # Managed by standalone promql-agent.yaml instead of Helm
-      observability-agent:
-        enabled: false      # Enable in Phase 2
-      argo-rollouts-agent:
-        enabled: false
-      helm-agent:
-        enabled: false
-      cilium-policy-agent:
-        enabled: false
-      cilium-manager-agent:
-        enabled: false
-      cilium-debug-agent:
-        enabled: false
+    k8s-agent:
+      enabled: true
+      resources:
+        requests:
+          cpu: "${KAGENT_AGENT_CPU_REQUEST}"
+          memory: "${KAGENT_AGENT_MEMORY_REQUEST}"
+        limits:
+          cpu: "${KAGENT_AGENT_CPU_LIMIT}"
+          memory: "${KAGENT_AGENT_MEMORY_LIMIT}"
+    kgateway-agent:
+      enabled: false
+    istio-agent:
+      enabled: false
+    promql-agent:
+      enabled: false
+    observability-agent:
+      enabled: false
+    argo-rollouts-agent:
+      enabled: false
+    helm-agent:
+      enabled: false
+    cilium-policy-agent:
+      enabled: false
+    cilium-manager-agent:
+      enabled: false
+    cilium-debug-agent:
+      enabled: false
 
     # ---------------------------------------------------------
     # MCP Tools: disable grafana-mcp and querydoc for Phase 1
@@ -127,7 +125,7 @@ spec:
       grafana-mcp:
         enabled: false      # Enable in Phase 2
       querydoc:
-        enabled: true       # ToolServer must exist for agents to reconcile; tool itself is inert without OpenAI API key
+        enabled: false
 
     # ---------------------------------------------------------
     # Observability: wire to existing OTel Collector in Phase 3

@@ -1,0 +1,13 @@
+---
+apiVersion: kagent.dev/v1alpha1
+kind: ToolServer
+metadata:
+  name: kagent-querydoc
+  namespace: kagent
+spec:
+  config:
+    streamableHttp:
+      sseReadTimeout: 5m0s
+      timeout: 30s
+      url: http://localhost:8085/mcp
+  description: "Documentation Query Tool Server (stub for non-OpenAI providers)"

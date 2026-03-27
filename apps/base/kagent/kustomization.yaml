@@ -7,3 +7,4 @@ resources:
   - externalsecret.yaml
   - ingressroute.yaml
   - promql-agent.yaml
+  - toolserver-querydoc.yaml
