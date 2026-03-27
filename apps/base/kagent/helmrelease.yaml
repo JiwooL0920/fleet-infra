@@ -87,18 +87,11 @@ spec:
           host: "${OLLAMA_HOST}"
 
     # ---------------------------------------------------------
-    # Agents: subchart enable/disable flags (top-level keys per Chart.yaml conditions)
-    # Only k8s-agent enabled for Phase 1; promql-agent managed standalone
+    # Agents: all subcharts disabled; k8s-agent and promql-agent managed
+    # as standalone CRs via Kustomize (avoids querydoc ToolServer dependency)
     # ---------------------------------------------------------
     k8s-agent:
-      enabled: true
-      resources:
-        requests:
-          cpu: "${KAGENT_AGENT_CPU_REQUEST}"
-          memory: "${KAGENT_AGENT_MEMORY_REQUEST}"
-        limits:
-          cpu: "${KAGENT_AGENT_CPU_LIMIT}"
-          memory: "${KAGENT_AGENT_MEMORY_LIMIT}"
+      enabled: false
     kgateway-agent:
       enabled: false
     istio-agent:
