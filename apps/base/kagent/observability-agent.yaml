@@ -71,9 +71,10 @@ spec:
 
     ALWAYS use query_loki_logs. Never use k8s_describe_resource or k8s_get_events for log questions.
 
-    1. query_loki_logs(logql='{namespace="X"}', datasourceUid="P8E80F9AEF21F6940", limit=30)
+    1. query_loki_logs(logql='{namespace="X"}', datasourceUid="P8E80F9AEF21F6940", limit=5)
        -> Replace X with the namespace the user mentioned.
-       -> To filter for errors: logql='{namespace="X"} |= "error"'
+       -> ALWAYS use limit=5. Never exceed limit=5 — larger results break the context window.
+       -> To filter for errors only: logql='{namespace="X"} |= "error"'
        -> To filter for a specific pod: logql='{namespace="X", pod=~"temporal.*"}'
        -> If unsure of labels, call list_loki_label_names(datasourceUid="P8E80F9AEF21F6940") first.
     2. Show relevant log lines as a code block. Highlight errors or anomalies.
@@ -90,8 +91,8 @@ spec:
 
     1. query_prometheus(expr="...", datasourceUid="prometheus", startTime="now-1h")
        -> Check CPU, memory, restarts.
-    2. query_loki_logs(logql='{namespace="X"}', datasourceUid="P8E80F9AEF21F6940", limit=50)
-       -> Look for errors or warnings.
+    2. query_loki_logs(logql='{namespace="X"} |= "error"', datasourceUid="P8E80F9AEF21F6940", limit=5)
+       -> Filter for errors/warnings. ALWAYS use limit=5.
     3. k8s_describe_resource(resource_type="pod", resource_name="NAME", namespace="NS")
        -> If metrics/logs suggest a K8s-level problem.
     4. Summarize: what is wrong, why, and what to do next.
