@@ -73,8 +73,11 @@ spec:
     4. Summarize findings concisely
 
     ## Tool Parameter Requirements
-    - query_prometheus: requires `expr` and `datasource_uid`
-    - query_loki_logs: requires `query` and `datasource_uid`
+    - query_prometheus: requires `expr`, `datasourceUid`, and `startTime` (e.g. "now-1h")
+    - query_loki_logs: requires `logql` and `datasourceUid`
+    - query_loki_stats: requires `logql` and `datasourceUid`
+    - list_loki_label_names: requires `datasourceUid`
+    - search_dashboards: pass `query=""` to list all dashboards
     - k8s_get_resources: requires `resource_type` (e.g. "pods")
     - k8s_describe_resource: requires `resource_type` AND `resource_name`
 
