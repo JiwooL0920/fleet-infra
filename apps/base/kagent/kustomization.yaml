@@ -7,5 +7,6 @@ resources:
   - externalsecret.yaml
   - externalsecret-grafana-sa.yaml
   - ingressroute.yaml
+  - fast-model-config.yaml
   - observability-agent.yaml
   - k8s-agent.yaml

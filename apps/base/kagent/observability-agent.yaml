@@ -17,7 +17,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 spec:
   description: Unified observability agent for Prometheus metrics, Loki logs, Grafana dashboards, and cluster context.
-  modelConfig: default-model-config
+  modelConfig: fast-model-config
   tools:
     - type: McpServer
       mcpServer:
