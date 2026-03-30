@@ -14,11 +14,11 @@ metadata:
   name: create-grafana-sa-token
   namespace: monitoring
 spec:
-  # Keep completed Job for 7 days so Flux health checks keep passing.
-  # Flux recreates the Job when it's gone (prune=true), so a short TTL
-  # would cause unwanted re-runs. The Job script is idempotent but
-  # a long TTL avoids unnecessary Grafana token churn.
-  ttlSecondsAfterFinished: 604800
+  # No ttlSecondsAfterFinished — the completed Job persists indefinitely.
+  # In GitOps, a short TTL causes Flux to prune and recreate the Job on each
+  # reconcile cycle, generating unnecessary token churn. A completed Job uses
+  # zero resources (no running containers). To force a re-run (e.g. token
+  # rotation), delete the Job manually — Flux recreates it on next reconcile.
   backoffLimit: 5
   template:
     spec:
