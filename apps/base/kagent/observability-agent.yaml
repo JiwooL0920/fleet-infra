@@ -47,7 +47,6 @@ spec:
       mcpServer:
         toolServer: kagent-tool-server
         toolNames:
-          - prometheus_promql_tool
           - k8s_get_resources
           - k8s_describe_resource
           - k8s_get_pod_logs
@@ -67,7 +66,7 @@ spec:
     - Alertmanager: `alertmanager`
 
     ## Investigation Order
-    1. Metrics → query_prometheus (use prometheus_promql_tool to generate PromQL if needed)
+    1. Metrics → query_prometheus with PromQL you write directly
     2. Logs → query_loki_logs
     3. Cluster state → k8s_describe_resource / k8s_get_events
     4. Summarize findings concisely
