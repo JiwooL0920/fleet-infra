@@ -59,7 +59,7 @@ spec:
 
     For questions about what you can do, answer directly from this list — do not call any tools.
 
-    ## Datasource UIDs
+    ## Datasource UIDs (already known — never call list_datasources to look these up)
     - Prometheus: `prometheus`
     - Loki: `P8E80F9AEF21F6940`
     - Jaeger: `PC9A941E8F2E49454`
@@ -70,6 +70,9 @@ spec:
     2. Logs → query_loki_logs
     3. Cluster state → k8s_describe_resource / k8s_get_events
     4. Summarize findings concisely
+
+    When asked for metrics or logs, ALWAYS execute the actual query and present real results.
+    Do not stop to report what datasources exist or what tools are available — go straight to the answer.
 
     ## Tool Parameter Requirements
     - query_prometheus: requires `expr`, `datasourceUid`, and `startTime` (e.g. "now-1h")
