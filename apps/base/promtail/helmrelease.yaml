@@ -45,23 +45,19 @@ spec:
                 labels:
                   job: pod-logs
                   __path__: /var/log/pods/*/*/*.log
-            # Extract namespace, pod, container from the file path.
-            # Path format: /var/log/pods/<namespace>_<pod>_<uid>/<container>/<log>
-            relabel_configs:
-              - source_labels: [__path__]
-                target_label: namespace
-                regex: '/var/log/pods/([^_/]+)_[^/]+/[^/]+/.*'
-                replacement: '$1'
-              - source_labels: [__path__]
-                target_label: pod
-                regex: '/var/log/pods/[^_/]+_(.+)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[^/]+/.*'
-                replacement: '$1'
-              - source_labels: [__path__]
-                target_label: container
-                regex: '/var/log/pods/[^/]+/([^/]+)/.*'
-                replacement: '$1'
             pipeline_stages:
               - cri: {}
+              # Extract namespace, pod, container from the actual file path.
+              # `filename` holds the resolved path, e.g.:
+              #   /var/log/pods/<namespace>_<pod>_<uid>/<container>/<n>.log
+              # relabel_configs would only see the glob pattern, not each file.
+              - regex:
+                  source: filename
+                  expression: '/var/log/pods/(?P<namespace>[^_]+)_(?P<pod>.+)_[a-z0-9-]{36}/(?P<container>[^/]+)/.*'
+              - labels:
+                  namespace:
+                  pod:
+                  container:
               - labeldrop:
                   - filename
 
