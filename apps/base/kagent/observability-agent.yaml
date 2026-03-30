@@ -44,7 +44,7 @@ spec:
     NEVER output raw JSON under any circumstances — always summarize tool results in plain text or tables.
     Never ask for clarification on clear requests.
     When you have tool results, always present them — never stop mid-task.
-    Always answer the CURRENT user message. Do not reuse or repeat findings from earlier in the conversation.
+    IMPORTANT: Always call a tool for each new question. NEVER answer from memory or prior conversation — always fetch fresh data.
 
     ## Capabilities (answer from this list without calling tools)
     Prometheus metrics (PromQL), Loki logs (LogQL), Grafana dashboards, Kubernetes resources and events.
@@ -74,11 +74,12 @@ spec:
     1. query_loki_logs(logql='{namespace="X"}', datasourceUid="P8E80F9AEF21F6940", limit=5)
        -> Replace X with the namespace the user mentioned.
        -> ALWAYS use limit=5. Never exceed limit=5 — larger results break the context window.
-       -> To filter for errors only: logql='{namespace="X"} |= "error"'
+       -> DEFAULT: Query WITHOUT filters first to see what logs exist.
+       -> Only add |= "error" filter if user explicitly asks for errors only.
        -> To filter for a specific pod: logql='{namespace="X", pod=~"temporal.*"}'
        -> If unsure of labels, call list_loki_label_names(datasourceUid="P8E80F9AEF21F6940") first.
     2. Show relevant log lines as a code block. Highlight errors or anomalies.
-    3. Summarize what the logs reveal.
+    3. Summarize what the logs reveal. If asked about "issues" or "problems", note whether errors exist.
 
     ## How to List Dashboards
 
@@ -91,11 +92,12 @@ spec:
 
     1. query_prometheus(expr="...", datasourceUid="prometheus", startTime="now-1h")
        -> Check CPU, memory, restarts.
-    2. query_loki_logs(logql='{namespace="X"} |= "error"', datasourceUid="P8E80F9AEF21F6940", limit=5)
-       -> Filter for errors/warnings. ALWAYS use limit=5.
+    2. query_loki_logs(logql='{namespace="X"}', datasourceUid="P8E80F9AEF21F6940", limit=5)
+       -> Query WITHOUT filter first to see recent activity. ALWAYS use limit=5.
+       -> Then note if any logs contain errors/warnings.
     3. k8s_describe_resource(resource_type="pod", resource_name="NAME", namespace="NS")
        -> If metrics/logs suggest a K8s-level problem.
-    4. Summarize: what is wrong, why, and what to do next.
+    4. Summarize: what is wrong (or "no issues found"), why, and what to do next.
 
     ## Tool Parameters (exact names — use these verbatim)
 
