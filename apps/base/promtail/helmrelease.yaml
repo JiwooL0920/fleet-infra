@@ -36,43 +36,61 @@ spec:
       positions:
         filename: /run/promtail/positions.yaml
 
-      # Minimal scrape configuration - NO kubernetes service discovery
       snippets:
-        # Completely disable default scrape configs
         scrapeConfigs: |
-          - job_name: static-pods
+          - job_name: kubernetes-pods
             static_configs:
               - targets:
                   - localhost
                 labels:
                   job: pod-logs
                   __path__: /var/log/pods/*/*/*.log
+            # Extract namespace, pod, container from the file path.
+            # Path format: /var/log/pods/<namespace>_<pod>_<uid>/<container>/<log>
+            relabel_configs:
+              - source_labels: [__path__]
+                target_label: namespace
+                regex: '/var/log/pods/([^_/]+)_[^/]+/[^/]+/.*'
+                replacement: '$1'
+              - source_labels: [__path__]
+                target_label: pod
+                regex: '/var/log/pods/[^_/]+_(.+)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[^/]+/.*'
+                replacement: '$1'
+              - source_labels: [__path__]
+                target_label: container
+                regex: '/var/log/pods/[^/]+/([^/]+)/.*'
+                replacement: '$1'
             pipeline_stages:
               - cri: {}
               - labeldrop:
                   - filename
 
-    # Use Deployment mode with single replica on control-plane
-    # DaemonSet causes "too many open files" on worker nodes with many pods
+    # DaemonSet on all nodes so every node's logs are collected.
+    # An init container raises fs.inotify.max_user_instances to prevent
+    # "too many open files" with high pod counts.
     daemonset:
+      enabled: true
+
+    deployment:
       enabled: false
 
-    # Enable Deployment mode
-    deployment:
-      enabled: true
-      replicaCount: 1
-      autoscaling:
-        enabled: false
-
-    # Schedule on control-plane node (fewer pods = fewer file descriptors)
-    nodeSelector:
-      node-role.kubernetes.io/control-plane: ""
-
-    # Tolerate control-plane taint
+    # Run on all nodes including control-plane
     tolerations:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
         effect: NoSchedule
+
+    # Increase inotify limit before Promtail starts (chart-native mechanism)
+    initContainer:
+      - name: init-inotify
+        image: docker.io/busybox:1.36
+        imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - sysctl -w fs.inotify.max_user_instances=8192
+        securityContext:
+          privileged: true
 
     # Pod configuration
     podAnnotations:
@@ -93,12 +111,11 @@ spec:
       create: true
       name: promtail
 
-    # RBAC configuration - minimal permissions since no k8s API calls
     rbac:
       create: true
       pspEnabled: false
 
-    # Security context
+    # Security context for the main container
     containerSecurityContext:
       readOnlyRootFilesystem: true
       allowPrivilegeEscalation: false
@@ -106,7 +123,7 @@ spec:
         drop:
           - ALL
 
-    # Volume mounts for log collection - ONLY pod logs
+    # Volume mounts for log collection
     defaultVolumes:
       - name: run
         emptyDir: {}
@@ -121,7 +138,6 @@ spec:
         mountPath: /var/log/pods
         readOnly: true
 
-    # No extra volumes
     extraVolumes: []
     extraVolumeMounts: []
 
