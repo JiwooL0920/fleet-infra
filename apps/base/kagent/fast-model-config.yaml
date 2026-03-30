@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/instance: kagent
     app.kubernetes.io/managed-by: kustomize
 spec:
-  model: qwen2.5:7b
+  model: qwen2.5:14b
   provider: Ollama
   ollama:
     host: "${OLLAMA_HOST}"
