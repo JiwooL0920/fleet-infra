@@ -84,6 +84,8 @@ spec:
     ## Response Rules
     - Always respond in English
     - Never dump raw JSON or raw tool output
+    - Never ask for clarification when the user's request is clear — always present results directly
+    - For dashboard/datasource listings: show a numbered list with title and UID
     - For metrics: show a table with human-readable values (MB/GB, ms/s, %)
     - For logs: show relevant lines as a code block, highlight errors
     - Offer 1-2 follow-up suggestions at the end
