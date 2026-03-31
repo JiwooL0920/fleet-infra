@@ -4,7 +4,7 @@
 # management, and cluster context — the single observability interface.
 #
 # Tools from two RemoteMCPServers:
-#   mcp-grafana  — Loki, Prometheus (via Grafana proxy), Grafana dashboards, alerts
+#   kagent-grafana-mcp — Loki, Prometheus (via Grafana proxy), Grafana dashboards, alerts
 #   kagent-tool-server — PromQL generation, live cluster state correlation
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
@@ -23,7 +23,8 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
-          name: mcp-grafana
+          kind: RemoteMCPServer
+          name: kagent-grafana-mcp
           toolNames:
             - query_prometheus
             - query_loki_logs
@@ -35,6 +36,7 @@ spec:
             - list_alert_rules
       - type: McpServer
         mcpServer:
+          kind: RemoteMCPServer
           name: kagent-tool-server
           toolNames:
             - k8s_get_resources

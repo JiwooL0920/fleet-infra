@@ -24,6 +24,7 @@ spec:
       # OpenCost MCP: real cost allocation data
       - type: McpServer
         mcpServer:
+          kind: RemoteMCPServer
           name: opencost-mcp-server
           toolNames:
             - get_allocation_costs
@@ -31,12 +32,14 @@ spec:
       # Prometheus: resource utilization (requests vs actual)
       - type: McpServer
         mcpServer:
-          name: mcp-grafana
+          kind: RemoteMCPServer
+          name: kagent-grafana-mcp
           toolNames:
             - query_prometheus
       # k8s: read resource requests/limits from pod specs
       - type: McpServer
         mcpServer:
+          kind: RemoteMCPServer
           name: kagent-tool-server
           toolNames:
             - k8s_get_resources

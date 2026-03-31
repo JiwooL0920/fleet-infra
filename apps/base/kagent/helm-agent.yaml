@@ -22,6 +22,7 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          kind: RemoteMCPServer
           name: kagent-tool-server
           toolNames:
             - helm_list_releases

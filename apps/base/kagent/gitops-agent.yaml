@@ -27,6 +27,7 @@ spec:
     tools:
       - type: McpServer
         mcpServer:
+          kind: RemoteMCPServer
           name: github-mcp-server
           toolNames:
             # Read operations - no approval needed
