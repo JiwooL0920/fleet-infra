@@ -1,0 +1,26 @@
+---
+# opencost: Kubernetes cost monitoring (CNCF graduated)
+# Built-in MCP server at port 8081 used by finops-agent.
+#
+# Depends on:
+#   - kube-prometheus-stack: reads CPU/memory from Prometheus to compute costs
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: opencost
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/opencost
+  prune: true
+  wait: true
+  timeout: 10m0s
+  dependsOn:
+    - name: kube-prometheus-stack
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

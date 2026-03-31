@@ -1,0 +1,94 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: kubescape
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://kubescape.github.io/helm-charts/
+---
+# Kubescape Operator: Kubernetes security scanning platform.
+# Deploys kubescape, kubevuln, operator, and storage components.
+# Publishes VulnerabilityManifest and WorkloadConfigurationScan CRDs
+# that the security-agent queries via k8s tools.
+#
+# Features enabled:
+#   - Continuous scanning (on resource change)
+#   - Vulnerability scanning (kubevuln)
+#   - Configuration scanning (NSA/MITRE framework)
+#   - Runtime threat detection (requires node-agent DaemonSet)
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kubescape
+  namespace: flux-system
+spec:
+  interval: 10m
+  releaseName: kubescape
+  targetNamespace: kubescape
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+    timeout: 10m
+  upgrade:
+    remediation:
+      retries: 3
+    timeout: 10m
+  chart:
+    spec:
+      chart: kubescape-operator
+      version: "${KUBESCAPE_CHART_VERSION}"
+      sourceRef:
+        kind: HelmRepository
+        name: kubescape
+        namespace: flux-system
+      interval: 1h
+  values:
+    # Cluster name shown in Kubescape scan results
+    clusterName: "${CLUSTER_NAME}"
+
+    # Enable continuous scanning on resource changes
+    capabilities:
+      continuousScan: enable
+      nodeScan: enable
+      vulnerabilityScan: enable
+      configurationScan: enable
+
+    # Resource limits - tuned for dev (single-node kind cluster)
+    kubescape:
+      resources:
+        requests:
+          cpu: "${KUBESCAPE_CPU_REQUEST}"
+          memory: "${KUBESCAPE_MEMORY_REQUEST}"
+        limits:
+          cpu: "${KUBESCAPE_CPU_LIMIT}"
+          memory: "${KUBESCAPE_MEMORY_LIMIT}"
+
+    kubevuln:
+      resources:
+        requests:
+          cpu: "${KUBESCAPE_CPU_REQUEST}"
+          memory: "${KUBESCAPE_MEMORY_REQUEST}"
+        limits:
+          cpu: "${KUBESCAPE_CPU_LIMIT}"
+          memory: "${KUBESCAPE_MEMORY_LIMIT}"
+
+    operator:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+    storage:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi

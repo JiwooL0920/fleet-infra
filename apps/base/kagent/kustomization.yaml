@@ -6,7 +6,19 @@ resources:
   - helmrelease.yaml
   - externalsecret.yaml
   - externalsecret-grafana-sa.yaml
+  - externalsecret-github.yaml
   - ingressroute.yaml
   - fast-model-config.yaml
-  - observability-agent.yaml
+  # Agents
+  - coordinator-agent.yaml
   - k8s-agent.yaml
+  - observability-agent.yaml
+  - gitops-agent.yaml
+  - flux-agent.yaml
+  - helm-agent.yaml
+  - security-agent.yaml
+  - finops-agent.yaml
+  # GitHub MCP Server (Deployment + Service + RemoteMCPServer)
+  - github-mcp-server.yaml
+  # OpenCost MCP Server (RemoteMCPServer pointing to built-in OpenCost MCP)
+  - opencost-mcp-server.yaml

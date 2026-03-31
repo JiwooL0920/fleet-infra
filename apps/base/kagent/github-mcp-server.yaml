@@ -1,0 +1,101 @@
+---
+# github-mcp-server: Self-hosted GitHub MCP server for gitops-agent.
+# Runs the official GitHub MCP server in HTTP/SSE mode so kagent can connect to it
+# as a ToolServer. The GITHUB_PERSONAL_ACCESS_TOKEN is injected from the
+# github-mcp-credentials ExternalSecret.
+#
+# GitHub MCP Server: https://github.com/github/github-mcp-server
+# Exposed tools used by gitops-agent:
+#   get_file_contents, list_commits, list_pull_requests, get_pull_request,
+#   get_pull_request_files, search_code, create_branch, create_or_update_file,
+#   push_files, create_pull_request
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: github-mcp-server
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: github-mcp-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: github-mcp-server
+        app.kubernetes.io/instance: kagent
+    spec:
+      containers:
+        - name: github-mcp-server
+          image: ghcr.io/github/github-mcp-server:latest
+          args:
+            - http
+          ports:
+            - name: http
+              containerPort: 8082
+              protocol: TCP
+          env:
+            - name: GITHUB_PERSONAL_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: github-mcp-credentials
+                  key: GITHUB_PERSONAL_ACCESS_TOKEN
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: github-mcp-server
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    app.kubernetes.io/name: github-mcp-server
+  ports:
+    - name: http
+      port: 8082
+      targetPort: http
+      protocol: TCP
+---
+# ToolServer: registers the github-mcp-server SSE endpoint with kagent.
+# Referenced by gitops-agent as toolServer: github-mcp-server
+apiVersion: kagent.dev/v1alpha1
+kind: ToolServer
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: github-mcp-server
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  description: GitHub MCP server for repository operations and Pull Request creation
+  config:
+    sse:
+      url: http://github-mcp-server.kagent.svc.cluster.local:8082/sse
+      timeout: 30s
+      sseReadTimeout: 5m0s

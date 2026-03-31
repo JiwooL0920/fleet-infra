@@ -55,6 +55,10 @@ resources:
   - ollama.yaml    # Local LLM inference (foundation, no dependencies)
   - kagent.yaml    # Kubernetes-native AI agent platform (depends on ollama, cnpg-operator, external-secrets-config, traefik)
 
+  # Security and cost observability (depend on kube-prometheus-stack)
+  - kubescape.yaml    # Kubernetes security scanning — feeds security-agent
+  - opencost.yaml     # Kubernetes cost monitoring — feeds finops-agent via built-in MCP
+
   # Database UI services (fine-grained dependencies)
   - pgadmin4.yaml
   - redisinsight.yaml

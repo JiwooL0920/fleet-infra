@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -9,6 +9,7 @@ help:
 	@echo ""
 	@echo "Local Development:"
 	@echo "  setup-dns            - Setup local DNS entries for Traefik ingress (recommended)"
+	@echo "  setup-github-secret  - Push GitHub PAT from env into LocalStack (needed for gitops-agent)"
 	@echo "  port-forward         - Start port forwarding for all services (alternative to DNS)"
 	@echo "  verify-startup       - Verify service startup order and health"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
@@ -38,11 +39,21 @@ help:
 	@echo ""
 	@echo "NOTE: Secrets are automatically initialized via LocalStack startup hooks."
 	@echo "      No manual secret initialization is required."
+	@echo "      Exception: run 'make setup-github-secret' once to push your GitHub PAT."
 
 # Setup local DNS for Traefik ingress
 setup-dns:
 	@echo "Setting up local DNS entries for Traefik ingress..."
 	@./scripts/setup-local-dns.sh
+
+# Push GitHub PAT from environment into LocalStack (needed for gitops-agent)
+# Reads GITHUB_TOKEN or GITHUB_PAT from env, or prompts interactively.
+# Creates the github-pat-bootstrap K8s Secret in the localstack namespace.
+# LocalStack reads this on startup and creates github/mcp/token in its Secrets Manager.
+# Run once per fresh cluster. LocalStack persistence means no re-run on pod restart.
+setup-github-secret:
+	@echo "Creating github-pat-bootstrap Secret for LocalStack..."
+	@./scripts/init-github-secret.sh
 
 # Port forward target
 port-forward:
@@ -77,6 +88,13 @@ post-colima-restart: fix-control-plane refresh-credentials
 	@echo "Post-Colima restart setup completed!"
 	@echo "Run 'make verify-startup' to check service health."
 	@echo "Run 'make get-ui-credentials' to view current credentials."
+	@echo ""
+	@if [[ -n "$$GITHUB_TOKEN" || -n "$$GITHUB_PAT" ]]; then \
+		echo "Detected GitHub token in environment. Re-syncing GitHub secret..."; \
+		./scripts/init-github-secret.sh; \
+	else \
+		echo "Tip: Run 'make setup-github-secret' if you use the gitops-agent (requires GitHub PAT)."; \
+	fi
 
 get-ui-credentials:
 	@./scripts/get-ui-credentials.sh

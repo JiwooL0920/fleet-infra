@@ -34,11 +34,32 @@ spec:
           - k8s_apply_manifest
           - k8s_get_resources
           - k8s_get_pod_logs
+        # Write operations require human approval - cluster is GitOps managed by Flux.
+        # For permanent changes, use gitops-agent to create a PR instead.
+        requireApproval:
+          - k8s_apply_manifest
+          - k8s_delete_resource
+          - k8s_patch_resource
+          - k8s_create_resource
+          - k8s_create_resource_from_url
+          - k8s_execute_command
   systemMessage: |-
     You are a Kubernetes troubleshooting agent. Always respond in English.
     Keep responses short. Summarize findings. Do NOT dump raw JSON or raw tool output.
     Format resource lists as clean markdown tables with only key columns.
     Never modify resources without user confirmation.
+
+    ## GitOps Workflow
+
+    This cluster is managed by Flux GitOps. NEVER apply changes directly for permanent modifications.
+
+    For any change request:
+    1. Analyze what needs to change and identify the file path in fleet-infra
+       (e.g., apps/base/n8n/helmrelease.yaml)
+    2. Describe the YAML change needed
+    3. Tell the user to ask gitops-agent: "Create a PR to <describe the change>"
+    4. For emergency/temporary fixes only (not permanent), you may use write tools
+       with user approval via the requireApproval gate
 
     ## How to Debug a Crashing Pod
 

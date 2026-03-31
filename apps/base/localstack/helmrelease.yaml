@@ -74,10 +74,20 @@ spec:
       enabled: true
       size: 1Gi
 
-    # Enable persistence mode in LocalStack runtime
+    # Enable persistence mode in LocalStack runtime.
+    # GITHUB_PAT is injected from the github-pat-bootstrap Secret (optional).
+    # Create this Secret once during cluster bootstrap:
+    #   make setup-github-secret
+    # The startup script below reads it and creates github/mcp/token in LocalStack.
     extraEnvVars:
       - name: PERSISTENCE
         value: "1"
+      - name: GITHUB_PAT
+        valueFrom:
+          secretKeyRef:
+            name: github-pat-bootstrap
+            key: token
+            optional: true
 
     # Auto-initialize secrets when LocalStack becomes ready
     # Scripts in ready.d/ run after all services are confirmed healthy
@@ -163,5 +173,17 @@ spec:
       create_secret "kagent/grafana/api-key" \
           "placeholder-run-grafana-sa-setup" \
           "Grafana SA token for kagent mcp-grafana (auto-populated by grafana-sa-setup Job)"
+
+      # GitHub PAT for gitops-agent GitHub MCP server.
+      # Injected from the github-pat-bootstrap K8s Secret via GITHUB_PAT env var.
+      # Create the bootstrap secret once: make setup-github-secret
+      if [[ -n "${GITHUB_PAT:-}" ]]; then
+          create_secret "github/mcp/token" \
+              "{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"$GITHUB_PAT\"}" \
+              "GitHub PAT for gitops-agent GitHub MCP server"
+      else
+          echo "[SKIP] github/mcp/token — GITHUB_PAT env var not set"
+          echo "       Create the bootstrap secret and restart LocalStack: make setup-github-secret"
+      fi
 
       echo "=== Secret initialization complete ==="
