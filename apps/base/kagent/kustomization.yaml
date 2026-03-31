@@ -8,17 +8,16 @@ resources:
   - externalsecret-grafana-sa.yaml
   - externalsecret-github.yaml
   - ingressroute.yaml
-  - fast-model-config.yaml
-  # Agents
-  - coordinator-agent.yaml
-  - k8s-agent.yaml
-  - observability-agent.yaml
-  - gitops-agent.yaml
-  - flux-agent.yaml
-  - helm-agent.yaml
-  - security-agent.yaml
-  - finops-agent.yaml
-  # GitHub MCP Server (Deployment + Service + RemoteMCPServer)
-  - github-mcp-server.yaml
-  # OpenCost MCP Server (RemoteMCPServer pointing to built-in OpenCost MCP)
-  - opencost-mcp-server.yaml
+  # v1alpha2 CRs temporarily disabled — CRDs must install first (kagent-crds 0.8.3)
+  # Re-enable after kagent-crds HelmRelease upgrades to 0.8.3
+  # - fast-model-config.yaml
+  # - coordinator-agent.yaml
+  # - k8s-agent.yaml
+  # - observability-agent.yaml
+  # - gitops-agent.yaml
+  # - flux-agent.yaml
+  # - helm-agent.yaml
+  # - security-agent.yaml
+  # - finops-agent.yaml
+  # - github-mcp-server.yaml
+  # - opencost-mcp-server.yaml
