@@ -8,8 +8,8 @@
 #   - get_asset_costs: node, disk, load balancer costs
 #
 # Reference: https://opencost.io/docs/integrations/mcp/
-apiVersion: kagent.dev/v1alpha1
-kind: ToolServer
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
 metadata:
   name: opencost-mcp-server
   namespace: kagent
@@ -19,8 +19,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 spec:
   description: OpenCost MCP server for Kubernetes cost allocation and asset cost queries
-  config:
-    streamableHttp:
-      url: http://opencost.opencost.svc.cluster.local:8081
-      timeout: 30s
-      sseReadTimeout: 2m0s
+  url: http://opencost.opencost.svc.cluster.local:8081
+  protocol: STREAMABLE_HTTP
+  timeout: 30s
+  sseReadTimeout: 2m0s

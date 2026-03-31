@@ -81,10 +81,10 @@ spec:
       targetPort: http
       protocol: TCP
 ---
-# ToolServer: registers the github-mcp-server SSE endpoint with kagent.
-# Referenced by gitops-agent as toolServer: github-mcp-server
-apiVersion: kagent.dev/v1alpha1
-kind: ToolServer
+# RemoteMCPServer: registers the github-mcp-server SSE endpoint with kagent.
+# Referenced by gitops-agent as name: github-mcp-server
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
 metadata:
   name: github-mcp-server
   namespace: kagent
@@ -94,8 +94,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 spec:
   description: GitHub MCP server for repository operations and Pull Request creation
-  config:
-    sse:
-      url: http://github-mcp-server.kagent.svc.cluster.local:8082/sse
-      timeout: 30s
-      sseReadTimeout: 5m0s
+  url: http://github-mcp-server.kagent.svc.cluster.local:8082/sse
+  protocol: SSE
+  timeout: 30s
+  sseReadTimeout: 5m0s
