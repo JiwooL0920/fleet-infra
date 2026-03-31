@@ -19,7 +19,7 @@ spec:
     data and Prometheus for utilization analysis. Identifies over-provisioned workloads,
     generates right-sizing recommendations, and produces YAML diffs for fleet-infra PRs.
   declarative:
-    modelConfig: default-model-config
+    modelConfig: fast-model-config
     tools:
       # OpenCost MCP: real cost allocation + efficiency + right-sizing
       - type: McpServer
