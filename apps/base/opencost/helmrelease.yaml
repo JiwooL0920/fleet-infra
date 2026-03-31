@@ -52,7 +52,7 @@ spec:
       prometheus:
         internal:
           enabled: true
-          serviceName: "monitoring-kube-prometheus-stack-prometheus"
+          serviceName: "monitoring-kube-prometheus-prometheus"
           namespaceName: "monitoring"
           port: 9090
 
@@ -81,4 +81,4 @@ spec:
             cpu: "${OPENCOST_CPU_LIMIT}"
             memory: "${OPENCOST_MEMORY_LIMIT}"
 
-    clusterName: "${CLUSTER_NAME}"
+    clusterName: "cluster.local"
