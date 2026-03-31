@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -10,6 +10,7 @@ help:
 	@echo "Local Development:"
 	@echo "  setup-dns            - Setup local DNS entries for Traefik ingress (recommended)"
 	@echo "  setup-github-secret  - Push GitHub PAT from env into LocalStack (needed for gitops-agent)"
+	@echo "  setup-grafana-db     - Store PG password in LocalStack for Grafana PostgreSQL backend"
 	@echo "  port-forward         - Start port forwarding for all services (alternative to DNS)"
 	@echo "  verify-startup       - Verify service startup order and health"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
@@ -54,6 +55,12 @@ setup-dns:
 setup-github-secret:
 	@echo "Creating github-pat-bootstrap Secret for LocalStack..."
 	@./scripts/init-github-secret.sh
+
+# Store PG app password in LocalStack for Grafana's PostgreSQL backend.
+# Run once per fresh cluster (or after PG cluster recreation).
+setup-grafana-db:
+	@echo "Storing PostgreSQL password in LocalStack for Grafana..."
+	@./scripts/init-grafana-db-secret.sh
 
 # Port forward target
 port-forward:

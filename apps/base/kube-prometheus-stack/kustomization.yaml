@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - externalsecret.yaml
+  - externalsecret-grafana-db.yaml
   - helmrelease.yaml
   - ingressroute.yaml
   - servicemonitor-agentic-ai.yaml
