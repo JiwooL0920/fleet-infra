@@ -62,9 +62,15 @@ spec:
         enabled: true
         port: 8081
 
-      # Expose UI for local access via Traefik
       ui:
         enabled: true
+        resources:
+          requests:
+            cpu: 50m
+            memory: 55Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
 
       exporter:
         resources:
@@ -75,16 +81,4 @@ spec:
             cpu: "${OPENCOST_CPU_LIMIT}"
             memory: "${OPENCOST_MEMORY_LIMIT}"
 
-    # Cluster name for cost attribution
-    # Overridden by cluster-vars ConfigMap
     clusterName: "${CLUSTER_NAME}"
-
-    # UI resources
-    ui:
-      resources:
-        requests:
-          cpu: 50m
-          memory: 55Mi
-        limits:
-          cpu: 200m
-          memory: 256Mi
