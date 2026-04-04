@@ -137,6 +137,6 @@ spec:
     # ---------------------------------------------------------
     otel:
       tracing:
-        enabled: false
+        enabled: true
       logging:
         enabled: false
