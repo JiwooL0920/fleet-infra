@@ -87,38 +87,50 @@ spec:
           host: "${OLLAMA_HOST}"
 
     # ---------------------------------------------------------
-    # Agents: all subcharts disabled; k8s-agent and promql-agent managed
-    # as standalone CRs via Kustomize (avoids querydoc ToolServer dependency)
+    # Agents: all built-in subcharts disabled — our agents are managed
+    # as standalone CRs via Kustomize (custom systemMessages, tools, etc.)
     # ---------------------------------------------------------
-    k8s-agent:
-      enabled: false
-    kgateway-agent:
-      enabled: false
-    istio-agent:
-      enabled: false
-    promql-agent:
-      enabled: false
-    observability-agent:
-      enabled: false
-    argo-rollouts-agent:
-      enabled: false
-    helm-agent:
-      enabled: false
-    cilium-policy-agent:
-      enabled: false
-    cilium-manager-agent:
-      enabled: false
-    cilium-debug-agent:
-      enabled: false
+    agents:
+      k8s-agent:
+        enabled: false
+      kgateway-agent:
+        enabled: false
+      istio-agent:
+        enabled: false
+      promql-agent:
+        enabled: false
+      observability-agent:
+        enabled: false
+      argo-rollouts-agent:
+        enabled: false
+      helm-agent:
+        enabled: false
+      cilium-policy-agent:
+        enabled: false
+      cilium-manager-agent:
+        enabled: false
+      cilium-debug-agent:
+        enabled: false
 
     # ---------------------------------------------------------
-    # MCP Tools: disable grafana-mcp and querydoc for Phase 1
+    # MCP Tools: enable grafana-mcp for observability-agent
+    # querydoc disabled (we manage tools as standalone CRs)
     # ---------------------------------------------------------
     tools:
       grafana-mcp:
-        enabled: false      # Enable in Phase 2
+        enabled: true
       querydoc:
         enabled: false
+
+    # ---------------------------------------------------------
+    # Grafana MCP subchart config (v0.8.3 moved out of tools block)
+    # URL points at kube-prometheus-stack Grafana in monitoring namespace.
+    # apiKey injected via postBuild.substituteFrom from kagent-grafana-sa-token Secret.
+    # ---------------------------------------------------------
+    grafana-mcp:
+      grafana:
+        url: "http://monitoring-kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+        serviceAccountToken: "${KAGENT_GRAFANA_API_KEY}"
 
     # ---------------------------------------------------------
     # Observability: wire to existing OTel Collector in Phase 3

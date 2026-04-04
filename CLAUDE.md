@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **23 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
+This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **25 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
 
 **Note**: 4 services are currently disabled (Crossplane suite, Scylla Manager) and can be re-enabled as needed.
 
@@ -14,6 +14,9 @@ This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-
 ```bash
 # Setup local DNS entries for Traefik ingress (RECOMMENDED)
 make setup-dns
+
+# Push GitHub PAT into LocalStack for gitops-agent (one-time per fresh cluster)
+make setup-github-secret
 
 # Alternative: Start port forwarding for all services
 make port-forward
@@ -26,6 +29,7 @@ make post-colima-restart
 ```
 
 **Note:** Secrets are automatically initialized by LocalStack startup hooks. No manual initialization needed.
+**Exception:** Run `make setup-github-secret` once to enable the gitops-agent (requires GitHub PAT).
 
 ### Accessing Services
 
@@ -47,6 +51,8 @@ make setup-dns
 # http://localstack.local - LocalStack
 # http://scylla.local - ScyllaDB Alternator (DynamoDB API)
 # http://jaeger.local - Jaeger Tracing UI
+# http://kagent.local - kagent AI Agent Dashboard
+# http://opencost.local - OpenCost Cost Monitoring
 ```
 
 **Option 2: Port Forwarding**
@@ -129,7 +135,7 @@ curl http://scylla.local/
 - Different sync intervals: dev (1m), prod (10m)
 
 #### Fine-Grained Service Architecture
-**19 active services** organized in precise dependency layers enabling maximum parallel deployment:
+**25 active services** organized in precise dependency layers enabling maximum parallel deployment:
 
 **Foundation Services (8 - start immediately, no dependencies):**
 - **Traefik**: Ingress controller and load balancer
@@ -151,6 +157,10 @@ curl http://scylla.local/
 - **Jaeger**: Distributed tracing backend
 - **OpenTelemetry Collector**: Unified telemetry collection pipeline (traces, metrics, logs)
 
+**Security & Cost Observability (2 - depend on kube-prometheus-stack):**
+- **Kubescape**: Kubernetes security scanning — CVE detection, RBAC audit, misconfiguration checks
+- **OpenCost**: Kubernetes cost monitoring with built-in MCP server — feeds finops-agent
+
 **Database Management Services (1 - depend on operators):**
 - **Scylla Manager**: ScyllaDB backup and repair automation
 
@@ -163,6 +173,10 @@ curl http://scylla.local/
 - **N8N**: Workflow automation engine with PostgreSQL backend
 - **Temporal**: Workflow orchestration platform with PostgreSQL backend
 
+**AI Agent Platform (2 - orchestrator-worker multi-agent system):**
+- **Ollama**: Local LLM inference backend (foundation, no deps)
+- **kagent**: Kubernetes-native AI agent platform (CNCF Sandbox) with 8 specialized agents
+
 **Database Management UIs (2 - precise dependencies):**
 - **pgAdmin4**: PostgreSQL web interface (depends only on PostgreSQL)
 - **RedisInsight**: Redis management interface (depends only on Redis)
@@ -171,6 +185,35 @@ curl http://scylla.local/
 - **Crossplane**: Infrastructure as Code platform (disabled)
 - **Crossplane Config/Providers**: IaC compositions and providers (disabled)
 - **Scylla Manager**: ScyllaDB backup and repair automation (disabled)
+
+#### kagent Multi-Agent Architecture (Orchestrator-Worker Pattern)
+
+kagent implements an **orchestrator-worker pattern** based on Anthropic/LangChain 2026 best practices. A single `coordinator-agent` is the entry point; it delegates to specialized subagents in parallel via the A2A protocol.
+
+**coordinator-agent (single entry point)**
+- Analyzes query complexity, decomposes into subtasks, spawns subagents in parallel
+- Uses `default-model-config` (qwen2.5:72b) for planning and delegation
+- Delegates GitOps changes to gitops-agent via A2A
+
+**Specialized Subagents (use fast-model-config):**
+- **k8s-agent**: Pod status, deployments, events, cluster troubleshooting (18 tools). Write tools approval-gated.
+- **observability-agent**: Prometheus metrics, Loki logs, Grafana dashboards (mcp-grafana + k8s tools)
+- **gitops-agent**: Creates draft PRs in fleet-infra via GitHub MCP. All write tools approval-gated. **Never merges** — humans always merge.
+- **flux-agent**: Flux sync status, kustomization health, reconciliation triggers (k8s tools querying Flux CRDs)
+- **helm-agent**: Read-only Helm release inspection (values, history, status). Write tools excluded.
+- **security-agent**: RBAC audit, Kubescape CVE/misconfiguration CRDs, pod security contexts, network policies
+- **finops-agent**: Cost analysis via OpenCost MCP + Prometheus utilization for right-sizing recommendations
+
+**GitOps principle enforced across all agents:**
+- No agent applies changes directly to the cluster
+- All changes flow through gitops-agent → GitHub PR → human review → merge → Flux reconcile
+
+**GitHub PAT bootstrap (one-time):**
+```bash
+make setup-github-secret  # Reads GITHUB_TOKEN from env, creates K8s Secret in localstack ns
+```
+LocalStack startup script reads GITHUB_PAT env var and creates `github/mcp/token` in Secrets Manager.
+ExternalSecrets syncs it to `github-mcp-credentials` in kagent namespace.
 
 #### Database Architecture
 - PostgreSQL 16 with CloudNative PG operator

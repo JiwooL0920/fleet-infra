@@ -1,0 +1,13 @@
+---
+# Grafana Database
+# PostgreSQL database for Grafana internal state (replaces default SQLite)
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: grafana
+  namespace: cnpg-system
+spec:
+  name: grafana
+  owner: app
+  cluster:
+    name: postgresql-cluster

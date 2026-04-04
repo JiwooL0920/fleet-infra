@@ -88,18 +88,31 @@ spec:
           memory: "${GRAFANA_MEMORY_REQUEST}"
           cpu: "${GRAFANA_CPU_REQUEST}"
 
-      # Persistence
+      # PostgreSQL database backend (replaces default SQLite)
+      # Password synced from LocalStack via ExternalSecret grafana-db-credentials
+      # Bootstrap: make setup-grafana-db (one-time, reads PG password and stores in LocalStack)
+      env:
+        GF_DATABASE_TYPE: postgres
+        GF_DATABASE_HOST: postgresql-cluster-rw.cnpg-system:5432
+        GF_DATABASE_NAME: grafana
+        GF_DATABASE_USER: app
+        GF_DATABASE_SSL_MODE: disable
+      envValueFrom:
+        GF_DATABASE_PASSWORD:
+          secretKeyRef:
+            name: grafana-db-credentials
+            key: password
+
+      # Persistence disabled — state is in PostgreSQL
       persistence:
-        enabled: true
-        storageClassName: "standard"
-        size: 5Gi
+        enabled: false
 
       # Additional datasources
       additionalDataSources:
         - name: Loki
           type: loki
           access: proxy
-          url: http://loki-gateway.monitoring.svc.cluster.local:80
+          url: http://monitoring-loki-gateway.monitoring.svc.cluster.local:80
           jsonData:
             maxLines: 1000
         - name: Jaeger

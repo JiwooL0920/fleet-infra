@@ -1,0 +1,29 @@
+---
+# kubescape: Kubernetes security scanning platform (CNCF sandbox)
+# Publishes VulnerabilityManifest and WorkloadConfigurationScan CRDs
+# queried by security-agent in the kagent namespace.
+#
+# Depends on:
+#   - metrics-server: resource metrics for node scanning
+#   - kube-prometheus-stack: Prometheus scraping of Kubescape metrics
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kubescape
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/kubescape
+  prune: true
+  wait: true
+  timeout: 10m0s
+  dependsOn:
+    - name: metrics-server
+    - name: kube-prometheus-stack
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

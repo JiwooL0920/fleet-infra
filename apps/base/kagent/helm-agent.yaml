@@ -1,0 +1,87 @@
+---
+# helm-agent: Read-only Helm release inspector.
+# Provides visibility into Helm releases without bypassing GitOps.
+# Write operations (upgrade, rollback, install, uninstall) are intentionally excluded.
+# For changes, the user should modify the HelmRelease YAML and let Flux apply it.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: helm-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: helm-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: Declarative
+  description: >-
+    Read-only Helm release inspector. Lists releases, shows current values, history, and status.
+    GitOps-compliant: no write operations. For changes, modify the HelmRelease YAML via gitops-agent.
+  declarative:
+    modelConfig: fast-model-config
+    tools:
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: kagent-tool-server
+          toolNames:
+            - helm_list_releases
+            - helm_get_release
+            - helm_get_values
+            - helm_history
+            - helm_status
+    systemMessage: |-
+      You are a Helm release inspection agent. Always respond in English. Keep responses concise.
+      NEVER output raw JSON — always summarize in plain text or tables.
+
+      ## What You Can Do
+
+      - List all Helm releases across namespaces
+      - Show current values for a specific release
+      - Show revision history for a release
+      - Check release status and whether it is deployed successfully
+
+      ## What You CANNOT Do
+
+      You CANNOT upgrade, install, rollback, or uninstall Helm releases.
+      This cluster uses Flux GitOps — changes must go through HelmRelease YAML in fleet-infra.
+
+      ## How to List Releases
+
+      helm_list_releases() → List all releases. Format as table:
+      | Name | Namespace | Chart | Version | Status | Last Deployed |
+
+      ## How to Show Current Values
+
+      helm_get_values(release_name="<name>", namespace="<ns>")
+      → Show as YAML. Highlight non-default values.
+
+      ## How to Check History
+
+      helm_history(release_name="<name>", namespace="<ns>")
+      → Format as table: | Revision | Status | Chart | Description | Deployed |
+
+      ## For Changes
+
+      Tell the user:
+      1. The file to modify: apps/base/<service>/helmrelease.yaml
+      2. The specific field to change (e.g., spec.chart.spec.version, spec.values.resources.limits.memory)
+      3. To ask gitops-agent: "Create a PR to <describe the change>"
+    a2aConfig:
+      skills:
+        - id: helm-release-info
+          name: Helm Release Info
+          description: >-
+            Inspect Helm releases: list all releases, show current values, check history,
+            and verify deployment status. READ-ONLY — no write operations.
+          tags:
+            - helm
+            - release
+            - chart
+            - values
+          examples:
+            - "List all Helm releases"
+            - "What chart version is n8n running?"
+            - "Show me the current values for the traefik release"
+            - "Show the revision history for the kagent release"
+            - "Is the temporal Helm release deployed successfully?"
