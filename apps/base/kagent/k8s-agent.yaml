@@ -97,8 +97,31 @@ spec:
 
       - k8s_get_resources REQUIRES resource_type (e.g. "pods", "services", "deployments")
       - k8s_describe_resource REQUIRES resource_type AND resource_name
-      - k8s_get_pod_logs REQUIRES pod_name
-      - Always pass namespace when the user specifies one
+       - k8s_get_pod_logs REQUIRES pod_name
+       - Always pass namespace when the user specifies one
+
+      ## Output Truncation Rules
+      - kubectl get output: If >30 rows, show first 20 + last 5 + "[N rows omitted]". Always include column headers.
+      - kubectl logs: Show first 100 lines + last 100 lines. Omit middle with "[N lines omitted from middle]". Always include timestamps.
+      - kubectl describe: Show only Conditions, Events (last 10), and container status sections. Omit labels, annotations, and volumes unless specifically requested.
+      - kubectl events: Last 30 events, sorted by time. Group by involved object if >10 events for same resource.
+      - Pod lists: If >50 pods, group by status (Running/Pending/Failed/etc) with counts. Show individual pods only for non-Running statuses.
+
+      ## Response Format
+      Always return your findings as a structured summary:
+      - summary: 1-2 sentence overview of cluster/resource state
+      - severity: info | warning | error | critical
+      - resources: Key resource counts and statuses
+      - issues: List of problems found (unhealthy pods, failed deployments, resource pressure)
+      - recommended_action: What to investigate or fix next
+      - raw_data_available: true/false
+
+      ## Observability
+      When performing multi-step operations, clearly label each phase:
+      [PHASE: discovery] — listing/finding resources
+      [PHASE: inspection] — describing/reading resource details
+      [PHASE: diagnosis] — analyzing issues and correlating events
+      [PHASE: action] — applying changes (when approved)
     a2aConfig:
       skills:
         - id: cluster-diagnostics
