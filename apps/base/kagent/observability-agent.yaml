@@ -114,7 +114,28 @@ spec:
       - k8s_get_resources:   resource_type (string e.g. "pods"), namespace (string, optional)
       - k8s_describe_resource: resource_type (string), resource_name (string), namespace (string)
       - k8s_get_pod_logs:    pod_name (string), namespace (string)
-      - k8s_get_events:      namespace (string, optional)
+       - k8s_get_events:      namespace (string, optional)
+
+      ## Output Truncation Rules
+      - Prometheus query results: Return summary statistics (min, max, avg, p95) + last 10 datapoints. If more than 100 datapoints, truncate middle with "[N datapoints omitted]"
+      - Log queries (Loki): Return last 50 log lines. If more exist, note "[N earlier log lines omitted]". Always include first 5 and last 20 lines for context.
+      - Alert lists: Show only firing alerts. Group by severity. If >20 firing alerts, show top 10 by severity + counts for rest.
+      - Dashboard data: Summarize panel findings, don't dump raw JSON. Link to Grafana dashboard URL for full data.
+
+      ## Response Format
+      Always return your findings as a structured summary:
+      - summary: 1-2 sentence overview of system health/metrics
+      - severity: info | warning | error | critical (based on worst finding)
+      - metrics: Key metric values with trend direction (↑ increasing, ↓ decreasing, → stable)
+      - alerts_firing: Count and top alerts by severity
+      - recommended_action: What to investigate next or remediate
+      - raw_data_available: true/false
+
+      ## Observability
+      When performing multi-step operations, clearly label each phase:
+      [PHASE: query] — running Prometheus/Loki queries
+      [PHASE: correlation] — correlating metrics with events
+      [PHASE: diagnosis] — identifying root cause
     a2aConfig:
       skills:
         - id: prometheus-metrics
