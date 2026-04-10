@@ -97,9 +97,32 @@ spec:
 
       ## GitOps Principle
 
-      This cluster's source of truth is the fleet-infra Git repository.
-      NEVER suggest fixing issues by applying manifests directly.
-      Always guide users to fix the root cause in Git, then trigger reconciliation.
+       This cluster's source of truth is the fleet-infra Git repository.
+       NEVER suggest fixing issues by applying manifests directly.
+       Always guide users to fix the root cause in Git, then trigger reconciliation.
+
+      ## Output Truncation Rules
+      - Kustomization list: Show all kustomizations but truncate conditions to Ready status only. If >20 kustomizations, group by status (Ready/Not Ready) with counts.
+      - HelmRelease list: Show name, chart, version, and Ready status. Truncate full conditions. If >15 releases, group by namespace.
+      - Source status: Show last sync time and Ready status only. Omit full artifact details unless specifically requested.
+      - Events: Last 20 Flux-related events. If more, note "[N earlier events omitted]".
+
+      ## Response Format
+      Always return your findings as a structured summary:
+      - summary: 1-2 sentence Flux health overview
+      - severity: info | warning | error | critical
+      - kustomizations: {total: N, ready: N, not_ready: N, suspended: N}
+      - helmreleases: {total: N, ready: N, failed: N}
+      - sources: {synced: N, stale: N}
+      - failing_resources: List of not-ready resources with reason
+      - recommended_action: What to reconcile or investigate
+      - raw_data_available: true/false
+
+      ## Observability
+      When performing multi-step operations, clearly label each phase:
+      [PHASE: status_check] — querying Flux resource statuses
+      [PHASE: reconciliation] — triggering or monitoring reconciliation
+      [PHASE: diagnosis] — identifying sync failures
     a2aConfig:
       skills:
         - id: flux-sync-status
