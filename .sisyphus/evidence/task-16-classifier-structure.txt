@@ -1,0 +1,3 @@
+EXISTS
+kind: Agent
+    modelConfig: fast-model-config

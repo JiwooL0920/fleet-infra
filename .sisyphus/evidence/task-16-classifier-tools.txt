@@ -1,0 +1,6 @@
+1
+    Lightweight query classifier and entry-point router. Classifies user intent and routes ALL queries to coordinator-agent for processing.
+          name: coordinator-agent
+      Your ONLY job is to receive user queries and route them to the coordinator-agent for processing.
+      1. For ALL queries — simple, complex, or ambiguous — delegate to coordinator-agent
+            Classify user query intent and route every request to coordinator-agent with verbatim passthrough metadata.

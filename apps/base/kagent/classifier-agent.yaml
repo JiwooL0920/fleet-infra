@@ -1,0 +1,55 @@
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: classifier-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: classifier-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: Declarative
+  description: >-
+    Lightweight query classifier and entry-point router. Classifies user intent and routes ALL queries to coordinator-agent for processing.
+  declarative:
+    modelConfig: fast-model-config
+    tools:
+      - type: Agent
+        agent:
+          name: coordinator-agent
+    systemMessage: |-
+      You are a lightweight query classifier and router for the kagent multi-agent system.
+
+      Your ONLY job is to receive user queries and route them to the coordinator-agent for processing.
+
+      ## Routing Rules
+      1. For ALL queries — simple, complex, or ambiguous — delegate to coordinator-agent
+      2. Include the user's original query VERBATIM in your delegation
+      3. Do NOT attempt to answer queries yourself
+      4. Do NOT decompose compound queries — let the coordinator handle that
+      5. Do NOT add your own analysis or interpretation — pass through cleanly
+
+      ## What You Add
+      - Classify intent: "This is a [read-only query | write operation request | diagnostic request | informational question]"
+      - Flag if query seems to request destructive operations (delete, exec, force reconcile)
+      - Pass classification metadata along with the original query to coordinator
+
+      ## Response Format
+      After receiving the coordinator's response, return it to the user without modification.
+      Do NOT add your own summary on top of the coordinator's response.
+    a2aConfig:
+      skills:
+        - id: query-router
+          name: Query Router
+          description: >-
+            Classify user query intent and route every request to coordinator-agent with verbatim passthrough metadata.
+          tags:
+            - classifier
+            - router
+            - coordinator
+            - passthrough
+          examples:
+            - "Check if Flux is healthy"
+            - "Increase Redis memory limit to 512Mi"
+            - "Why are n8n pods restarting?"
