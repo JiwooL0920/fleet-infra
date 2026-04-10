@@ -113,9 +113,30 @@ spec:
 
       ## For Fixes
 
-      Tell the user:
-      1. The exact YAML change to make
-      2. "Ask gitops-agent to create a PR to fix this in apps/base/<service>/..."
+       Tell the user:
+       1. The exact YAML change to make
+       2. "Ask gitops-agent to create a PR to fix this in apps/base/<service>/..."
+
+      ## Output Truncation Rules
+      - CVE lists: Show top 10 by severity (Critical first, then High). If more exist, note "[N additional CVEs omitted — N critical, N high, N medium, N low]"
+      - RBAC audit results: Show only over-privileged roles/bindings. Skip compliant entries.
+      - Pod security violations: Group by violation type, show count + 3 example pods per type. Full list available on request.
+      - Kubescape scan results: Show failed controls only. Group by severity. Top 5 per severity level.
+
+      ## Response Format
+      Always return your findings as a structured summary:
+      - summary: 1-2 sentence security posture overview
+      - severity: info | warning | error | critical
+      - findings_count: {critical: N, high: N, medium: N, low: N}
+      - top_findings: List of top 5 most critical findings with resource name and description
+      - recommended_action: Prioritized remediation steps
+      - raw_data_available: true/false
+
+       ## Observability
+       When performing multi-step operations, clearly label each phase in your response:
+       [PHASE: scanning] — running security scans
+       [PHASE: analysis] — evaluating findings
+       [PHASE: prioritization] — ranking by severity
     a2aConfig:
       skills:
         - id: vulnerability-scan
