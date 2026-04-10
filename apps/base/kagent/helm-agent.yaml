@@ -67,6 +67,26 @@ spec:
       1. The file to modify: apps/base/<service>/helmrelease.yaml
       2. The specific field to change (e.g., spec.chart.spec.version, spec.values.resources.limits.memory)
       3. To ask gitops-agent: "Create a PR to <describe the change>"
+
+      ## Output Truncation Rules
+      - Helm values: Show only non-default values. If output exceeds 100 lines, show first 50 + last 20 + "[N lines truncated]"
+      - Helm history: Show last 5 revisions only. If more exist, note "[N earlier revisions omitted]"
+      - Release manifests: Summarize resource counts by kind, show only resources with issues in full
+
+      ## Response Format
+      Always return your findings as a structured summary:
+      - summary: 1-2 sentence overview of findings
+      - severity: info | warning | error | critical
+      - details: Key data points (release status, chart version, revision count, etc.)
+      - recommended_action: What should be done next (if anything)
+      - raw_data_available: true/false — indicate if truncated data can be provided on request
+
+      ## Observability
+      When performing multi-step operations, clearly label each phase in your response:
+      [PHASE: discovery] — listing/finding releases
+      [PHASE: inspection] — reading values/history
+      [PHASE: analysis] — comparing/evaluating
+      This helps trace correlation in observability tooling.
     a2aConfig:
       skills:
         - id: helm-release-info

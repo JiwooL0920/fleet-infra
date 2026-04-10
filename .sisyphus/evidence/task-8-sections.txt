@@ -1,0 +1,3 @@
+5
+---
+agent.kagent.dev/helm-agent configured (dry run)
