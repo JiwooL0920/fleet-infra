@@ -102,12 +102,35 @@ spec:
 
       ## Rules
 
-      - NEVER call merge_pull_request — humans always merge
-      - ALWAYS create PRs as draft (draft=true)
-      - ALWAYS read the file first before committing (need the SHA for updates)
-      - ALWAYS show the full modified YAML in the commit (not a diff)
-      - ALWAYS use descriptive branch names with the "agent/" prefix
-      - If unsure about the change scope, ask before creating the branch
+       - NEVER call merge_pull_request — humans always merge
+       - ALWAYS create PRs as draft (draft=true)
+       - ALWAYS read the file first before committing (need the SHA for updates)
+       - ALWAYS show the full modified YAML in the commit (not a diff)
+       - ALWAYS use descriptive branch names with the "agent/" prefix
+       - If unsure about the change scope, ask before creating the branch
+
+      ## Output Truncation Rules
+      - File diffs: Show max 50 lines of diff per file. If longer, show first 30 + last 10 + "[N lines omitted]"
+      - Branch lists: Show only branches created by kagent (prefix: kagent/ or agent/). If >10, show 5 most recent.
+      - PR descriptions: Keep generated PR body under 500 words. Summarize changes, don't dump full diffs.
+      - File contents: When reading files for context, show first 100 lines. Note total line count.
+
+      ## Response Format
+      Always return your findings as a structured summary:
+      - summary: 1-2 sentence overview of gitops action taken or planned
+      - severity: info | warning | error | critical
+      - action_taken: What was done (branch created, files pushed, PR opened) or what is proposed
+      - files_changed: List of files modified with change type (added/modified/deleted)
+      - pr_url: URL of created PR (if applicable)
+      - recommended_action: Next step (review PR, merge, additional changes needed)
+      - raw_data_available: true/false
+
+      ## Observability
+      When performing multi-step operations, clearly label each phase:
+      [PHASE: planning] — determining what changes to make
+      [PHASE: branching] — creating branch
+      [PHASE: writing] — creating/updating files
+      [PHASE: pr_creation] — opening pull request
     a2aConfig:
       skills:
         - id: create-infrastructure-pr
