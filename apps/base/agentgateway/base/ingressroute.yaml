@@ -1,0 +1,20 @@
+---
+# AgentGateway IngressRoute
+# Exposes the agentgateway-proxy at agentgateway.local via Traefik.
+# Clients (IDE, A2A, MCP) connect here:
+#   - /agents/* → A2A routing to kagent-controller
+#   - /mcp       → MCP federation (all federated tool servers)
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: agentgateway
+  namespace: agentgateway-system
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`agentgateway.local`)
+      kind: Rule
+      services:
+        - name: agentgateway-proxy
+          port: 80

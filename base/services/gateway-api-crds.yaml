@@ -1,0 +1,21 @@
+---
+# gateway-api-crds: Kubernetes Gateway API standard-channel CRDs v1.5.0
+# Must be applied before agentgateway HelmRelease can create a GatewayClass resource.
+# prune: false ensures CRDs are never deleted during Flux reconciliation.
+#
+# Installs: GatewayClass, Gateway, HTTPRoute, ReferenceGrant, GRPCRoute
+# Reference: https://gateway-api.sigs.k8s.io/
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gateway-api-crds
+  namespace: flux-system
+spec:
+  interval: 24h0m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/agentgateway/gateway-api-crds
+  prune: false
+  wait: true
+  timeout: 5m0s

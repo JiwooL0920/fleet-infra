@@ -1,0 +1,13 @@
+---
+# OCI HelmRepository for AgentGateway charts
+# Charts are published to cr.agentgateway.dev/charts
+# Reference: https://agentgateway.dev/docs/kubernetes/latest/install/helm/
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: agentgateway-oci
+  namespace: flux-system
+spec:
+  interval: 1h
+  type: oci
+  url: oci://cr.agentgateway.dev/charts

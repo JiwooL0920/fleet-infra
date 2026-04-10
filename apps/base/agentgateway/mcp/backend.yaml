@@ -1,0 +1,32 @@
+---
+# AgentgatewayBackend: federated MCP backend aggregating local tool servers.
+# Exposes a single /mcp endpoint that proxies to multiple MCP servers.
+# Tools are auto-prefixed by target name to avoid collisions:
+#   kagent_tools_k8s_get_resources, grafana_mcp_query_prometheus, etc.
+#
+# Targets (local cluster only — remote clusters to be added for multi-cluster setup):
+#   - kagent-tools: Built-in kagent k8s tool server (pods, services, events, etc.)
+#   - grafana-mcp: Grafana MCP server (Prometheus queries, Loki logs, dashboards)
+#
+# IDE clients (Cursor/VS Code) can connect to http://agentgateway.local/mcp to
+# access all federated tools from a single endpoint.
+#
+# Reference: https://agentgateway.dev/docs/kubernetes/latest/tutorials/mcp-federation
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: kagent-mcp
+  namespace: agentgateway-system
+spec:
+  mcp:
+    targets:
+      - name: kagent-tools
+        static:
+          host: kagent-tools.kagent.svc.cluster.local
+          port: 8084
+          protocol: StreamableHTTP
+      - name: grafana-mcp
+        static:
+          host: kagent-grafana-mcp.kagent.svc.cluster.local
+          port: 8000
+          protocol: StreamableHTTP

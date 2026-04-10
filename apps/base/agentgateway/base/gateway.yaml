@@ -1,0 +1,26 @@
+---
+# Gateway API resource for AgentGateway proxy
+# Creates an agentgateway proxy listening on port 80.
+# Traefik IngressRoute handles external exposure (see ingressroute.yaml).
+# Routes from the kagent namespace are allowed via ReferenceGrant (see referencegrant.yaml).
+#
+# Reference: https://agentgateway.dev/docs/kubernetes/latest/setup/
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agentgateway-proxy
+  namespace: agentgateway-system
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef:
+      group: agentgateway.dev
+      kind: AgentgatewayParameters
+      name: agentgateway-proxy-params
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All

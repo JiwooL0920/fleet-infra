@@ -1,2 +1,0 @@
-5
-agent.kagent.dev/security-agent configured (dry run)

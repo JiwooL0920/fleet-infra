@@ -1,0 +1,56 @@
+---
+# kagent-tools: Lightweight read-only k8s MCP tool server for spoke clusters.
+# Exposes Kubernetes API operations (get, list, describe, logs, events) via
+# StreamableHTTP MCP protocol on port 8084.
+#
+# Hub cluster's k8s-agent accesses this via RemoteMCPServer CRs pointing to
+# the Traefik IngressRoute endpoint for this cluster.
+#
+# Image: official kagent-tools image, same version as the hub's kagent chart.
+# Reference: https://github.com/kagent-dev/kagent
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kagent-tools
+  namespace: kagent-tools
+  labels:
+    app.kubernetes.io/name: kagent-tools
+    app.kubernetes.io/instance: kagent-tools-remote
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kagent-tools
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kagent-tools
+        app.kubernetes.io/instance: kagent-tools-remote
+    spec:
+      serviceAccountName: kagent-tools
+      containers:
+        - name: kagent-tools
+          image: ghcr.io/kagent-dev/kagent/tools:${KAGENT_CHART_VERSION}
+          ports:
+            - name: mcp
+              containerPort: 8084
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8084
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8084
+            initialDelaySeconds: 10
+            periodSeconds: 30

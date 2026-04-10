@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - classifier-agent.yaml
+  - coordinator-agent.yaml
+  - k8s-agent.yaml
+  - observability-agent.yaml
+  - gitops-agent.yaml
+  - flux-agent.yaml
+  - helm-agent.yaml
+  - security-agent.yaml
+  - finops-agent.yaml

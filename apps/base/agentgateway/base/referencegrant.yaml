@@ -1,0 +1,19 @@
+---
+# ReferenceGrant: allows agentgateway-system to reference Services in the kagent namespace.
+# Required by Gateway API security model for cross-namespace HTTPRoute backend references.
+# Without this, the A2A HTTPRoute cannot route to kagent-controller in the kagent namespace.
+#
+# Reference: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1beta1.ReferenceGrant
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: agentgateway-to-kagent
+  namespace: kagent
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: agentgateway-system
+  to:
+    - group: ""
+      kind: Service

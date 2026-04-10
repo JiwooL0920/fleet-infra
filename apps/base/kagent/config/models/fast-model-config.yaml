@@ -1,0 +1,20 @@
+---
+# Faster ModelConfig for latency-sensitive agents (observability-agent, flux-agent,
+# helm-agent, security-agent, finops-agent).
+# Uses qwen2.5:14b-kagent (~10-15s TTFR) instead of the default qwen2.5:72b (~90s TTFR).
+# Sufficient for tool-calling workloads; reserve 72b for complex reasoning tasks.
+# Also used as the summarizer model for context compaction in long conversations.
+apiVersion: kagent.dev/v1alpha2
+kind: ModelConfig
+metadata:
+  name: fast-model-config
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: fast-model-config
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  model: qwen2.5:14b-kagent
+  provider: Ollama
+  ollama:
+    host: "${OLLAMA_HOST}"

@@ -1,0 +1,32 @@
+---
+# agentgateway - Gateway API-based agent connectivity platform
+# Provides A2A routing and MCP federation for the kagent multi-agent platform.
+#
+# Depends on:
+#   - gateway-api-crds: Gateway API CRDs must exist before agentgateway installs its GatewayClass
+#   - kagent: A2A routing targets the kagent-controller Service
+#   - traefik: IngressRoute for agentgateway.local
+#   - opentelemetry-collector: OTEL tracing endpoint for proxy-params
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: agentgateway
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/agentgateway
+  prune: true
+  wait: true
+  timeout: 10m0s
+  dependsOn:
+    - name: gateway-api-crds
+    - name: kagent
+    - name: traefik
+    - name: opentelemetry-collector
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

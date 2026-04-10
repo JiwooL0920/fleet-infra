@@ -1,2 +1,0 @@
-5
-agent.kagent.dev/observability-agent configured (dry run)

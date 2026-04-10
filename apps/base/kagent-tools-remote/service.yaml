@@ -1,0 +1,22 @@
+---
+# kagent-tools Service
+# Uses appProtocol: agentgateway.dev/mcp to identify this as an MCP endpoint.
+# Exposed externally via Traefik IngressRoute so the hub cluster can reach it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kagent-tools
+  namespace: kagent-tools
+  labels:
+    app.kubernetes.io/name: kagent-tools
+    app.kubernetes.io/instance: kagent-tools-remote
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    app.kubernetes.io/name: kagent-tools
+  ports:
+    - name: mcp
+      port: 8084
+      targetPort: mcp
+      protocol: TCP
+      appProtocol: agentgateway.dev/mcp

@@ -1,4 +1,0 @@
-      | helm-agent | Helm release versions, current values, history, release status (READ-ONLY) |
-         - READ agents/operations: helm-agent (always), security-agent (always), observability-agent (always), finops-agent (always), k8s-agent (get/list/describe), flux-agent (get/list/status)
-         - WRITE agents/operations: gitops-agent (always), k8s-agent (apply/delete/patch/exec), flux-agent (annotate/patch/reconcile)
-         c. gitops-agent writes (branch/commit/PR) — creates external artifacts
