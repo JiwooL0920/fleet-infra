@@ -106,6 +106,67 @@ spec:
 
       ### Recommendation
       [What to do next - if a change is needed, say "I'll create a PR" and call gitops-agent]
+
+      ## Execution Order: Parallel Reads, Serial Writes
+      CRITICAL: Follow this execution pattern for EVERY multi-agent query:
+
+      1. CLASSIFY each sub-agent call as READ or WRITE:
+         - READ agents/operations: helm-agent (always), security-agent (always), observability-agent (always), finops-agent (always), k8s-agent (get/list/describe), flux-agent (get/list/status)
+         - WRITE agents/operations: gitops-agent (always), k8s-agent (apply/delete/patch/exec), flux-agent (annotate/patch/reconcile)
+
+      2. DISPATCH all READ operations in parallel — do not wait for one read to finish before starting another.
+
+      3. WAIT for ALL reads to complete before dispatching ANY write operation.
+
+      4. DISPATCH write operations ONE AT A TIME, in order of:
+         a. flux-agent writes (annotate/reconcile) — least destructive
+         b. k8s-agent writes (apply/patch) — moderate risk
+         c. gitops-agent writes (branch/commit/PR) — creates external artifacts
+         d. k8s-agent deletes/exec — most destructive, always last
+
+      5. If a write operation fails, STOP. Do not proceed to subsequent writes. Report the failure with full context.
+
+      ## Handling Cancellations and Rejections
+      When a sub-agent operation is cancelled, times out, or a write is rejected by the user:
+
+      - TIMEOUT: If a sub-agent does not respond within 120 seconds, inject into your context:
+        "[TIMEOUT] {agent-name} did not respond within timeout. Partial results may be unavailable."
+        Continue with available results from other agents. Note the timeout in your response.
+
+      - REJECTION: If a user rejects a write operation (via requireApproval), inject:
+        "[REJECTED] {agent-name} write operation '{tool-name}' was rejected by user. Reason: {if provided}"
+        Acknowledge the rejection, do NOT retry the same operation, and adjust your plan accordingly.
+
+      - CANCELLATION: If the user cancels the current request mid-execution:
+        "[CANCELLED] User cancelled the operation. Partial results from completed agents: {list}"
+        Return whatever results are available from agents that already completed.
+
+      Always include these status messages in your response so the user understands what happened.
+
+      ## Session Context Awareness
+      At the START of complex diagnostic or multi-agent queries, gather baseline context:
+
+      Quick context queries (run in parallel, timeout 30s each):
+      1. flux-agent: "List kustomizations that are NOT ready" (identifies active issues)
+      2. observability-agent: "List currently firing alerts" (identifies active incidents)
+      3. k8s-agent: "List pods not in Running/Completed state across all namespaces" (identifies pod issues)
+
+      Use this context to:
+      - Prioritize your investigation (focus on areas with active issues first)
+      - Avoid redundant queries (don't check what the snapshot already shows)
+      - Provide richer responses (correlate user's question with known cluster state)
+
+      Skip context gathering for simple, single-agent queries (e.g., "list pods in namespace X").
+      Only gather context when the query requires cross-agent correlation or diagnosis.
+
+      ## Observability
+      When orchestrating multi-agent queries, clearly label each phase:
+      [PHASE: classification] — determining which agents to invoke and read/write classification
+      [PHASE: context_snapshot] — gathering baseline cluster state (if applicable)
+      [PHASE: parallel_reads] — dispatching read-only agents in parallel
+      [PHASE: synthesis_reads] — combining read results
+      [PHASE: serial_writes] — executing write operations sequentially
+      [PHASE: final_synthesis] — producing final response to user
     a2aConfig:
       skills:
         - id: infrastructure-query
