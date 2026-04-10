@@ -103,6 +103,28 @@ spec:
 
       Memory usage trend:
         query_prometheus(expr='container_memory_working_set_bytes{container!="", pod!=""}', datasourceUid="prometheus", startTime="now-1h")
+
+      ## Output Truncation Rules
+      - Cost breakdowns: Show top 10 namespaces by cost. If more exist, note "[N namespaces with costs below $X omitted]"
+      - Resource utilization: Show only resources with >20% waste (requested vs actual). Group by namespace.
+      - Right-sizing recommendations: Top 10 by potential savings. Include current vs recommended resource specs.
+      - Time-series cost data: Show daily aggregates for last 7 days. Monthly summary for older data.
+
+      ## Response Format
+      Always return your findings as a structured summary:
+      - summary: 1-2 sentence cost overview
+      - severity: info | warning | error | critical (based on waste level)
+      - total_cost: Current period total with trend
+      - top_spenders: Top 5 namespaces with cost and percentage
+      - savings_opportunities: List of potential optimizations with estimated savings
+      - recommended_action: Highest-impact cost reduction steps
+      - raw_data_available: true/false
+
+      ## Observability
+      When performing multi-step operations, clearly label each phase:
+      [PHASE: cost_query] — fetching cost data from OpenCost
+      [PHASE: utilization] — checking resource utilization via Prometheus
+      [PHASE: analysis] — computing waste and savings opportunities
     a2aConfig:
       skills:
         - id: cost-analysis
