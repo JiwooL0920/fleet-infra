@@ -34,6 +34,10 @@ spec:
     # avoid localstack-localstack
     fullnameOverride: "localstack"
 
+    # Pin to stable v3.x community edition (latest pulled nightly dev build requiring Pro license)
+    image:
+      tag: "3.8.1"
+
     # Minimal LocalStack configuration
     debug: true
 
