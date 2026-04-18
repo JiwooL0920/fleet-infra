@@ -173,6 +173,11 @@ spec:
           "$HTPASSWD" \
           "Traefik dashboard htpasswd"
 
+      # Grafana database password (for PostgreSQL backend)
+      create_secret "grafana/database/password" \
+          "$(gen_password)" \
+          "Grafana PostgreSQL database password"
+
       # kagent Grafana SA token (populated by grafana-sa-setup Job after Grafana is healthy)
       create_secret "kagent/grafana/api-key" \
           "placeholder-run-grafana-sa-setup" \
