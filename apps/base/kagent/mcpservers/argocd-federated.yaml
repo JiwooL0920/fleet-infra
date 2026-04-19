@@ -1,0 +1,30 @@
+---
+# RemoteMCPServer: federated ArgoCD MCP endpoint via agentgateway (PLACEHOLDER).
+#
+# Uncomment in mcpservers/kustomization.yaml when the ArgoCD MCP server is deployed
+# and backend-argocd-services-amer AgentgatewayBackend is enabled in agentgateway/mcp/.
+#
+# Tools will carry the cluster prefix (e.g. argocd-services-amer_app_get).
+# Until then, all cluster-agent overlays keep toolNames: [] for argocd-federated
+# so no requests are made to this endpoint.
+#
+# Activation checklist:
+#   1. Deploy ArgoCD MCP server (e.g. argocd-mcp-server Deployment in argocd ns)
+#   2. Uncomment backend-argocd-services-amer.yaml in agentgateway/mcp/kustomization.yaml
+#   3. Uncomment /mcp/argo rule in agentgateway/mcp/route.yaml
+#   4. Uncomment this file in kagent/mcpservers/kustomization.yaml
+#   5. Populate toolNames in cluster-agent overlays with argocd-services-amer_* names
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: argocd-federated
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: argocd-federated
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  description: Federated ArgoCD MCP endpoint via agentgateway — tools prefixed by cluster name
+  url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local/mcp/argo
+  protocol: STREAMABLE_HTTP
+  timeout: 30s

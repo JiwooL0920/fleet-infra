@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # - classifier-agent.yaml     # disabled — keyword router in coordinator-agent supersedes
+  - coordinator-agent.yaml
+  # Active cluster agents
+  - cluster-agent/services-amer
+  # Future cluster agents — uncomment when overlay is activated (see cluster-agent/README.md)
+  # - cluster-agent/platform-amer
+  # - cluster-agent/platform-emea
+  # - cluster-agent/edge-amer
+  # - cluster-agent/edge-emea
+  - observability-agent.yaml   # fleet-only — cross-cluster aggregations
+  - gitops-agent.yaml
+  - finops-agent.yaml
+  # Deleted agents (capabilities folded into cluster-agent):
+  # - k8s-agent.yaml            # DELETED — k8s tools now in cluster-agent-{cluster}
+  # - flux-agent.yaml           # DELETED — Flux CRD tools now in cluster-agent-{cluster}
+  # - helm-agent.yaml           # DELETED — helm tools now in cluster-agent-{cluster}
+  # - security-agent.yaml       # DISABLED — re-enable when security scanning is re-introduced

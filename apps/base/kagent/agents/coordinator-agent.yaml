@@ -1,0 +1,149 @@
+---
+# coordinator-agent: keyword-deterministic router and single entry point.
+#
+# Topology role (Approach A-OBS):
+#   - Routes queries to cluster-agents (1 A2A hop for single-cluster investigations)
+#   - Routes fleet observability to observability-agent (1 hop for fleet PromQL/LogQL)
+#   - Routes PR/change requests to gitops-agent
+#   - Routes cost/right-sizing queries to finops-agent
+#
+# Routing is keyword-deterministic, NOT LLM intent classification.
+# Same input → same routing every time. Ambiguous queries default to services-amer.
+#
+# Adding a cluster: add Agent tool entry + add cluster name to rule 2 keyword list.
+# Current tool budget: 5 agents — well within the 12-15 LangGraph ceiling.
+#
+# Reference: Multi-Agent Topology Design doc (041626) — Work-stream 3
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: coordinator-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: coordinator-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+    tier: supervisor
+spec:
+  type: Declarative
+  description: >-
+    Primary orchestrator. Single entry point for all infrastructure operations.
+    Routes queries to specialist agents via deterministic keyword matching.
+    For changes, delegates to gitops-agent to create Pull Requests.
+  declarative:
+    modelConfig: default-model-config
+    tools:
+      # Active cluster agents
+      - type: Agent
+        agent:
+          name: cluster-agent-services-amer
+      # Future cluster agents — uncomment when overlay is activated (see cluster-agent/README.md)
+      # - type: Agent
+      #   agent:
+      #     name: cluster-agent-platform-amer
+      # - type: Agent
+      #   agent:
+      #     name: cluster-agent-platform-emea
+      # - type: Agent
+      #   agent:
+      #     name: cluster-agent-edge-amer
+      # - type: Agent
+      #   agent:
+      #     name: cluster-agent-edge-emea
+      - type: Agent
+        agent:
+          name: observability-agent
+      - type: Agent
+        agent:
+          name: gitops-agent
+      - type: Agent
+        agent:
+          name: finops-agent
+    systemMessage: |-
+      You are the coordinator. Route every user query to exactly one specialist agent
+      based on deterministic keyword matching. Do NOT do tool work yourself.
+
+      ROUTING RULES (apply in this order, first match wins):
+
+      1. FLEET OBSERVABILITY — if the message contains any of:
+         "all clusters", "across clusters", "compare clusters", "which cluster",
+         "fleet", "fleet-wide", "every cluster"
+         AND is about metrics/logs/alerts/cost
+         → kagent__kagent__observability_agent
+
+      2. NAMED CLUSTER — if the message contains a cluster name from:
+         {services-amer, platform-amer, platform-emea, edge-amer, edge-emea}
+         → kagent__kagent__cluster_agent_{cluster_name_dashes_to_underscores}
+         (e.g. "services-amer" → cluster_agent_services_amer)
+         Prepend "On {cluster}: " to your delegation message.
+
+      3. CHANGE / PR — if the message contains any of:
+         "PR", "pull request", "create a PR", "open a PR", "commit", "push", "change"
+         → kagent__kagent__gitops_agent
+
+      4. COST / RIGHT-SIZING — if the message contains any of:
+         "cost", "right-size", "right sizing", "over-provisioned", "efficiency",
+         "waste", "savings", "opencost", "finops"
+         → kagent__kagent__finops_agent
+
+      5. DEFAULT — no rule matched above
+         → kagent__kagent__cluster_agent_services_amer
+         Prepend "On services-amer: " to your delegation message.
+
+      PASS-THROUGH RULE:
+      When exactly one agent was called, return its response verbatim.
+      Do NOT re-summarize. Do NOT add a "let me know" footer.
+
+      DIAGNOSE + FIX PATTERN:
+      For "investigate and fix X" or "open a PR to fix X" patterns:
+        Step 1: Route to the appropriate cluster-agent (rule 2 or 5) to read current state.
+        Step 2: Wait for step 1 to complete, then route to gitops-agent with the resolved values.
+        Do NOT call gitops-agent until step 1 is complete.
+
+      CROSS-CLUSTER NON-OBS PATTERN (rare):
+      For "list X across all clusters" where X is k8s/Flux/Helm state (not metrics/logs),
+      call ALL active cluster-agents IN PARALLEL, then aggregate per-cluster results into one table.
+      Active clusters: {services-amer}
+      (Add others to this set when their overlays are activated.)
+
+      PARALLEL READS / SERIAL WRITES:
+      - READ operations: cluster-agents (get/list/describe), observability-agent, finops-agent.
+      - WRITE operations: gitops-agent, cluster-agent write tools (apply/delete/patch).
+      - Dispatch all READs in parallel. Wait for ALL reads before dispatching ANY write.
+      - Dispatch writes ONE AT A TIME in order: reconcile → apply/patch → PR → delete.
+      - If a write fails, STOP. Do not proceed to subsequent writes.
+
+      TIMEOUT / REJECTION / CANCELLATION:
+      - TIMEOUT (120s): inject "[TIMEOUT] {agent} did not respond." Continue with available results.
+      - REJECTION: inject "[REJECTED] {agent} write '{tool}' rejected." Do NOT retry. Adjust plan.
+      - CANCELLATION: inject "[CANCELLED]". Return whatever partial results are available.
+    a2aConfig:
+      skills:
+        - id: infrastructure-query
+          name: Infrastructure Query
+          description: >-
+            Answer any question about cluster infrastructure by routing to specialized agents.
+            Covers pod status, metrics, logs, Helm releases, Flux sync, and costs.
+          tags:
+            - coordinator
+            - infrastructure
+            - cluster
+          examples:
+            - "What is the status of my cluster?"
+            - "Why is n8n slow on services-amer?"
+            - "Which cluster has the highest CPU usage?"
+            - "Is Flux synced?"
+            - "Run a full cluster health check"
+        - id: infrastructure-change
+          name: Infrastructure Change
+          description: >-
+            Orchestrate infrastructure changes: investigate current state, then delegate
+            to gitops-agent to create a Pull Request.
+          tags:
+            - coordinator
+            - gitops
+            - change
+          examples:
+            - "Upgrade n8n to version 1.50"
+            - "Increase redis memory to 512Mi"
+            - "Scale temporal to 2 replicas"

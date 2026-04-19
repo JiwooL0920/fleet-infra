@@ -1,0 +1,28 @@
+---
+# RemoteMCPServer: federated k8s MCP endpoint via agentgateway.
+# Routes to /mcp/k8s on the agentgateway proxy which, in turn, proxies to
+# backend-k8s-services-amer AgentgatewayBackend (target: k8s-tools-services-amer).
+#
+# Tools returned carry the cluster prefix:
+#   k8s-tools-services-amer_k8s_get_resources
+#   k8s-tools-services-amer_k8s_describe_resource
+#   k8s-tools-services-amer_k8s_annotate_resource   ← Flux reconcile trigger
+#   ... (18 total k8s_* tools)
+#
+# Each cluster-agent overlay populates toolNames with the cluster-prefixed allowlist.
+# Only the tools in toolNames are exposed to the cluster-agent — agentgateway returns
+# all tools but kagent filters to the declared set.
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: k8s-tools-federated
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: k8s-tools-federated
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  description: Federated k8s MCP endpoint via agentgateway — tools prefixed by cluster name
+  url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local/mcp/k8s
+  protocol: STREAMABLE_HTTP
+  timeout: 30s

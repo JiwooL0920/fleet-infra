@@ -1,0 +1,23 @@
+---
+# AgentgatewayBackend: per-cluster k8s tool federation for platform-emea (PLACEHOLDER).
+# Uncomment in mcp/kustomization.yaml when platform-emea cluster is onboarded.
+# See cluster-agent/README.md for full onboarding procedure.
+#
+# --- UNCOMMENT ENTIRE RESOURCE WHEN platform-emea IS ONBOARDED ---
+#
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: k8s-mcp-platform-emea
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: platform-emea
+#     domain: k8s
+# spec:
+#   mcp:
+#     targets:
+#       - name: k8s-tools-platform-emea
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP

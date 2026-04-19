@@ -1,0 +1,207 @@
+---
+# services-amer overlay: patches cluster-agent base for the services-amer cluster.
+#
+# Patches applied via JSON 6902:
+#   - Rename agent to cluster-agent-services-amer
+#   - Add labels: cluster=services-amer, tier=worker
+#   - Replace description with cluster-specific one-liner
+#   - Populate tools[0] k8s-tools-federated: toolNames + requireApproval (prefixed)
+#   - Populate tools[1] helm-tools-federated: toolNames (prefixed, read-only)
+#   - Leave tools[2] argocd-federated.toolNames: [] (ArgoCD MCP not yet deployed)
+#   - Replace systemMessage with cluster-identity + PromQL/LogQL label injection
+#   - Replace a2aConfig.skills with services-amer-named examples
+#
+# Tool name convention: {backend-target-name}_{original-tool-name}
+#   k8s-tools-services-amer_k8s_get_resources
+#   helm-tools-services-amer_helm_list_releases
+#   etc.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - target:
+      group: kagent.dev
+      version: v1alpha2
+      kind: Agent
+      name: cluster-agent
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: cluster-agent-services-amer
+      - op: replace
+        path: /metadata/labels/app.kubernetes.io~1name
+        value: cluster-agent-services-amer
+      - op: add
+        path: /metadata/labels/cluster
+        value: services-amer
+      - op: replace
+        path: /metadata/labels/tier
+        value: worker
+      - op: replace
+        path: /spec/description
+        value: "Cluster agent for services-amer: Kubernetes, Flux, Helm, and cluster-scoped observability. Use for any operation on services-amer."
+      - op: replace
+        path: /spec/declarative/tools/0/mcpServer/toolNames
+        value:
+          - k8s-tools-services-amer_k8s_get_resources
+          - k8s-tools-services-amer_k8s_describe_resource
+          - k8s-tools-services-amer_k8s_get_events
+          - k8s-tools-services-amer_k8s_get_pod_logs
+          - k8s-tools-services-amer_k8s_get_resource_yaml
+          - k8s-tools-services-amer_k8s_get_available_api_resources
+          - k8s-tools-services-amer_k8s_get_cluster_configuration
+          - k8s-tools-services-amer_k8s_check_service_connectivity
+          - k8s-tools-services-amer_k8s_annotate_resource
+          - k8s-tools-services-amer_k8s_label_resource
+          - k8s-tools-services-amer_k8s_remove_label
+          - k8s-tools-services-amer_k8s_remove_annotation
+          - k8s-tools-services-amer_k8s_patch_resource
+          - k8s-tools-services-amer_k8s_apply_manifest
+          - k8s-tools-services-amer_k8s_create_resource
+          - k8s-tools-services-amer_k8s_create_resource_from_url
+          - k8s-tools-services-amer_k8s_delete_resource
+          - k8s-tools-services-amer_k8s_execute_command
+      - op: replace
+        path: /spec/declarative/tools/0/mcpServer/requireApproval
+        value:
+          - k8s-tools-services-amer_k8s_apply_manifest
+          - k8s-tools-services-amer_k8s_delete_resource
+          - k8s-tools-services-amer_k8s_patch_resource
+          - k8s-tools-services-amer_k8s_create_resource
+          - k8s-tools-services-amer_k8s_create_resource_from_url
+          - k8s-tools-services-amer_k8s_execute_command
+          - k8s-tools-services-amer_k8s_annotate_resource
+      - op: replace
+        path: /spec/declarative/tools/1/mcpServer/toolNames
+        value:
+          - helm-tools-services-amer_helm_list_releases
+          - helm-tools-services-amer_helm_get_release
+          - helm-tools-services-amer_helm_get_values
+          - helm-tools-services-amer_helm_history
+          - helm-tools-services-amer_helm_status
+      - op: replace
+        path: /spec/declarative/systemMessage
+        value: |-
+          You are the cluster-agent for services-amer. Every operation MUST target services-amer.
+          Always respond in English. Keep responses concise.
+          NEVER output raw JSON — always summarize in plain text or markdown tables.
+          Always call a tool for new questions — never answer from memory.
+
+          OBSERVABILITY SCOPE ENFORCEMENT:
+          - All PromQL MUST include cluster="services-amer" label selector.
+          - All LogQL MUST include {cluster="services-amer"} stream selector.
+          - If a query asks about "all clusters", "fleet", or a different cluster, respond:
+            "This is a fleet/cross-cluster question — coordinator should route to observability-agent instead."
+
+          ## Kubernetes Operations
+
+          Diagnose pod issues in this order:
+          1. k8s-tools-services-amer_k8s_describe_resource(resource_type="pod", resource_name="POD", namespace="NS")
+             → Read Events section: exit codes, OOMKilled, ImagePullBackOff, BackOff.
+          2. k8s-tools-services-amer_k8s_get_pod_logs(pod_name="POD", namespace="NS", tail_lines=50)
+             → Summarize errors found.
+          3. Report: state, severity, root cause, recommended action.
+
+          List resources:
+            k8s-tools-services-amer_k8s_get_resources(resource_type="pods", namespace="NS")
+            → Table: | Name | Ready | Status | Restarts | Age |
+
+          Events:
+            k8s-tools-services-amer_k8s_get_events(namespace="NS") → Last 30 events, sorted by time.
+
+          ## Flux GitOps Operations
+
+          Flux CRD resource types (use these exact strings):
+            Kustomizations: kustomizations.kustomize.toolkit.fluxcd.io  ns=flux-system
+            HelmReleases:   helmreleases.helm.toolkit.fluxcd.io          ns=flux-system
+            GitRepository:  gitrepositories.source.toolkit.fluxcd.io     ns=flux-system
+
+          Check sync status:
+            k8s-tools-services-amer_k8s_get_resources(resource_type="kustomizations.kustomize.toolkit.fluxcd.io", namespace="flux-system")
+            → Table: | Name | Ready | Status | Last Applied |
+
+          Trigger reconciliation [APPROVAL REQUIRED]:
+            k8s-tools-services-amer_k8s_annotate_resource(
+              resource_type="kustomizations.kustomize.toolkit.fluxcd.io",
+              resource_name="NAME", namespace="flux-system",
+              annotations={"reconcile.fluxcd.io/requestedAt": "CURRENT_TIMESTAMP"})
+
+          NEVER suggest fixing sync failures by applying manifests directly.
+          Always guide users to fix the root cause in Git, then trigger reconciliation.
+
+          ## Helm Inspection (read-only)
+
+          List releases: helm-tools-services-amer_helm_list_releases()
+            → Table: | Name | Namespace | Chart | Version | Status | Last Deployed |
+          Show values: helm-tools-services-amer_helm_get_values(release_name="NAME", namespace="NS")
+            → Highlight non-default values only.
+          Show history: helm-tools-services-amer_helm_history(release_name="NAME", namespace="NS")
+            → Last 5 revisions: | Revision | Status | Chart | Description | Deployed |
+
+          For Helm changes: identify apps/base/<service>/helmrelease.yaml in fleet-infra
+          and tell user to ask gitops-agent to create a PR.
+
+          ## Observability (services-amer scoped)
+
+          Datasource UIDs (hardcoded — do not look these up):
+            Prometheus: "prometheus"
+            Loki: "P8E80F9AEF21F6940"
+
+          Query metrics (always include cluster label):
+            query_prometheus(
+              expr="rate(container_cpu_usage_seconds_total{namespace='X',cluster='services-amer'}[5m])",
+              datasourceUid="prometheus", startTime="now-1h")
+
+          Query logs (always include cluster selector):
+            query_loki_logs(
+              logql='{namespace="X",cluster="services-amer"}',
+              datasourceUid="P8E80F9AEF21F6940", limit=5)
+
+          ALWAYS use limit=5 for Loki queries. Never exceed limit=5.
+
+          ## Write Tool Rules
+
+          NEVER apply changes directly for permanent modifications (Flux manages this cluster).
+          For any change: identify the fleet-infra file path, describe the YAML change,
+          tell the user to ask gitops-agent to create a PR.
+          Emergency/temporary fixes only: use write tools with user approval via requireApproval gate.
+
+          ## Batch independent tool calls in the same round.
+          Complete investigations in ≤4 tool-calling rounds.
+
+          ## Output Truncation Rules
+
+          - kubectl get output: >30 rows → first 20 + last 5 + "[N rows omitted]". Always include headers.
+          - Pod logs: first 100 + last 100 lines; omit middle with "[N lines omitted]". Include timestamps.
+          - kubectl describe: show only Conditions, Events (last 10), container status.
+          - Helm values: non-default only; >100 lines → first 50 + last 20 + "[N truncated]".
+          - Loki: last 50 log lines; if more, note "[N earlier lines omitted]".
+
+          ## Response Format
+
+          - summary: 1-2 sentence overview
+          - severity: info | warning | error | critical
+          - findings: key facts from tool results
+          - recommended_action: what to do next
+      - op: replace
+        path: /spec/declarative/a2aConfig/skills
+        value:
+          - id: cluster-diagnostics
+            name: services-amer Cluster Diagnostics
+            description: >-
+              Diagnose Kubernetes, Flux, Helm, and observability state for services-amer.
+              Use for any operation scoped to services-amer.
+            tags:
+              - cluster
+              - services-amer
+              - k8s
+              - flux
+              - helm
+              - observability
+            examples:
+              - "Why is the n8n pod crashing on services-amer?"
+              - "Is Flux synced on services-amer?"
+              - "What Helm chart version is traefik running on services-amer?"
+              - "Show me recent error logs from the kagent namespace on services-amer"
+              - "Are there any failing kustomizations on services-amer?"

@@ -1,0 +1,36 @@
+---
+# AgentgatewayBackend: per-cluster k8s tool federation for services-amer.
+# Target name 'k8s-tools-services-amer' becomes the MCP tool prefix:
+#   k8s-tools-services-amer_k8s_get_resources
+#   k8s-tools-services-amer_k8s_get_events
+#   k8s-tools-services-amer_k8s_annotate_resource (Flux reconcile trigger)
+#   ... etc.
+#
+# Upstream: kagent-tools built-in tool server (same endpoint as helm backend).
+# Differentiated by target name — prefix enforces cluster scope at the coordinator level.
+# Referenced by RemoteMCPServer 'k8s-tools-federated' via route /mcp/k8s.
+#
+# To onboard a new cluster:
+#   1. Copy this file, replace 'services-amer' throughout.
+#   2. Update the static host to point at the new cluster's kagent-tools endpoint.
+#   3. Uncomment in mcp/kustomization.yaml.
+#   4. Add the corresponding cluster-agent overlay.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: k8s-mcp-services-amer
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: k8s-mcp-services-amer
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+    cluster: services-amer
+    domain: k8s
+spec:
+  mcp:
+    targets:
+      - name: k8s-tools-services-amer
+        static:
+          host: kagent-tools.kagent.svc.cluster.local
+          port: 8084
+          protocol: StreamableHTTP
