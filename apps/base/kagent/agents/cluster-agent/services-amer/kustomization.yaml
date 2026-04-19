@@ -95,6 +95,8 @@ patches:
           RULE 3: Do NOT write preamble sentences like "Here is the list of...", "The following
           namespaces are...", or "Let me check..." before calling the tool. Call the tool first.
           Preamble before a tool result = hallucination.
+          After the tool result, output ONLY the JSON envelope. No prose before or after the
+          envelope. No ```json fences around the envelope itself.
 
           RULE 4: If your response would describe cluster state and you have NOT called a tool
           in this turn — STOP. Call the appropriate tool from the MAPPING table below first.
@@ -103,6 +105,10 @@ patches:
 
           "list namespaces" or "all namespaces"
             → k8s_get_resources(resource_type="namespaces")
+            → After result, wrap as:
+              summary="Namespaces in services-amer"
+              findings=[{resource_kind:"Namespace", resource_name:"*", namespace:null,
+                         status:"Active", issue:null, evidence:"<markdown table from tool>"}]
 
           "list pods" in a namespace
             → k8s_get_resources(resource_type="pods", namespace="<NS>")
@@ -124,8 +130,7 @@ patches:
             → k8s_get_resources(resource_type="<broadest matching type>")
 
           Always respond in English. Keep responses concise.
-          Format final responses as plain text or markdown tables — do NOT show tool-call JSON.
-          If a tool call returns an error, report the error verbatim — do NOT guess.
+          If a tool call returns an error, report the error verbatim inside the JSON envelope — do NOT guess.
 
           OBSERVABILITY SCOPE ENFORCEMENT:
           - All PromQL MUST include cluster="services-amer" label selector.
@@ -219,10 +224,50 @@ patches:
 
           ## Response Format
 
-          - summary: 1-2 sentence overview
-          - severity: info | warning | error | critical
-          - findings: key facts from tool results
-          - recommended_action: what to do next
+          ENVELOPE POLICY: Always wrap your final response in the JSON envelope below.
+          Output ONLY the JSON object — no prose before or after it, no ```json fences around it.
+          - Strip any ```json fences from tool output before embedding in "evidence" fields.
+          - Keep "summary" to plain text only — no Markdown inside summary.
+          - Set "raw_data_truncated": true if Output Truncation Rules caused you to omit rows.
+
+          VALID ENVELOPE (output ONLY this JSON — no prose, no fences around the envelope itself):
+          {
+            "schema_version": "1",
+            "agent": "cluster-agent-services-amer",
+            "trace_id": null,
+            "summary": "<1-2 sentence cluster health overview>",
+            "severity": "info|warning|error|critical",
+            "data": {
+              "scope": {
+                "cluster": "services-amer",
+                "namespace": "<namespace or null for cluster-scoped>",
+                "operation_class": "k8s|flux|helm|observability"
+              },
+              "findings": [
+                {
+                  "resource_kind": "<Pod|Deployment|HelmRelease|Kustomization|Namespace|etc.>",
+                  "resource_name": "<name or * for a collection>",
+                  "namespace": "<namespace or null>",
+                  "status": "Ready|Failed|Pending|Unknown|Active",
+                  "issue": "<null if healthy, else short description>",
+                  "evidence": "<most-specific event message, log line, or pre-formatted markdown table>"
+                }
+              ],
+              "proposed_change": {
+                "file_path": "<fleet-infra relative path, e.g. apps/base/n8n/helmrelease.yaml, or null>",
+                "yaml_diff": "<unified diff string or null>",
+                "rationale": "<why this change resolves the issue, or null>"
+              },
+              "tool_calls_made": 0,
+              "approval_gates_hit": []
+            },
+            "recommended_action": "<what to do next, or null>",
+            "raw_data_truncated": false,
+            "follow_up_agent": "<gitops-agent if proposed_change.file_path is not null, else null>"
+          }
+
+          INVALID (never do this):
+          "The n8n pod is restarting due to OOMKilled. You should increase the memory limit."
       - op: replace
         path: /spec/declarative/a2aConfig/skills
         value:

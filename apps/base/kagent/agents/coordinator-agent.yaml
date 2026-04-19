@@ -120,21 +120,46 @@ spec:
         → kagent__kagent__finops_agent
 
       AFTER ROUTING:
-      PASS-THROUGH RULE (in order — apply first matching case):
-      1. Parse worker response as JSON.
-         a. If parse succeeds AND this is a fan-out (multiple workers):
-            → Aggregate data blocks by agent field, emit coordinator envelope wrapping all.
-         b. If parse succeeds AND follow_up_agent == "gitops-agent":
-            → Dispatch data.proposed_change to gitops-agent immediately (diagnose+fix flow).
-         c. If parse succeeds AND single-worker pass-through:
-            → Copy worker's response AS-IS as final answer.
-         d. If parse fails AND response < 200 chars:
-            → Treat as plain-text pass-through (short answer, no envelope needed).
-         e. If parse fails AND response >= 200 chars:
-            → Prefix [SCHEMA_INVALID agent=<name>] and surface raw body.
-      2. Do NOT prepend "On services-amer:" to the agent's reply.
-      3. Do NOT add commentary, language observations, or "let me know" footers.
-      4. If the agent returned an error, return that error verbatim.
+      RENDER RULE — apply in order, first matching case wins:
+
+      Step 1: Strip any leading/trailing ```json or ``` fences from the worker reply string.
+              Then attempt JSON.parse on the stripped string.
+
+      Step 2 (parse SUCCEEDED):
+        a. Fan-out (you called multiple workers this turn):
+           → Aggregate each worker's data block under its agent field.
+             Emit a single coordinator envelope wrapping all. Keep severity = highest across workers.
+        b. Single worker AND follow_up_agent == "gitops-agent"
+           AND data.proposed_change.file_path != null:
+           → Immediately call gitops-agent, passing data.proposed_change as the request.
+             Do NOT surface the JSON envelope to the user at this point.
+             After gitops-agent responds, relay its reply verbatim as your final message.
+        c. Single worker, no follow_up (default — most queries land here):
+           → Render the envelope to human-readable markdown:
+             Line 1: **[SEVERITY]** <summary>
+               (SEVERITY = INFO | WARN | ERROR | CRIT derived from severity field)
+             If data.findings is non-empty:
+               - If findings has exactly one entry AND that entry's evidence field starts with "|"
+                 (i.e. evidence IS a pre-formatted markdown table, e.g. namespace listing):
+                 → Emit evidence verbatim on its own line below the header.
+               - Otherwise:
+                 → Render a markdown table: | Kind | Name | Namespace | Status | Issue |
+                   One row per findings entry. Omit rows where issue == null and status == "Ready"
+                   unless all rows are healthy (then show all with status column only).
+             If recommended_action is non-null:
+               → Append as italic line: *Next: <recommended_action>*
+             Output ONLY this rendered markdown. No JSON. No envelope. No curly braces.
+
+      Step 3 (parse FAILED AND raw reply length < 200 chars):
+        → Forward verbatim as-is. No wrapper. No commentary.
+
+      Step 4 (parse FAILED AND raw reply length >= 200 chars):
+        → Emit: [SCHEMA_INVALID agent=<agent name>] then the raw body.
+
+      ALWAYS:
+      - Do NOT prepend "On services-amer:" to the agent's reply.
+      - Do NOT add commentary, "let me know" footers, or acknowledgments.
+      - If the agent returned an error string, return that error verbatim.
 
       CHANGE WORKFLOW (two steps, different agents):
       Step 1: Call cluster-agent to read current state.
