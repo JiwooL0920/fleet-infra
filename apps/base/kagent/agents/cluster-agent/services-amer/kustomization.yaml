@@ -5,16 +5,15 @@
 #   - Rename agent to cluster-agent-services-amer
 #   - Add labels: cluster=services-amer, tier=worker
 #   - Replace description with cluster-specific one-liner
-#   - Populate tools[0] k8s-tools-federated: toolNames + requireApproval (prefixed)
-#   - Populate tools[1] helm-tools-federated: toolNames (prefixed, read-only)
+#   - Populate tools[0] k8s-tools-federated: toolNames + requireApproval
+#   - Populate tools[1] helm-tools-federated: toolNames (read-only)
 #   - Leave tools[2] argocd-federated.toolNames: [] (ArgoCD MCP not yet deployed)
 #   - Replace systemMessage with cluster-identity + PromQL/LogQL label injection
 #   - Replace a2aConfig.skills with services-amer-named examples
 #
-# Tool name convention: {backend-target-name}_{original-tool-name}
-#   k8s-tools-services-amer_k8s_get_resources
-#   helm-tools-services-amer_helm_list_releases
-#   etc.
+# Tool name convention: agentgateway returns bare names as-is from the backend MCP server.
+# toolNames must use the EXACT names returned by tools/list (no prefix).
+# e.g. k8s_get_resources, helm_list_releases
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -44,42 +43,42 @@ patches:
       - op: replace
         path: /spec/declarative/tools/0/mcpServer/toolNames
         value:
-          - k8s-tools-services-amer_k8s_get_resources
-          - k8s-tools-services-amer_k8s_describe_resource
-          - k8s-tools-services-amer_k8s_get_events
-          - k8s-tools-services-amer_k8s_get_pod_logs
-          - k8s-tools-services-amer_k8s_get_resource_yaml
-          - k8s-tools-services-amer_k8s_get_available_api_resources
-          - k8s-tools-services-amer_k8s_get_cluster_configuration
-          - k8s-tools-services-amer_k8s_check_service_connectivity
-          - k8s-tools-services-amer_k8s_annotate_resource
-          - k8s-tools-services-amer_k8s_label_resource
-          - k8s-tools-services-amer_k8s_remove_label
-          - k8s-tools-services-amer_k8s_remove_annotation
-          - k8s-tools-services-amer_k8s_patch_resource
-          - k8s-tools-services-amer_k8s_apply_manifest
-          - k8s-tools-services-amer_k8s_create_resource
-          - k8s-tools-services-amer_k8s_create_resource_from_url
-          - k8s-tools-services-amer_k8s_delete_resource
-          - k8s-tools-services-amer_k8s_execute_command
+          - k8s_get_resources
+          - k8s_describe_resource
+          - k8s_get_events
+          - k8s_get_pod_logs
+          - k8s_get_resource_yaml
+          - k8s_get_available_api_resources
+          - k8s_get_cluster_configuration
+          - k8s_check_service_connectivity
+          - k8s_annotate_resource
+          - k8s_label_resource
+          - k8s_remove_label
+          - k8s_remove_annotation
+          - k8s_patch_resource
+          - k8s_apply_manifest
+          - k8s_create_resource
+          - k8s_create_resource_from_url
+          - k8s_delete_resource
+          - k8s_execute_command
       - op: replace
         path: /spec/declarative/tools/0/mcpServer/requireApproval
         value:
-          - k8s-tools-services-amer_k8s_apply_manifest
-          - k8s-tools-services-amer_k8s_delete_resource
-          - k8s-tools-services-amer_k8s_patch_resource
-          - k8s-tools-services-amer_k8s_create_resource
-          - k8s-tools-services-amer_k8s_create_resource_from_url
-          - k8s-tools-services-amer_k8s_execute_command
-          - k8s-tools-services-amer_k8s_annotate_resource
+          - k8s_apply_manifest
+          - k8s_delete_resource
+          - k8s_patch_resource
+          - k8s_create_resource
+          - k8s_create_resource_from_url
+          - k8s_execute_command
+          - k8s_annotate_resource
       - op: replace
         path: /spec/declarative/tools/1/mcpServer/toolNames
         value:
-          - helm-tools-services-amer_helm_list_releases
-          - helm-tools-services-amer_helm_get_release
-          - helm-tools-services-amer_helm_get_values
-          - helm-tools-services-amer_helm_history
-          - helm-tools-services-amer_helm_status
+          - helm_list_releases
+          - helm_get_release
+          - helm_get_values
+          - helm_history
+          - helm_status
       - op: replace
         path: /spec/declarative/systemMessage
         value: |-
@@ -92,15 +91,15 @@ patches:
           TOOL CALL DISCIPLINE (mandatory):
           For ANY question about cluster state, you MUST call a tool first.
           Never invent pod names, namespace names, image versions, or status values.
-          If unsure which tool to call, use k8s-tools-services-amer_k8s_get_resources with the
+          If unsure which tool to call, use k8s_get_resources with the
           broadest matching resource_type. Empty results are valid — report them as-is.
 
           EXAMPLE — "list all namespaces":
-            Call: k8s-tools-services-amer_k8s_get_resources(resource_type="namespaces")
+            Call: k8s_get_resources(resource_type="namespaces")
             Then render the actual returned names as a markdown table.
 
           EXAMPLE — "is n8n healthy":
-            Call: k8s-tools-services-amer_k8s_get_resources(resource_type="pods", namespace="n8n")
+            Call: k8s_get_resources(resource_type="pods", namespace="n8n")
             Then summarize the actual returned pod statuses.
 
           NEVER respond about cluster state without first making a tool call.
@@ -115,18 +114,18 @@ patches:
           ## Kubernetes Operations
 
           Diagnose pod issues in this order:
-          1. k8s-tools-services-amer_k8s_describe_resource(resource_type="pod", resource_name="POD", namespace="NS")
+          1. k8s_describe_resource(resource_type="pod", resource_name="POD", namespace="NS")
              → Read Events section: exit codes, OOMKilled, ImagePullBackOff, BackOff.
-          2. k8s-tools-services-amer_k8s_get_pod_logs(pod_name="POD", namespace="NS", tail_lines=50)
+          2. k8s_get_pod_logs(pod_name="POD", namespace="NS", tail_lines=50)
              → Summarize errors found.
           3. Report: state, severity, root cause, recommended action.
 
           List resources:
-            k8s-tools-services-amer_k8s_get_resources(resource_type="pods", namespace="NS")
+            k8s_get_resources(resource_type="pods", namespace="NS")
             → Table: | Name | Ready | Status | Restarts | Age |
 
           Events:
-            k8s-tools-services-amer_k8s_get_events(namespace="NS") → Last 30 events, sorted by time.
+            k8s_get_events(namespace="NS") → Last 30 events, sorted by time.
 
           ## Flux GitOps Operations
 
@@ -136,11 +135,11 @@ patches:
             GitRepository:  gitrepositories.source.toolkit.fluxcd.io     ns=flux-system
 
           Check sync status:
-            k8s-tools-services-amer_k8s_get_resources(resource_type="kustomizations.kustomize.toolkit.fluxcd.io", namespace="flux-system")
+            k8s_get_resources(resource_type="kustomizations.kustomize.toolkit.fluxcd.io", namespace="flux-system")
             → Table: | Name | Ready | Status | Last Applied |
 
           Trigger reconciliation [APPROVAL REQUIRED]:
-            k8s-tools-services-amer_k8s_annotate_resource(
+            k8s_annotate_resource(
               resource_type="kustomizations.kustomize.toolkit.fluxcd.io",
               resource_name="NAME", namespace="flux-system",
               annotations={"reconcile.fluxcd.io/requestedAt": "CURRENT_TIMESTAMP"})
@@ -150,11 +149,11 @@ patches:
 
           ## Helm Inspection (read-only)
 
-          List releases: helm-tools-services-amer_helm_list_releases()
+          List releases: helm_list_releases()
             → Table: | Name | Namespace | Chart | Version | Status | Last Deployed |
-          Show values: helm-tools-services-amer_helm_get_values(release_name="NAME", namespace="NS")
+          Show values: helm_get_values(release_name="NAME", namespace="NS")
             → Highlight non-default values only.
-          Show history: helm-tools-services-amer_helm_history(release_name="NAME", namespace="NS")
+          Show history: helm_history(release_name="NAME", namespace="NS")
             → Last 5 revisions: | Revision | Status | Chart | Description | Deployed |
 
           For Helm changes: identify apps/base/<service>/helmrelease.yaml in fleet-infra
