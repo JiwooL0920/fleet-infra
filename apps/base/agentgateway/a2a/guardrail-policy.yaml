@@ -9,10 +9,9 @@
 # prompt-injection strings into its own response, which would land in the coordinator's
 # context window and could re-route subsequent tool calls.
 #
-# Pattern catalogue: same credential-leak patterns as the Traefik guard, but skip
-# jailbreak/DAN phrases (those are user-originated, not inter-agent concerns).
-#
-# Reference: https://agentgateway.dev/docs/kubernetes/latest/reference/api/
+# Schema: spec.backend.ai.promptGuard.request is a list of PromptguardRequest items.
+# Each item uses regex.matches (list of patterns) with action: Reject.
+# Reference: kubectl get crd agentgatewaypolicies.agentgateway.dev -o json
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -27,37 +26,24 @@ spec:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       name: a2a-kagent
-  # AI prompt guard on request bodies transiting /agents/* (A2A inter-agent channel).
-  # Patterns ordered by likelihood-of-match for minimal avg evaluation cost.
-  promptGuard:
-    request:
-      regexes:
-        # Category: credential_leak — a compromised agent trying to exfiltrate creds
-        - name: bearer-token
-          pattern: "(?i)bearer\\s+[A-Za-z0-9._\\-]+"
-          action: BLOCK
-        - name: password-assignment
-          pattern: "(?i)(password|passwd|pwd)\\s*[=:]\\s*\\S+"
-          action: BLOCK
-        - name: api-key-assignment
-          pattern: "(?i)api[_-]?key\\s*[=:]\\s*\\S+"
-          action: BLOCK
-        - name: github-pat
-          pattern: "ghp_[A-Za-z0-9]{36}"
-          action: BLOCK
-        - name: openai-key
-          pattern: "sk-[A-Za-z0-9]{32,}"
-          action: BLOCK
-        - name: generic-secret
-          pattern: "(?i)(secret|token)\\s*[=:]\\s*['\"]?[A-Za-z0-9._\\-]{16,}"
-          action: BLOCK
-        # Category: prompt_injection via agent response (cross-agent injection attack)
-        - name: ignore-previous-instructions
-          pattern: "(?i)ignore (all |the )?(previous|prior|above) (instructions|prompts|messages)"
-          action: BLOCK
-        - name: disregard-previous
-          pattern: "(?i)disregard (all |the )?(previous|prior|above) (instructions|prompts)"
-          action: BLOCK
-      response:
-        message: >-
-          {"schema_version":"1","agent":"agentgateway","summary":"A2A request blocked by inter-agent guardrail","severity":"error","data":{"verdict":"refuse","category":"a2a_regex_block","reason":"Possible cross-agent injection or credential exfiltration in A2A payload"},"recommended_action":"Check worker agent logs for compromise.","raw_data_truncated":false,"follow_up_agent":null}
+  backend:
+    ai:
+      promptGuard:
+        request:
+          - regex:
+              action: Reject
+              matches:
+                # Category: credential_leak — compromised agent exfiltrating creds
+                - "(?i)bearer\\s+[A-Za-z0-9._\\-]+"
+                - "(?i)(password|passwd|pwd)\\s*[=:]\\s*\\S+"
+                - "(?i)api[_-]?key\\s*[=:]\\s*\\S+"
+                - "ghp_[A-Za-z0-9]{36}"
+                - "sk-[A-Za-z0-9]{32,}"
+                - "(?i)(secret|token)\\s*[=:]\\s*['\"]?[A-Za-z0-9._\\-]{16,}"
+                # Category: prompt_injection via agent response (cross-agent injection)
+                - "(?i)ignore (all |the )?(previous|prior|above) (instructions|prompts|messages)"
+                - "(?i)disregard (all |the )?(previous|prior|above) (instructions|prompts)"
+            response:
+              statusCode: 403
+              message: >-
+                {"schema_version":"1","agent":"agentgateway","summary":"A2A request blocked by inter-agent guardrail","severity":"error","data":{"verdict":"refuse","category":"a2a_regex_block","reason":"Possible cross-agent injection or credential exfiltration in A2A payload"},"recommended_action":"Check worker agent logs for compromise.","raw_data_truncated":false,"follow_up_agent":null}

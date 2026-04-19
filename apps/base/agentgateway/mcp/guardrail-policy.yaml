@@ -8,7 +8,9 @@
 # Only credential-leak patterns are included — skip injection/jailbreak patterns
 # which are user-input concerns, not tool-call concerns.
 #
-# Reference: https://agentgateway.dev/docs/kubernetes/latest/reference/api/
+# Schema: spec.backend.ai.promptGuard.request is a list of PromptguardRequest items.
+# Each item uses regex.matches (list of patterns) with action: Reject.
+# Reference: kubectl get crd agentgatewaypolicies.agentgateway.dev -o json
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -23,28 +25,21 @@ spec:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
       name: mcp-federated
-  promptGuard:
-    request:
-      regexes:
-        # Credential patterns — ordered by frequency
-        - name: bearer-token
-          pattern: "(?i)bearer\\s+[A-Za-z0-9._\\-]+"
-          action: BLOCK
-        - name: password-assignment
-          pattern: "(?i)(password|passwd|pwd)\\s*[=:]\\s*\\S+"
-          action: BLOCK
-        - name: api-key-assignment
-          pattern: "(?i)api[_-]?key\\s*[=:]\\s*\\S+"
-          action: BLOCK
-        - name: github-pat
-          pattern: "ghp_[A-Za-z0-9]{36}"
-          action: BLOCK
-        - name: openai-key
-          pattern: "sk-[A-Za-z0-9]{32,}"
-          action: BLOCK
-        - name: generic-secret
-          pattern: "(?i)(secret|token)\\s*[=:]\\s*['\"]?[A-Za-z0-9._\\-]{16,}"
-          action: BLOCK
-      response:
-        message: >-
-          {"schema_version":"1","agent":"agentgateway","summary":"MCP tool call blocked — credential detected in arguments","severity":"error","data":{"verdict":"refuse","category":"mcp_credential_block","reason":"Credential pattern found in MCP tool call payload"},"recommended_action":"Review agent prompt and tool output for accidental secret exfiltration.","raw_data_truncated":false,"follow_up_agent":null}
+  backend:
+    ai:
+      promptGuard:
+        request:
+          - regex:
+              action: Reject
+              matches:
+                # Credential patterns — ordered by frequency
+                - "(?i)bearer\\s+[A-Za-z0-9._\\-]+"
+                - "(?i)(password|passwd|pwd)\\s*[=:]\\s*\\S+"
+                - "(?i)api[_-]?key\\s*[=:]\\s*\\S+"
+                - "ghp_[A-Za-z0-9]{36}"
+                - "sk-[A-Za-z0-9]{32,}"
+                - "(?i)(secret|token)\\s*[=:]\\s*['\"]?[A-Za-z0-9._\\-]{16,}"
+            response:
+              statusCode: 403
+              message: >-
+                {"schema_version":"1","agent":"agentgateway","summary":"MCP tool call blocked — credential detected in arguments","severity":"error","data":{"verdict":"refuse","category":"mcp_credential_block","reason":"Credential pattern found in MCP tool call payload"},"recommended_action":"Review agent prompt and tool output for accidental secret exfiltration.","raw_data_truncated":false,"follow_up_agent":null}
