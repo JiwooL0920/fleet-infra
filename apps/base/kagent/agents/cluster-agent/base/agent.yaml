@@ -10,8 +10,11 @@
 #            Also covers Flux CRD operations (k8s_get_resources, k8s_annotate_resource).
 #   tools[1] helm-tools-federated — helm_* tools via agentgateway (/mcp/helm)
 #            Overlay populates toolNames with helm-tools-{cluster}_* prefixed names.
-#   tools[2] argocd-federated     — slot reserved; toolNames always [] until ArgoCD MCP deployed.
-#   tools[3] kagent-grafana-mcp   — fleet Grafana endpoint; cluster scoping via prompt injection.
+#   tools[2] kagent-grafana-mcp   — fleet Grafana endpoint; cluster scoping via prompt injection.
+#
+# ArgoCD slot: NOT included until argocd-federated RemoteMCPServer CR is deployed.
+#   To add ArgoCD: enable argocd-federated in mcpservers/kustomization.yaml, add a 4th
+#   tool entry here (argocd-federated, toolNames: []), and populate in each overlay.
 #
 # Overlay responsibility (per services-amer/kustomization.yaml pattern):
 #   - Rename agent to cluster-agent-{cluster}
@@ -65,12 +68,6 @@ spec:
         mcpServer:
           kind: RemoteMCPServer
           name: helm-tools-federated
-          toolNames: []
-      # ArgoCD tools — slot reserved; toolNames always [] until ArgoCD MCP is deployed
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: argocd-federated
           toolNames: []
       # Cluster-scoped observability (prompt injects cluster label; no toolNames override needed)
       - type: McpServer
