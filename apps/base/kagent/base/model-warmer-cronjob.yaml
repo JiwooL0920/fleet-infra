@@ -46,10 +46,7 @@ spec:
                   done
               env:
                 - name: OLLAMA_HOST
-                  valueFrom:
-                    configMapKeyRef:
-                      name: cluster-vars
-                      key: OLLAMA_HOST
+                  value: "http://host.docker.internal:11434"
               resources:
                 requests:
                   cpu: 10m
