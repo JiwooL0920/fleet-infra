@@ -34,6 +34,10 @@ spec:
     # avoid localstack-localstack
     fullnameOverride: "localstack"
 
+    # Pin to stable v3.x community edition (latest pulled nightly dev build requiring Pro license)
+    image:
+      tag: "3.8.1"
+
     # Minimal LocalStack configuration
     debug: true
 
@@ -168,6 +172,11 @@ spec:
       create_secret "traefik/dashboard/credentials/htpasswd" \
           "$HTPASSWD" \
           "Traefik dashboard htpasswd"
+
+      # Grafana database password (for PostgreSQL backend)
+      create_secret "grafana/database/password" \
+          "$(gen_password)" \
+          "Grafana PostgreSQL database password"
 
       # kagent Grafana SA token (populated by grafana-sa-setup Job after Grafana is healthy)
       create_secret "kagent/grafana/api-key" \

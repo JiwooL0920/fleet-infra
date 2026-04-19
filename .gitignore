@@ -30,3 +30,6 @@ Thumbs.db
 .tree
 
 .claude/
+
+# Sisyphus orchestrator (local notes, evidence, plans)
+.sisyphus/

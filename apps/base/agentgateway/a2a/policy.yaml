@@ -1,0 +1,21 @@
+---
+# AgentgatewayPolicy: URL rewrite for A2A routing.
+# Strips the /agents/<agent-name> prefix so kagent-controller receives requests at /.
+# This matches the A2A protocol expectation where each agent is addressable at its root.
+#
+# Reference: https://agentgateway.dev/docs/kubernetes/latest/reference/api/
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: a2a-url-rewrite
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: a2a-kagent
+  override:
+    urlRewrite:
+      path:
+        type: ReplacePrefixMatch
+        replacePrefixMatch: /

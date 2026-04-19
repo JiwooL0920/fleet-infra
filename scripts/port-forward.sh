@@ -79,7 +79,7 @@ start_port_forward "jaeger" "jaeger-query" "16686" "16686" "Jaeger UI"
 start_port_forward "scylla" "scylla-client" "8000" "8000" "ScyllaDB Alternator"
 
 # --- kagent ---
-start_port_forward "kagent" "kagent" "8088" "80" "kagent UI"
+start_port_forward "kagent" "kagent-ui" "8088" "8080" "kagent UI"
 
 echo ""
 echo "Port forwards started successfully!"

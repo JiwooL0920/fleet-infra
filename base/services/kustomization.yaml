@@ -54,6 +54,9 @@ resources:
   # AI agent platform
   - ollama.yaml    # Local LLM inference (foundation, no dependencies)
   - kagent.yaml    # Kubernetes-native AI agent platform (depends on ollama, cnpg-operator, external-secrets-config, traefik)
+  - gateway-api-crds.yaml  # Kubernetes Gateway API CRDs (prerequisite for agentgateway)
+  - agentgateway.yaml      # A2A routing + MCP federation HelmRelease install (depends on gateway-api-crds, kagent, traefik)
+  - agentgateway-config.yaml  # AgentgatewayParameters, Gateway, Backends, Routes (depends on agentgateway)
 
   # Security and cost observability (depend on kube-prometheus-stack)
   - kubescape.yaml    # Kubernetes security scanning — feeds security-agent

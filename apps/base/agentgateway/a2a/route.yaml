@@ -1,0 +1,33 @@
+---
+# A2A HTTPRoute: routes /agents/* requests from agentgateway to kagent-controller.
+# The kagent-controller Service is annotated with appProtocol: kgateway.dev/a2a
+# via the postRenderers patch in apps/base/kagent/base/helmrelease.yaml.
+#
+# URLRewrite strips the /agents prefix so kagent-controller receives requests at /
+# which matches the A2A protocol expectation.
+#
+# Reference: https://agentgateway.dev/docs/kubernetes/latest/agent/a2a/
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: a2a-kagent
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /agents
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: kagent-controller
+          namespace: kagent
+          port: 8083

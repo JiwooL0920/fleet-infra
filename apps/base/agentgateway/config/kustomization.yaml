@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# CRD instances requiring agentgateway CRDs (installed by agentgateway HelmRelease).
+# This kustomization is applied by the agentgateway-config Flux Kustomization,
+# which dependsOn agentgateway (ensuring HelmRelease is Ready before applying here).
+resources:
+  - proxy-params.yaml
+  - gateway.yaml
+  - ../a2a
+  - ../mcp

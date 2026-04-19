@@ -1,0 +1,68 @@
+---
+# MCP HTTPRoute: routes /mcp/* requests to per-cluster-domain AgentgatewayBackend resources.
+#
+# Route specificity (longest PathPrefix match wins per Gateway API precedence rules):
+#   /mcp/k8s  → k8s-mcp-services-amer  (tools prefixed k8s-tools-services-amer_*)
+#   /mcp/helm → helm-mcp-services-amer (tools prefixed helm-tools-services-amer_*)
+#   /mcp      → kagent-mcp            (aggregate — IDE clients, Cursor MCP)
+#
+# Adding a new cluster: add a new AgentgatewayBackend and duplicate the /mcp/k8s and
+# /mcp/helm rules pointing at the new backend. Route path must encode the cluster name
+# (e.g. /mcp/k8s/platform-amer) if running multi-cluster in the same agentgateway.
+#
+# Uncomment /mcp/argo rule when ArgoCD MCP is deployed (see backend-argocd-services-amer.yaml).
+#
+# Reference: https://agentgateway.dev/docs/kubernetes/latest/tutorials/mcp-federation
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp-federated
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+  rules:
+    # Per-cluster k8s tools — prefix: k8s-tools-services-amer_*
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp/k8s
+      backendRefs:
+        - name: k8s-mcp-services-amer
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+
+    # Per-cluster helm tools — prefix: helm-tools-services-amer_*
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp/helm
+      backendRefs:
+        - name: helm-mcp-services-amer
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+
+    # --- Uncomment when ArgoCD MCP server is deployed ---
+    # - matches:
+    #     - path:
+    #         type: PathPrefix
+    #         value: /mcp/argo
+    #   backendRefs:
+    #     - name: argocd-mcp-services-amer
+    #       namespace: agentgateway-system
+    #       group: agentgateway.dev
+    #       kind: AgentgatewayBackend
+
+    # Aggregate IDE endpoint (Cursor /mcp, VS Code MCP extension)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp
+      backendRefs:
+        - name: kagent-mcp
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend

@@ -1,0 +1,28 @@
+---
+# RemoteMCPServer: federated helm MCP endpoint via agentgateway.
+# Routes to /mcp/helm on the agentgateway proxy which, in turn, proxies to
+# backend-helm-services-amer AgentgatewayBackend (target: helm-tools-services-amer).
+#
+# Tools returned carry the cluster prefix:
+#   helm-tools-services-amer_helm_list_releases
+#   helm-tools-services-amer_helm_get_release
+#   helm-tools-services-amer_helm_get_values
+#   helm-tools-services-amer_helm_history
+#   helm-tools-services-amer_helm_status
+#
+# Each cluster-agent overlay populates toolNames with the cluster-prefixed allowlist.
+# Helm write operations are intentionally excluded — changes go via gitops-agent PR flow.
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: helm-tools-federated
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: helm-tools-federated
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  description: Federated helm MCP endpoint via agentgateway — tools prefixed by cluster name
+  url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local/mcp/helm
+  protocol: STREAMABLE_HTTP
+  timeout: 30s

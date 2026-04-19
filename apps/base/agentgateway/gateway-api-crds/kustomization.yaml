@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Gateway API standard-channel CRDs v1.5.0
+# Applies: GatewayClass, Gateway, HTTPRoute, ReferenceGrant, GRPCRoute
+# Reference: https://gateway-api.sigs.k8s.io/
+#
+# This directory is the target for a dedicated Flux Kustomization (base/services/gateway-api-crds.yaml)
+# with prune: false so CRDs are never deleted on reconciliation.
+resources:
+  - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml

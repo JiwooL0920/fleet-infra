@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Template for spoke cluster kagent-tools deployment.
+# NOT deployed by default — add to base/services/ when expanding to multi-cluster.
+# Each spoke cluster runs a read-only kagent-tools server that the hub cluster's
+# k8s-agent accesses via RemoteMCPServer CRs.
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - rbac.yaml
+  - ingressroute.yaml

@@ -1,0 +1,23 @@
+---
+# AgentgatewayBackend: per-cluster k8s tool federation for edge-amer (PLACEHOLDER).
+# Uncomment in mcp/kustomization.yaml when edge-amer cluster is onboarded.
+# See cluster-agent/README.md for full onboarding procedure.
+#
+# --- UNCOMMENT ENTIRE RESOURCE WHEN edge-amer IS ONBOARDED ---
+#
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: k8s-mcp-edge-amer
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: edge-amer
+#     domain: k8s
+# spec:
+#   mcp:
+#     targets:
+#       - name: k8s-tools-edge-amer
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP

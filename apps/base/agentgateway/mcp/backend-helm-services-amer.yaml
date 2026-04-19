@@ -1,0 +1,31 @@
+---
+# AgentgatewayBackend: per-cluster helm tool federation for services-amer.
+# Target name 'helm-tools-services-amer' becomes the MCP tool prefix:
+#   helm-tools-services-amer_helm_list_releases
+#   helm-tools-services-amer_helm_get_values
+#   helm-tools-services-amer_helm_history
+#   ... etc.
+#
+# Upstream: kagent-tools built-in tool server (same endpoint as k8s backend).
+# Differentiated by target name — cluster-agent overlay selects only helm_* tools
+# from this endpoint via toolNames allowlist.
+# Referenced by RemoteMCPServer 'helm-tools-federated' via route /mcp/helm.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: helm-mcp-services-amer
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: helm-mcp-services-amer
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+    cluster: services-amer
+    domain: helm
+spec:
+  mcp:
+    targets:
+      - name: helm-tools-services-amer
+        static:
+          host: kagent-tools.kagent.svc.cluster.local
+          port: 8084
+          protocol: StreamableHTTP
