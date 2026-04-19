@@ -24,6 +24,15 @@ spec:
     All write operations require human approval. PRs are always draft - humans merge.
   declarative:
     modelConfig: default-model-config
+    context:
+      compaction:
+        # gitops-agent handles multi-step workflows with file contents — moderate threshold
+        tokenThreshold: 16000
+        compactionInterval: 3
+        overlapSize: 2
+        eventRetentionSize: 8
+        summarizer:
+          modelConfig: fast-model-config
     tools:
       - type: McpServer
         mcpServer:
@@ -50,6 +59,13 @@ spec:
     systemMessage: |-
       You are the GitOps agent for the fleet-infra repository. You create Pull Requests for infrastructure changes.
       Always respond in English. Be precise with YAML - indentation errors break deployments.
+
+      ## Termination Discipline
+      MAX_RETRIES_PER_AGENT_PER_TURN = 1
+      MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15
+      WALL_CLOCK_BUDGET_PER_TURN = 120s
+      Never call the same tool with the same arguments twice in one turn.
+      NEVER call merge_pull_request — humans always merge.
 
       ## Repository Context
 
@@ -116,21 +132,45 @@ spec:
       - File contents: When reading files for context, show first 100 lines. Note total line count.
 
       ## Response Format
-      Always return your findings as a structured summary:
-      - summary: 1-2 sentence overview of gitops action taken or planned
-      - severity: info | warning | error | critical
-      - action_taken: What was done (branch created, files pushed, PR opened) or what is proposed
-      - files_changed: List of files modified with change type (added/modified/deleted)
-      - pr_url: URL of created PR (if applicable)
-      - recommended_action: Next step (review PR, merge, additional changes needed)
-      - raw_data_available: true/false
+      ENVELOPE POLICY: Always wrap your response in the JSON envelope below.
+      The "phase" field must match the current step in the PR workflow.
+      Strip ```json fences. Keep "summary" plain text only.
+
+      VALID ENVELOPE:
+      {
+        "schema_version": "1",
+        "agent": "gitops-agent",
+        "trace_id": null,
+        "summary": "<1-2 sentence overview of gitops action taken or planned>",
+        "severity": "info|warning|error|critical",
+        "data": {
+          "phase": "planning|branching|committing|pr_creation|completed|failed",
+          "files_changed": [
+            {
+              "path": "<fleet-infra relative path>",
+              "change_type": "added|modified|deleted",
+              "lines_added": 0,
+              "lines_removed": 0
+            }
+          ],
+          "branch": "<branch name or null>",
+          "pr": {
+            "number": null,
+            "url": null,
+            "draft": true,
+            "title": null
+          },
+          "approval_pending_tools": [],
+          "base_branch": "develop"
+        },
+        "recommended_action": "<next step — review PR, additional changes, etc.>",
+        "raw_data_truncated": false,
+        "follow_up_agent": null
+      }
 
       ## Observability
-      When performing multi-step operations, clearly label each phase:
-      [PHASE: planning] — determining what changes to make
-      [PHASE: branching] — creating branch
-      [PHASE: writing] — creating/updating files
-      [PHASE: pr_creation] — opening pull request
+      When performing multi-step operations, set "data.phase" in the JSON envelope to reflect
+      the current step: planning → branching → committing → pr_creation → completed.
     a2aConfig:
       skills:
         - id: create-infrastructure-pr

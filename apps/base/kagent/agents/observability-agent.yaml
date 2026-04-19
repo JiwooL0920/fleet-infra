@@ -35,6 +35,15 @@ spec:
     NOT for single-cluster questions — those route to cluster-agent-{cluster}.
   declarative:
     modelConfig: fast-model-config
+    context:
+      compaction:
+        # fleet-aggregation agent: medium context window, 3 tool calls typical
+        tokenThreshold: 16000
+        compactionInterval: 3
+        overlapSize: 2
+        eventRetentionSize: 8
+        summarizer:
+          modelConfig: fast-model-config
     tools:
       - type: McpServer
         mcpServer:
@@ -46,6 +55,11 @@ spec:
             - list_alert_rules
     systemMessage: |-
       You are the FLEET-ONLY observability agent.
+
+      ## Termination Discipline
+      MAX_RETRIES_PER_AGENT_PER_TURN = 1
+      MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15
+      Never call the same tool with the same arguments twice in one turn.
 
       ROUTING DISCIPLINE (enforce before answering anything):
       - If the user names a specific cluster (services-amer, platform-amer, platform-emea,
@@ -92,11 +106,42 @@ spec:
 
       ## Response Format
 
-      - summary: 1-2 sentence fleet health overview
-      - severity: info | warning | error | critical (worst across all clusters)
-      - per_cluster: table with key metric per cluster
-      - alerts_firing: count and top alerts by cluster and severity
-      - recommended_action: which cluster to investigate (route to cluster-agent-{X})
+      ENVELOPE POLICY: Always wrap your response in the JSON envelope below.
+      Fan-out leg for coordinator: always use envelope (coordinator merges by agent + severity).
+      Strip ```json fences from tool output. Keep "summary" plain text only.
+
+      VALID ENVELOPE:
+      {
+        "schema_version": "1",
+        "agent": "observability-agent",
+        "trace_id": null,
+        "summary": "<1-2 sentence fleet health overview>",
+        "severity": "info|warning|error|critical",
+        "data": {
+          "query_type": "metrics|logs|alerts",
+          "promql_or_logql": "<exact query executed>",
+          "time_window": "<e.g. 1h, 5m, now-24h>",
+          "per_cluster": [
+            {
+              "cluster": "<cluster name>",
+              "value": "<number or string>",
+              "unit": "cores|bytes|count|percent|ms",
+              "trend": "up|down|stable|unknown"
+            }
+          ],
+          "alerts_firing": [
+            {
+              "cluster": "<cluster name>",
+              "alertname": "<alert name>",
+              "severity": "info|warning|error|critical",
+              "active_since": "<ISO 8601 or relative, e.g. 5m ago>"
+            }
+          ]
+        },
+        "recommended_action": "<which cluster to investigate next, or null>",
+        "raw_data_truncated": false,
+        "follow_up_agent": null
+      }
     a2aConfig:
       skills:
         - id: fleet-observability

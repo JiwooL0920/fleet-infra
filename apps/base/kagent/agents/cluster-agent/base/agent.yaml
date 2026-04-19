@@ -27,6 +27,26 @@
 #
 # Hop budget: every query = 1 A2A hop (coordinator → this agent).
 # Tool-selection accuracy: ~25 tools at deployment → ~80% per Anthropic benchmarks.
+#
+# ADR: God-Agent boundary (Phase 5 anti-pattern audit — deliberately kept at 26 tools)
+# ─────────────────────────────────────────────────────────────────────────────────────
+# DECISION: cluster-agent owns ~26 tools (18 k8s + 5 helm + 3 grafana).
+#
+# RATIONALE (why NOT split into k8s-agent + flux-agent + helm-agent):
+#   1. These tools share one domain boundary: "everything scoped to one cluster."
+#      Splitting by tool type would create three agents per cluster that always
+#      need to be called together — multiplying A2A hops from 1→3 per query.
+#   2. Anthropic's 25-tool accuracy benchmark (~80% tool selection) was the ceiling
+#      at initial deployment. With 26 tools we are marginally above that — acceptable
+#      given the tools are highly distinct (k8s_ vs helm_ vs query_ prefixes).
+#   3. The pre-existing k8s-agent, flux-agent, and helm-agent were merged into
+#      cluster-agent in a prior refactor — re-splitting would undo that work without
+#      improving accuracy (the federation boundary, not tool count, is the right axis).
+#
+# ALERT: PrometheusRule KagentAgentToolCountExceeded fires if count exceeds 32.
+#   At 33+ tools: evaluate splitting argocd + observability into dedicated agents.
+#   See apps/base/kagent/base/prometheusrule.yaml for the alert definition.
+# ─────────────────────────────────────────────────────────────────────────────────────
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
@@ -83,6 +103,11 @@ spec:
       Always respond in English. Keep responses concise.
       NEVER output raw JSON — always summarize in plain text or markdown tables.
       Always call a tool for new questions — never answer from memory.
+
+      ## Termination Discipline
+      MAX_RETRIES_PER_AGENT_PER_TURN = 1
+      MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15
+      Never call the same tool with the same arguments twice in one turn.
 
       ## Kubernetes Operations
 
@@ -166,10 +191,49 @@ spec:
 
       ## Response Format
 
-      - summary: 1-2 sentence overview
-      - severity: info | warning | error | critical
-      - findings: key facts from tool results
-      - recommended_action: what to do next (if a change: "I'll ask gitops-agent to create a PR")
+      ENVELOPE POLICY: Always wrap your response in the JSON envelope below.
+      - Strip any ```json fences from tool output before embedding in "evidence" fields.
+      - Keep "summary" to plain text only — no Markdown inside summary.
+      - Set "raw_data_truncated": true if Output Truncation Rules caused you to omit rows.
+
+      VALID ENVELOPE (output ONLY this JSON — no prose, no fences around the envelope itself):
+      {
+        "schema_version": "1",
+        "agent": "cluster-agent-<cluster>",
+        "trace_id": null,
+        "summary": "<1-2 sentence cluster health overview>",
+        "severity": "info|warning|error|critical",
+        "data": {
+          "scope": {
+            "cluster": "<cluster name, e.g. services-amer>",
+            "namespace": "<namespace or null for cluster-scoped>",
+            "operation_class": "k8s|flux|helm|observability"
+          },
+          "findings": [
+            {
+              "resource_kind": "<Pod|Deployment|HelmRelease|Kustomization|etc.>",
+              "resource_name": "<name>",
+              "namespace": "<namespace or null>",
+              "status": "Ready|Failed|Pending|Unknown",
+              "issue": "<null if healthy, else short description>",
+              "evidence": "<most-specific event message or log line>"
+            }
+          ],
+          "proposed_change": {
+            "file_path": "<fleet-infra relative path, e.g. apps/base/n8n/helmrelease.yaml, or null>",
+            "yaml_diff": "<unified diff string or null>",
+            "rationale": "<why this change resolves the issue, or null>"
+          },
+          "tool_calls_made": 0,
+          "approval_gates_hit": []
+        },
+        "recommended_action": "<what to do next, or null>",
+        "raw_data_truncated": false,
+        "follow_up_agent": "<gitops-agent if proposed_change.file_path is not null, else null>"
+      }
+
+      INVALID (never do this):
+      "The n8n pod is restarting due to OOMKilled. You should increase the memory limit."
     a2aConfig:
       skills:
         - id: cluster-diagnostics

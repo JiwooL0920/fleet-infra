@@ -1,0 +1,250 @@
+---
+# Grafana dashboard: Multi-Agent Platform Telemetry
+#
+# Provisioned via Grafana sidecar ConfigMap pattern (kube-prometheus-stack default).
+# Grafana's dashboards sidecar watches ConfigMaps with grafana_dashboard="1" label
+# and auto-imports them — no restart or manual import required.
+#
+# Data sources used:
+#   Prometheus  — invocation rate, latency histograms, token counters, fast-path coverage
+#   Loki        — refusal events by category (Traefik edge + classifier-agent)
+#   Jaeger      — A2A hop traces (link panel to jaeger.local)
+#
+# Panel inventory (12 panels):
+#   1. Agent invocation rate (Prometheus)
+#   2. p50/p95/p99 latency per agent (Prometheus histogram)
+#   3. Token consumption per agent vs budget (Prometheus)
+#   4. A2A delegation count per turn (Prometheus)
+#   5. Edge (Traefik) rejections by category (Loki)
+#   6. Classifier-agent refusals by category (Loki)
+#   7. Fast-path coverage % (Prometheus) — must stay > 80%
+#   8. Top-N tools called per agent — God-Agent drift detector (Prometheus)
+#   9. Tools-per-agent current count — alert threshold >32 (Prometheus)
+#  10. Approval-gate rejection rate (Loki)
+#  11. Ollama warmer — model load status (Prometheus scrape of mac-gpu-exporter)
+#  12. Jaeger trace explorer link (external link panel)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-kagent
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: grafana-dashboard-kagent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+data:
+  kagent-multi-agent-telemetry.json: |
+    {
+      "title": "Multi-Agent Platform Telemetry",
+      "uid": "kagent-multi-agent",
+      "tags": ["kagent", "multi-agent", "aiops"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "templating": {
+        "list": [
+          {
+            "name": "agent",
+            "type": "query",
+            "datasource": "Prometheus",
+            "query": "label_values(kagent_agent_invocations_total, agent)",
+            "includeAll": true,
+            "allValue": ".*",
+            "label": "Agent",
+            "current": { "text": "All", "value": "$__all" }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Agent Invocation Rate (calls/min)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (agent) (rate(kagent_agent_invocations_total[5m])) * 60",
+              "legendFormat": "{{agent}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "reqpm", "thresholds": { "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]}}
+          }
+        },
+        {
+          "id": 2,
+          "title": "Latency p50/p95/p99 per Agent (seconds)",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le, agent) (rate(kagent_agent_duration_seconds_bucket[5m])))",
+              "legendFormat": "p50 {{agent}}"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le, agent) (rate(kagent_agent_duration_seconds_bucket[5m])))",
+              "legendFormat": "p95 {{agent}}"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le, agent) (rate(kagent_agent_duration_seconds_bucket[5m])))",
+              "legendFormat": "p99 {{agent}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "s" } }
+        },
+        {
+          "id": 3,
+          "title": "Token Consumption per Agent (vs 50k budget)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (agent) (rate(kagent_agent_tokens_total[1h])) * 3600",
+              "legendFormat": "{{agent}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "short", "thresholds": { "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 30000 },
+              { "color": "red", "value": 50000 }
+            ]}}
+          }
+        },
+        {
+          "id": 4,
+          "title": "A2A Delegations per Turn (max=8)",
+          "type": "stat",
+          "gridPos": { "x": 12, "y": 8, "w": 6, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "max(increase(kagent_agent_invocations_total[5m]))",
+              "legendFormat": "Max delegations/turn"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "short", "thresholds": { "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 8 }
+            ]}}
+          }
+        },
+        {
+          "id": 5,
+          "title": "Fast-Path Coverage % (target >80%)",
+          "type": "gauge",
+          "gridPos": { "x": 18, "y": 8, "w": 6, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "(sum(traefik_router_requests_total{router=~\"kagent.*\",service!~\".*guardrail.*\"}) / sum(traefik_router_requests_total{router=~\"kagent.*\"})) * 100",
+              "legendFormat": "Fast-path %"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0, "max": 100,
+              "thresholds": { "steps": [
+                { "color": "red", "value": 0 },
+                { "color": "yellow", "value": 60 },
+                { "color": "green", "value": 80 }
+              ]}
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Edge (Traefik) Rejections by Category",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+          "datasource": "Loki",
+          "targets": [
+            {
+              "expr": "sum by (category) (count_over_time({app=\"traefik\"} |= \"edge_regex_block\" | json [1h]))",
+              "legendFormat": "{{category}}"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Classifier-Agent Refusals by Category",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+          "datasource": "Loki",
+          "targets": [
+            {
+              "expr": "sum by (category) (count_over_time({namespace=\"kagent\"} |= \"classifier-agent\" |= \"refuse\" | json [1h]))",
+              "legendFormat": "{{category}}"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Top Tools Called per Agent (God-Agent Drift)",
+          "type": "barchart",
+          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "topk(10, sum by (agent, tool) (rate(kagent_tool_calls_total[1h])))",
+              "legendFormat": "{{agent}} / {{tool}}"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "title": "Tools per Agent (alert >32)",
+          "type": "stat",
+          "gridPos": { "x": 12, "y": 24, "w": 6, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "count by (agent) (kagent_agent_tool_count)",
+              "legendFormat": "{{agent}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": { "unit": "short", "thresholds": { "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 25 },
+              { "color": "red", "value": 32 }
+            ]}}
+          }
+        },
+        {
+          "id": 10,
+          "title": "Approval-Gate Rejections (write-tool blocks)",
+          "type": "timeseries",
+          "gridPos": { "x": 18, "y": 24, "w": 6, "h": 8 },
+          "datasource": "Loki",
+          "targets": [
+            {
+              "expr": "sum by (tool) (count_over_time({namespace=\"kagent\"} |= \"REJECTED\" | json [1h]))",
+              "legendFormat": "{{tool}}"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "title": "Jaeger Traces — Open in Jaeger UI",
+          "type": "text",
+          "gridPos": { "x": 0, "y": 32, "w": 24, "h": 4 },
+          "options": {
+            "mode": "markdown",
+            "content": "## A2A Trace Explorer\n\nFor end-to-end A2A hop traces, open [**Jaeger UI → service: kagent-controller**](http://jaeger.local/search?service=kagent-controller).\n\nCorrelate: click a Loki log line → **View trace** → Jaeger waterfall for that turn's full A2A chain."
+          }
+        }
+      ]
+    }
