@@ -5,7 +5,5 @@ resources:
   - helmrepository.yaml
   - helmrelease-crds.yaml
   - helmrelease.yaml
-  - gateway.yaml
-  - proxy-params.yaml
   - ingressroute.yaml
   - referencegrant.yaml

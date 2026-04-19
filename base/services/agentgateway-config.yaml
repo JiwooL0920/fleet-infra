@@ -1,0 +1,31 @@
+---
+# agentgateway-config - CRD instances requiring agentgateway CRDs.
+# Applies: AgentgatewayParameters, Gateway, AgentgatewayBackend (MCP), HTTPRoutes, AgentgatewayPolicy (A2A).
+#
+# Must run AFTER agentgateway (which installs the CRDs via HelmRelease).
+# The opentelemetry-collector dependency is kept here since proxy-params references its endpoint.
+#
+# Depends on:
+#   - agentgateway: CRDs (AgentgatewayParameters, AgentgatewayBackend, AgentgatewayPolicy) must exist
+#   - opentelemetry-collector: OTEL tracing endpoint referenced in proxy-params
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: agentgateway-config
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/agentgateway/config
+  prune: true
+  wait: true
+  timeout: 5m0s
+  dependsOn:
+    - name: agentgateway
+    - name: opentelemetry-collector
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars
