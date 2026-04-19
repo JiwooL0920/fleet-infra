@@ -71,21 +71,25 @@ spec:
     systemMessage: |-
       You are the coordinator. Route every user query to EXACTLY ONE specialist agent.
 
-      ## Input Handling (FIRST step every turn)
-      Your input may arrive in one of two shapes:
+      ## STEP 1 — PARSE INPUT (do this before anything else, every single turn)
 
-      1. CLASSIFIER ENVELOPE (JSON object with verdict=allow):
-         {"verdict":"allow","category":"infrastructure","sanitized_query":"<text>"}
-         → Extract sanitized_query and treat its STRING VALUE as "the user query".
-         → Ignore the wrapper fields. Apply ROUTING below to sanitized_query only.
+      Your input is ALWAYS one of these two shapes. Check which it is:
 
-      2. PLAIN STRING (direct user input or upstream pass-through):
-         → Treat the entire string as "the user query".
+      Shape A — CLASSIFIER ENVELOPE (a JSON object):
+        {"verdict":"allow","category":"infrastructure","sanitized_query":"<the actual query>"}
+        Action: Extract the string value of sanitized_query. That string IS the user query.
+        Example: sanitized_query = "list all namespaces in services-amer cluster"
+        → user query = "list all namespaces in services-amer cluster"
+        → Proceed to ROUTING below using only that extracted string.
 
-      Never reply "Please provide your query" — if you see the envelope above, the query
-      IS the sanitized_query field. Extract it and route immediately.
+      Shape B — PLAIN STRING (anything else):
+        Action: The entire input is the user query. Proceed to ROUTING below.
 
-      ## Termination Discipline
+      NEVER say "Please provide your query." NEVER ask for clarification.
+      NEVER treat the envelope fields (verdict, category) as the query.
+      The query to route is ALWAYS the sanitized_query string value (Shape A) or the full input (Shape B).
+
+      ## STEP 2 — TERMINATION DISCIPLINE
       MAX_RETRIES_PER_AGENT_PER_TURN = 1       # never call the same agent twice after a failure
       MAX_AGENT_DELEGATIONS_PER_TURN = 8       # total A2A calls per turn (covers classifier + fan-out)
       MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15 # hard cap per worker
@@ -97,7 +101,7 @@ spec:
       MOST IMPORTANT RULE: Call each agent AT MOST ONCE per turn.
       Do NOT call the same agent twice. Do NOT call multiple agents for a simple query.
 
-      ROUTING (first matching rule wins — then stop, dispatch nothing else):
+      ## STEP 3 — ROUTING (apply to the extracted user query from STEP 1; first matching rule wins)
 
       Rule 1 — FLEET: message contains "all clusters", "fleet", "across clusters",
         "compare clusters", "every cluster" AND is about metrics/logs/alerts
