@@ -192,31 +192,41 @@ spec:
       ## Response Format
 
       ENVELOPE POLICY: Always wrap your response in the JSON envelope below.
-      - Strip any ```json fences from tool output before embedding in "evidence" fields.
-      - Keep "summary" to plain text only — no Markdown inside summary.
-      - Set "raw_data_truncated": true if Output Truncation Rules caused you to omit rows.
+      Output ONLY the JSON object — no prose before or after it, no ```json fences around it.
+      Keep "summary" to plain text only — no Markdown inside summary.
 
-      VALID ENVELOPE (output ONLY this JSON — no prose, no fences around the envelope itself):
+      SCHEMA v2 — VALID ENVELOPE:
       {
-        "schema_version": "1",
+        "schema_version": "2",
         "agent": "cluster-agent-<cluster>",
-        "trace_id": null,
-        "summary": "<1-2 sentence cluster health overview>",
+        "summary": "<plain-text overview, e.g. '29 namespaces in services-amer, all Active.'>",
         "severity": "info|warning|error|critical",
         "data": {
           "scope": {
             "cluster": "<cluster name, e.g. services-amer>",
-            "namespace": "<namespace or null for cluster-scoped>",
             "operation_class": "k8s|flux|helm|observability"
           },
-          "findings": [
+          "resources": {
+            "<Kind>": {
+              "columns": ["<col1>", "<col2>"],
+              "items": [
+                {
+                  "name": "<resource name>",
+                  "namespace": "<ns for namespaced resources, or \"all\" for cluster-scoped (Namespace/Node/ClusterRole/PV)>",
+                  "<col1>": "<value>",
+                  "<col2>": "<value>"
+                }
+              ]
+            }
+          },
+          "issues": [
             {
-              "resource_kind": "<Pod|Deployment|HelmRelease|Kustomization|etc.>",
+              "resource_kind": "<Kind>",
               "resource_name": "<name>",
-              "namespace": "<namespace or null>",
-              "status": "Ready|Failed|Pending|Unknown",
-              "issue": "<null if healthy, else short description>",
-              "evidence": "<most-specific event message or log line>"
+              "namespace": "<ns or \"all\">",
+              "severity": "info|warning|error|critical",
+              "message": "<short description of the problem>",
+              "evidence": "<single diagnostic string: event message or log line>"
             }
           ],
           "proposed_change": {
@@ -224,13 +234,21 @@ spec:
             "yaml_diff": "<unified diff string or null>",
             "rationale": "<why this change resolves the issue, or null>"
           },
-          "tool_calls_made": 0,
-          "approval_gates_hit": []
+          "tool_calls_made": 0
         },
         "recommended_action": "<what to do next, or null>",
-        "raw_data_truncated": false,
         "follow_up_agent": "<gitops-agent if proposed_change.file_path is not null, else null>"
       }
+
+      KEY RULES:
+      - resources is a map keyed by Kind (e.g. "Namespace", "Pod", "Deployment", "HelmRelease").
+        Adding a new Kind = adding a new key. Coordinator renders each Kind as a separate table.
+      - Each Kind declares its own columns[] listing which fields appear in items[].
+      - Cluster-scoped resources (Namespace, Node, ClusterRole, PersistentVolume) use namespace: "all".
+      - Namespaced resources (Pod, Deployment, ConfigMap, Service) use their actual namespace string.
+      - data.issues[] is for diagnostics (crashing pods, sync errors, etc.) — separate from resource listings.
+      - Multi-kind queries: call each tool separately, populate one resources[Kind] entry per tool call.
+      - If issues is empty, set it to []. If resources is empty (e.g. pure diagnostic), set it to {}.
 
       INVALID (never do this):
       "The n8n pod is restarting due to OOMKilled. You should increase the memory limit."

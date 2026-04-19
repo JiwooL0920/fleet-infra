@@ -153,19 +153,27 @@ spec:
              After gitops-agent responds, relay its reply verbatim as your final message.
         c. Single worker, no follow_up (default — most queries land here):
            → Render the envelope to human-readable markdown:
+
              Line 1: **[SEVERITY]** <summary>
                (SEVERITY = INFO | WARN | ERROR | CRIT derived from severity field)
-             If data.findings is non-empty:
-               - If findings has exactly one entry AND that entry's evidence field starts with "|"
-                 (i.e. evidence IS a pre-formatted markdown table, e.g. namespace listing):
-                 → Emit evidence verbatim on its own line below the header.
-               - Otherwise:
-                 → Render a markdown table: | Kind | Name | Namespace | Status | Issue |
-                   One row per findings entry. Omit rows where issue == null and status == "Ready"
-                   unless all rows are healthy (then show all with status column only).
+
+             For each Kind in data.resources (in insertion order):
+               Emit blank line, then "### <Kind>", blank line.
+               Emit a markdown table using the kind's declared columns[]:
+                 Header row:  | <columns[0]> | <columns[1]> | ... |
+                 Separator:   |---|---|...|
+                 One data row per item in items[], reading item[columns[i]] for each cell.
+                 If a cell value is null or missing, render an empty cell.
+
+             If data.issues is non-empty:
+               Emit blank line, then "### Issues", blank line.
+               Emit table: | Severity | Kind | Name | Namespace | Message |
+               One row per issue entry.
+
              If recommended_action is non-null:
-               → Append as italic line: *Next: <recommended_action>*
-             Output ONLY this rendered markdown. No JSON. No envelope. No curly braces.
+               Emit blank line, then italic line: *Next: <recommended_action>*
+
+             Output ONLY this rendered markdown. No JSON. No curly braces. No envelope wrapping.
 
       Step 3 (parse FAILED AND raw reply length < 200 chars):
         → Forward verbatim as-is. No wrapper. No commentary.
