@@ -1,15 +1,63 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Get login credentials for all UI services in the cluster
+# Get login credentials for all UI services in the cluster.
+#
+# Before printing any credential, we:
+#  1. Force-sync all ExternalSecrets so Kubernetes secrets match LocalStack
+#  2. For Grafana specifically: reset the Grafana DB password to match the
+#     secret (Grafana persists its admin hash in PostgreSQL; the env var is
+#     only applied on first boot, so it drifts after restarts/rotations).
 
+# ---------------------------------------------------------------------------
+# Step 1: force-sync all ExternalSecrets and wait for Ready
+# ---------------------------------------------------------------------------
+echo "Syncing ExternalSecrets..." >&2
+TS="$(date +%s)"
+kubectl annotate externalsecret grafana-admin-credentials     -n monitoring force-sync="${TS}" --overwrite 2>/dev/null || true
+kubectl annotate externalsecret pgadmin4-credentials          -n pgadmin4   force-sync="${TS}" --overwrite 2>/dev/null || true
+kubectl annotate externalsecret traefik-dashboard-credentials -n traefik    force-sync="${TS}" --overwrite 2>/dev/null || true
+
+# Wait up to 15s for grafana-admin-credentials to be Ready (most critical)
+for i in $(seq 1 15); do
+  STATUS=$(kubectl get externalsecret grafana-admin-credentials -n monitoring \
+    -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
+  [ "${STATUS}" = "True" ] && break
+  sleep 1
+done
+echo "ExternalSecrets synced." >&2
+echo "" >&2
+
+# ---------------------------------------------------------------------------
+# Step 2: align Grafana DB password with the (now-fresh) Kubernetes secret
+# ---------------------------------------------------------------------------
+# Grafana stores admin password as a hash in PostgreSQL. The env var
+# GF_SECURITY_ADMIN_PASSWORD only seeds it on first boot, so it drifts.
+# We use `grafana cli admin reset-admin-password` to bring the DB in sync.
+GRAFANA_POD=$(kubectl get pod -n monitoring -l app.kubernetes.io/name=grafana \
+  -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+GRAFANA_SECRET_PASS=$(kubectl get secret grafana-admin-credentials -n monitoring \
+  -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d 2>/dev/null || echo "")
+
+if [ -n "${GRAFANA_POD}" ] && [ -n "${GRAFANA_SECRET_PASS}" ]; then
+  echo "Aligning Grafana DB password with secret..." >&2
+  echo "${GRAFANA_SECRET_PASS}" | kubectl exec -i -n monitoring "${GRAFANA_POD}" -c grafana -- \
+    grafana cli admin reset-admin-password --password-from-stdin >/dev/null 2>&1 && \
+    echo "Grafana password aligned." >&2 || \
+    echo "Warning: could not reset Grafana DB password (pod may be restarting)." >&2
+fi
+echo "" >&2
+
+# ---------------------------------------------------------------------------
+# Credentials output
+# ---------------------------------------------------------------------------
 echo "=== Fleet-Infra UI Service Credentials ==="
 echo ""
 
 # --- Grafana ---
 echo "Grafana (http://grafana.local)"
 GRAFANA_USER=$(kubectl get secret grafana-admin-credentials -n monitoring -o jsonpath='{.data.admin-user}' 2>/dev/null | base64 -d 2>/dev/null) || GRAFANA_USER="(secret not found)"
-GRAFANA_PASS=$(kubectl get secret grafana-admin-credentials -n monitoring -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d 2>/dev/null) || GRAFANA_PASS="(secret not found)"
+GRAFANA_PASS="${GRAFANA_SECRET_PASS:-$(kubectl get secret grafana-admin-credentials -n monitoring -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d 2>/dev/null)}"
 echo "  Username: ${GRAFANA_USER}"
 echo "  Password: ${GRAFANA_PASS}"
 echo ""
