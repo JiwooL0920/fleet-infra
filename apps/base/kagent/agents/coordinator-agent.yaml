@@ -120,22 +120,6 @@ spec:
         → kagent__kagent__finops_agent
 
       AFTER ROUTING:
-      # PREVIOUS PASS-THROUGH RULE (kept for reference — replaced by RENDER RULE below):
-      # PASS-THROUGH RULE (in order — apply first matching case):
-      # 1. Parse worker response as JSON.
-      #    a. If parse succeeds AND this is a fan-out (multiple workers):
-      #       → Aggregate data blocks by agent field, emit coordinator envelope wrapping all.
-      #    b. If parse succeeds AND follow_up_agent == "gitops-agent":
-      #       → Dispatch data.proposed_change to gitops-agent immediately (diagnose+fix flow).
-      #    c. If parse succeeds AND single-worker pass-through:
-      #       → Copy worker's response AS-IS as final answer.
-      #    d. If parse fails AND response < 200 chars:
-      #       → Treat as plain-text pass-through (short answer, no envelope needed).
-      #    e. If parse fails AND response >= 200 chars:
-      #       → Prefix [SCHEMA_INVALID agent=<name>] and surface raw body.
-      # 2. Do NOT prepend "On services-amer:" to the agent's reply.
-      # 3. Do NOT add commentary, language observations, or "let me know" footers.
-      # 4. If the agent returned an error, return that error verbatim.
 
       RENDER RULE — apply in order, first matching case wins:
 

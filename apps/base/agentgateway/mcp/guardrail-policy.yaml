@@ -1,15 +1,18 @@
 ---
-# AgentgatewayPolicy: credential-leak guardrail on the MCP tool-call path.
+# AgentgatewayPolicy: guardrail on the MCP tool-call path.
 #
 # SCOPE: This policy fires on /mcp/* traffic (agent → MCP tool servers).
-# It catches credential leaks where an agent accidentally passes a secret
-# (e.g. from cluster logs or ConfigMaps) as a tool argument.
+# TWO protection categories:
 #
-# Only credential-leak patterns are included — skip injection/jailbreak patterns
-# which are user-input concerns, not tool-call concerns.
+# 1. Credential leaks: catches secrets that an agent accidentally passes as a tool argument
+#    (e.g. secrets from cluster logs, ConfigMaps, or environment variables).
 #
-# Schema: spec.backend.ai.promptGuard.request is a list of PromptguardRequest items.
-# Each item uses regex.matches (list of patterns) with action: Reject.
+# 2. Indirect prompt injection via tool outputs: MCP tool responses (kubectl logs, ConfigMap
+#    data, Helm values) are a known OWASP LLM01 indirect injection vector. Injection strings
+#    in tool output land in the coordinator's context window and could hijack subsequent calls.
+#    Matching on the RESPONSE path blocks exfiltration of injected instructions.
+#
+# Schema: spec.backend.ai.promptGuard.request/response are lists of PromptguardRequest items.
 # Reference: kubectl get crd agentgatewaypolicies.agentgateway.dev -o json
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
@@ -39,7 +42,13 @@ spec:
                 - "ghp_[A-Za-z0-9]{36}"
                 - "sk-[A-Za-z0-9]{32,}"
                 - "(?i)(secret|token)\\s*[=:]\\s*['\"]?[A-Za-z0-9._\\-]{16,}"
+                # Indirect prompt injection patterns — tool arguments should not contain
+                # instruction-override strings; presence indicates a compromised tool call chain.
+                - "(?i)ignore (all |the )?(previous|prior|above) (instructions|prompts|messages)"
+                - "(?i)disregard (all |the )?(previous|prior|above) (instructions|prompts)"
+                - "(?i)you are now (DAN|in developer mode|jailbroken)"
+                - "(?i)\\b(JAILBREAK|DAN mode|developer mode)\\b"
             response:
               statusCode: 403
               message: >-
-                {"schema_version":"1","agent":"agentgateway","summary":"MCP tool call blocked — credential detected in arguments","severity":"error","data":{"verdict":"refuse","category":"mcp_credential_block","reason":"Credential pattern found in MCP tool call payload"},"recommended_action":"Review agent prompt and tool output for accidental secret exfiltration.","raw_data_truncated":false,"follow_up_agent":null}
+                {"schema_version":"1","agent":"agentgateway","summary":"MCP tool call blocked — credential or injection pattern detected","severity":"error","data":{"verdict":"refuse","category":"mcp_guardrail_block","reason":"Credential or injection pattern found in MCP tool call payload"},"recommended_action":"Review agent prompt and tool output for accidental secret exfiltration or indirect prompt injection.","raw_data_truncated":false,"follow_up_agent":null}

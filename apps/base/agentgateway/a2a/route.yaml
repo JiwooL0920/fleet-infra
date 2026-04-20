@@ -6,6 +6,13 @@
 # URLRewrite strips the /agents prefix so kagent-controller receives requests at /
 # which matches the A2A protocol expectation.
 #
+# Timeouts:
+#   request: 600s — outer timeout covering the full user → coordinator → worker chain.
+#             LLM chains can exceed 60s on 72b models; 10 min is generous but prevents
+#             silent hangs from holding connections indefinitely.
+#   backendRequest: 120s — per-backend timeout for individual kagent-controller calls.
+#             A single agent turn should complete within 2 minutes; if not, it's stuck.
+#
 # Reference: https://agentgateway.dev/docs/kubernetes/latest/agent/a2a/
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -27,6 +34,9 @@ spec:
             path:
               type: ReplacePrefixMatch
               replacePrefixMatch: /
+      timeouts:
+        request: 600s
+        backendRequest: 120s
       backendRefs:
         - name: kagent-controller
           namespace: kagent

@@ -1,0 +1,75 @@
+---
+# PodDisruptionBudgets for the kagent AI plane.
+#
+# minAvailable: 1 ensures at least one replica stays available during:
+#   - Node drain operations (e.g. cluster upgrades, maintenance)
+#   - Voluntary pod evictions (e.g. resource pressure)
+#
+# For single-replica deployments this is still meaningful: it prevents
+# two simultaneous voluntary evictions from taking down the service.
+# When replicas scale to >= 2 (prod), this enforces true rolling availability.
+#
+# Covers: kagent-controller, kagent-ui, github-mcp-server, input-guardrail.
+# Source: Kubernetes Production Best Practices — PodDisruptionBudget
+# Reference: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kagent-controller
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: kagent-controller
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kagent
+      app.kubernetes.io/component: controller
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kagent-ui
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: kagent-ui
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kagent
+      app.kubernetes.io/component: ui
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: github-mcp-server
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: github-mcp-server
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: github-mcp-server
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: input-guardrail
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: input-guardrail
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: input-guardrail

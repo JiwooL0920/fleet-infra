@@ -4,7 +4,7 @@
 # Architecture:
 #   User → Traefik IngressRoute (kagent.local)
 #          → forwardAuth → input-guardrail-svc (this pod)
-#             ├─ Pattern match? → 400 + refusal envelope (never reaches kagent)
+#             ├─ Pattern match? → 403 + refusal envelope (never reaches kagent)
 #             └─ No match?     → 200 (Traefik proceeds to kagent-ui)
 #
 # The guard reads the raw request body from the X-Forwarded-Body header that
@@ -18,6 +18,10 @@
 #
 # Defense-in-depth: agentgateway AgentgatewayPolicy (a2a/guardrail-policy.yaml) handles
 # compromised-agent injection on the A2A path — this guard handles user-originated attacks.
+#
+# Image: pinned to python:3.12-alpine@sha256 digest for reproducibility.
+# To update: pull python:3.12-alpine, replace both tag and digest.
+# Note: future improvement — package as a versioned image (see LOW findings in audit plan).
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,12 +43,24 @@ spec:
         app: input-guardrail
         app.kubernetes.io/name: input-guardrail
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: guard
-          # python:3.12-alpine is small (~55MB) and available without registry auth.
+          # python:3.12-alpine pinned by digest for supply-chain reproducibility.
           # The guard is a self-contained HTTP server — no external dependencies.
-          image: python:3.12-alpine
+          image: python:3.12-alpine@sha256:236173eb74001afe2f60862de935b74fcbd00adfca247b2c27051a70a6a39a2d
           command: ["/bin/sh", "-c"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           args:
             - |
               python3 - <<'PYEOF'

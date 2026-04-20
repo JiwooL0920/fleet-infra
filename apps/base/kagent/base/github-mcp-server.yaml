@@ -12,6 +12,9 @@
 #
 # The RemoteMCPServer CR that registers this endpoint with kagent lives in
 # config/mcpservers/github-mcp.yaml
+#
+# Image: pinned to v1.0.0 with SHA256 digest for supply-chain reproducibility.
+# To update: pull the new tag, replace both tag and digest.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,9 +35,16 @@ spec:
         app.kubernetes.io/name: github-mcp-server
         app.kubernetes.io/instance: kagent
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: github-mcp-server
-          image: ghcr.io/github/github-mcp-server:latest
+          image: ghcr.io/github/github-mcp-server:v1.0.0@sha256:d2550953f8050bc5a1c8f80d1678766f66f60bbfbcd953fdeaf661fe4269bd95
           args:
             - http
           ports:
@@ -47,6 +57,12 @@ spec:
                 secretKeyRef:
                   name: github-mcp-credentials
                   key: GITHUB_PERSONAL_ACCESS_TOKEN
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               cpu: 50m

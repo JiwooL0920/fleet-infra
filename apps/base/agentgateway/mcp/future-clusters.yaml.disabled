@@ -1,0 +1,198 @@
+---
+# FUTURE CLUSTER ONBOARDING — AgentgatewayBackend placeholder definitions.
+#
+# This file consolidates all placeholder backends for clusters not yet onboarded.
+# To activate a cluster pair (k8s + helm backends):
+#   1. Uncomment the relevant AgentgatewayBackend resources below.
+#   2. Update host: to the remote cluster's kagent-tools Service DNS or ExternalName Service.
+#   3. Add the pair to mcp/kustomization.yaml resources list.
+#   4. Add corresponding /mcp/k8s/<cluster> and /mcp/helm/<cluster> rules to mcp/route.yaml.
+#   5. Create a cluster-agent overlay in apps/base/kagent/agents/cluster-agent/<cluster>/.
+#   6. Add the cluster-agent to coordinator-agent.yaml tools list.
+#   See apps/base/kagent/agents/cluster-agent/README.md for the full onboarding procedure.
+#
+# THIS FILE IS NOT REFERENCED BY mcp/kustomization.yaml.
+# Only active backends (backend-k8s-services-amer.yaml, backend-helm-services-amer.yaml) are applied.
+
+# ============================================================
+# platform-amer
+# ============================================================
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: k8s-mcp-platform-amer
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: platform-amer
+#     domain: k8s
+# spec:
+#   mcp:
+#     targets:
+#       - name: k8s-tools-platform-amer
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: helm-mcp-platform-amer
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: platform-amer
+#     domain: helm
+# spec:
+#   mcp:
+#     targets:
+#       - name: helm-tools-platform-amer
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ============================================================
+# platform-emea
+# ============================================================
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: k8s-mcp-platform-emea
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: platform-emea
+#     domain: k8s
+# spec:
+#   mcp:
+#     targets:
+#       - name: k8s-tools-platform-emea
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: helm-mcp-platform-emea
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: platform-emea
+#     domain: helm
+# spec:
+#   mcp:
+#     targets:
+#       - name: helm-tools-platform-emea
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ============================================================
+# edge-amer
+# ============================================================
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: k8s-mcp-edge-amer
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: edge-amer
+#     domain: k8s
+# spec:
+#   mcp:
+#     targets:
+#       - name: k8s-tools-edge-amer
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: helm-mcp-edge-amer
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: edge-amer
+#     domain: helm
+# spec:
+#   mcp:
+#     targets:
+#       - name: helm-tools-edge-amer
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ============================================================
+# edge-emea
+# ============================================================
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: k8s-mcp-edge-emea
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: edge-emea
+#     domain: k8s
+# spec:
+#   mcp:
+#     targets:
+#       - name: k8s-tools-edge-emea
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: helm-mcp-edge-emea
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: edge-emea
+#     domain: helm
+# spec:
+#   mcp:
+#     targets:
+#       - name: helm-tools-edge-emea
+#         static:
+#           host: kagent-tools.kagent.svc.cluster.local  # Update for remote cluster
+#           port: 8084
+#           protocol: StreamableHTTP
+
+# ============================================================
+# ArgoCD MCP — services-amer (once ArgoCD is deployed)
+# ============================================================
+# Also uncomment /mcp/argo rule in mcp/route.yaml when enabling.
+
+# ---
+# apiVersion: agentgateway.dev/v1alpha1
+# kind: AgentgatewayBackend
+# metadata:
+#   name: argocd-mcp-services-amer
+#   namespace: agentgateway-system
+#   labels:
+#     cluster: services-amer
+#     domain: argocd
+# spec:
+#   mcp:
+#     targets:
+#       - name: argocd-services-amer
+#         static:
+#           host: argocd-mcp-server.argocd.svc.cluster.local
+#           port: 8080
+#           protocol: StreamableHTTP

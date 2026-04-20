@@ -29,3 +29,8 @@ spec:
     substituteFrom:
       - kind: ConfigMap
         name: cluster-vars
+  healthChecks:
+    - apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      name: agentgateway-proxy
+      namespace: agentgateway-system

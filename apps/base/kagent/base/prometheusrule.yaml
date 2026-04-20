@@ -8,7 +8,12 @@
 #   Fires when any single agent accounts for >5 invocations in a 60-second sliding window.
 #
 # KagentEdgeRejectionSurge: detects bot scans or attack sweeps at the Traefik edge.
-#   Fires when edge guardrail rejections exceed 5/min sustained over 5 minutes.
+#   Fires when edge guardrail rejections (HTTP 403 from forwardAuth) exceed 5/min sustained over 5min.
+#   Uses code="403" — input-guardrail returns 403; Traefik propagates that code in its metrics.
+#
+# KagentPromptInjectionSurge: detects sustained classifier refusals indicative of injection campaigns.
+#   Fires when classifier-agent emits >10 refuse verdicts (verdict="refuse" label) in 5 minutes.
+#   Requires kagent to emit a verdict label on kagent_agent_invocations_total.
 #
 # Requires kube-prometheus-stack (PrometheusOperator) to be deployed in the monitoring namespace.
 # Metrics source: kagent PodMonitor (apps/base/kagent/base/podmonitor.yaml)
@@ -67,7 +72,7 @@ spec:
           expr: |
             sum(
               rate(traefik_entrypoint_requests_total{
-                code="400",
+                code="403",
                 entrypoint="web"
               }[5m])
             ) * 60 > 5
@@ -86,8 +91,8 @@ spec:
         - alert: KagentPromptInjectionSurge
           expr: |
             sum(
-              increase(kagent_agent_invocations_total{agent="classifier-agent"}[5m])
-            ) > 20
+              increase(kagent_agent_invocations_total{agent="classifier-agent",verdict="refuse"}[5m])
+            ) > 10
           for: 5m
           labels:
             severity: warning
@@ -95,8 +100,9 @@ spec:
           annotations:
             summary: "High classifier-agent refusal rate — possible injection attack"
             description: >-
-              classifier-agent received {{ $value }} queries in 5 minutes with
-              an unusually high refusal rate. Check Loki for category=prompt_injection.
+              classifier-agent issued {{ $value }} REFUSE verdicts in 5 minutes.
+              Possible prompt-injection campaign. Check Loki for category=prompt_injection or
+              category=destructive_intent: {app="classifier-agent"} | json | verdict="refuse".
             runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
 
     - name: kagent.antipatterns

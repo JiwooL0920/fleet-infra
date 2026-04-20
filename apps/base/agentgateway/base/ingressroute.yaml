@@ -4,6 +4,10 @@
 # Clients (IDE, A2A, MCP) connect here:
 #   - /agents/* → A2A routing to kagent-controller
 #   - /mcp       → MCP federation (all federated tool servers)
+#
+# agentgateway-auth middleware: basicAuth guard on this endpoint.
+# Credentials managed via ExternalSecret (auth-middleware.yaml).
+# For production, replace with JWT/OIDC (Traefik forwardAuth to an OIDC provider).
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -15,6 +19,9 @@ spec:
   routes:
     - match: Host(`agentgateway.local`)
       kind: Rule
+      middlewares:
+        - name: agentgateway-auth
+          namespace: agentgateway-system
       services:
         - name: agentgateway-proxy
           port: 80

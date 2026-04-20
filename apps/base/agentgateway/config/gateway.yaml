@@ -4,6 +4,9 @@
 # Traefik IngressRoute handles external exposure (see ingressroute.yaml).
 # Routes from the kagent namespace are allowed via ReferenceGrant (see referencegrant.yaml).
 #
+# allowedRoutes is scoped to agentgateway-system and kagent namespaces only.
+# This prevents arbitrary namespaces from attaching routes to this Gateway.
+#
 # Reference: https://agentgateway.dev/docs/kubernetes/latest/setup/
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -23,4 +26,11 @@ spec:
       port: 80
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values:
+                  - agentgateway-system
+                  - kagent

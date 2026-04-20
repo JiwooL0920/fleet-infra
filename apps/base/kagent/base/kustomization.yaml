@@ -7,9 +7,11 @@ resources:
   - externalsecret.yaml
   - externalsecret-grafana-sa.yaml
   - externalsecret-github.yaml
+  - auth-middleware.yaml
   - ingressroute.yaml
   - github-mcp-server.yaml
   - model-warmer-cronjob.yaml
   - prometheusrule.yaml
   - input-guardrail.yaml
   - podmonitor.yaml
+  - pdb.yaml

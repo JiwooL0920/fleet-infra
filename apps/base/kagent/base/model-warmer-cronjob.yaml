@@ -1,13 +1,20 @@
 ---
-# CronJob: keeps qwen2.5:72b, qwen2.5:14b-kagent, and qwen2.5:3b loaded in Ollama VRAM.
+# CronJob: keeps qwen2.5:72b, qwen2.5:14b-kagent loaded in Ollama VRAM.
 #
 # Cold-start TTFR for qwen2.5:72b is ~90s; warm TTFR drops to ~10-15s.
-# Running a 1-token ping every 5min with keep_alive=10m pins the model in VRAM continuously.
+# Running a 1-token ping every 10min with keep_alive=15m pins the models continuously
+# without overlapping runs (*/5 + 10m overlap was preventing unload on CPU-only Ollama).
 #
 # Models warmed:
 #   qwen2.5:72b         — coordinator-agent (default-model-config, gitops-agent)
 #   qwen2.5:14b-kagent  — cluster-agent, observability-agent, finops-agent (fast-model-config)
-#   qwen2.5:3b          — classifier-agent (classifier-model-config)
+#
+# qwen2.5:3b is NOT warmed: classifier-agent uses fast-model-config (14b), not classifier-model-config.
+# See classifier-agent.yaml comments for the 3b→14b upgrade rationale.
+#
+# OLLAMA_HOST uses ${OLLAMA_HOST} substitution from cluster-vars:
+#   base: http://ollama.ollama.svc.cluster.local:11434 (in-cluster chart)
+#   dev:  http://host.docker.internal:11434 (native macOS Ollama via dev environment.env override)
 #
 # concurrencyPolicy: Forbid ensures no overlapping warm jobs if a run is slow to complete.
 apiVersion: batch/v1
@@ -20,7 +27,7 @@ metadata:
     app.kubernetes.io/instance: kagent
     app.kubernetes.io/managed-by: kustomize
 spec:
-  schedule: "*/5 * * * *"
+  schedule: "*/10 * * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
@@ -29,24 +36,36 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: warmer
               image: curlimages/curl:8.10.1
               command: ["/bin/sh", "-c"]
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
               args:
                 - |
                   set -e
-                  for model in qwen2.5:72b qwen2.5:14b-kagent qwen2.5:3b; do
+                  for model in qwen2.5:72b qwen2.5:14b-kagent; do
                     echo "Warming model: $model"
                     curl -sf -X POST "${OLLAMA_HOST}/api/generate" \
                       -H "Content-Type: application/json" \
-                      -d "{\"model\":\"${model}\",\"prompt\":\"ok\",\"stream\":false,\"keep_alive\":\"10m\"}" \
+                      -d "{\"model\":\"${model}\",\"prompt\":\"ok\",\"stream\":false,\"keep_alive\":\"15m\"}" \
                       && echo "OK: $model" \
                       || echo "WARN: warm failed for $model (may not be pulled yet)"
                   done
               env:
                 - name: OLLAMA_HOST
-                  value: "http://host.docker.internal:11434"
+                  value: "${OLLAMA_HOST}"
               resources:
                 requests:
                   cpu: 10m

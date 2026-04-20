@@ -60,7 +60,7 @@ spec:
           enabled: false
 
     controller:
-      replicas: 1
+      replicas: "${KAGENT_CONTROLLER_REPLICAS}"
       resources:
         requests:
           cpu: "${KAGENT_CONTROLLER_CPU_REQUEST}"
@@ -78,7 +78,7 @@ spec:
         - name: OTEL_SERVICE_NAME
           value: "kagent-controller"
         - name: OTEL_RESOURCE_ATTRIBUTES
-          value: "service.namespace=kagent,deployment.environment=dev"
+          value: "service.namespace=kagent,deployment.environment=${ENVIRONMENT}"
       # Mount the kagent-postgres-credentials secret (created by ExternalSecret)
       # so kagent can read DATABASE_URL from a file instead of Helm values
       volumes:
@@ -91,7 +91,7 @@ spec:
           readOnly: true
 
     ui:
-      replicas: 1
+      replicas: "${KAGENT_UI_REPLICAS}"
       resources:
         requests:
           cpu: "${KAGENT_UI_CPU_REQUEST}"

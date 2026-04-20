@@ -33,3 +33,12 @@ spec:
       - kind: Secret
         name: kagent-grafana-sa-token
         optional: true
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: kagent-controller
+      namespace: kagent
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: kagent-ui
+      namespace: kagent

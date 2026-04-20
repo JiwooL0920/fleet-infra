@@ -5,5 +5,7 @@ resources:
   - helmrepository.yaml
   - helmrelease-crds.yaml
   - helmrelease.yaml
+  - auth-middleware.yaml
   - ingressroute.yaml
   - referencegrant.yaml
+  - pdb.yaml

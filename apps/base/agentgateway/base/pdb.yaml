@@ -1,0 +1,37 @@
+---
+# PodDisruptionBudgets for the agentgateway data plane.
+#
+# minAvailable: 1 ensures A2A routing and MCP federation remain available
+# during voluntary disruptions (node drains, rolling upgrades).
+# For production with AGENTGATEWAY_REPLICAS >= 2, this enforces rolling availability.
+#
+# Reference: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agentgateway-proxy
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: agentgateway-proxy
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway-proxy
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agentgateway-controller
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: agentgateway-controller
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agentgateway

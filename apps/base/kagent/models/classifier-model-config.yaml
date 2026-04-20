@@ -1,7 +1,15 @@
 ---
-# Faster ModelConfig for the classifier-agent (input safety gate).
-# Uses qwen2.5:3b (~2-3s TTFR) — 5-bucket classification doesn't need 14B parameters.
-# num_ctx is intentionally tiny: only the user query + 5-bucket schema needs to fit.
+# ModelConfig for direct classification use (reserved / not currently wired).
+#
+# classifier-agent uses fast-model-config (qwen2.5:14b-kagent) for reliable
+# classify-then-delegate with a structured JSON output contract.
+# qwen2.5:3b can handle pure classification but cannot reliably emit the JSON envelope
+# AND call a tool in the same turn — see classifier-agent.yaml for upgrade rationale.
+#
+# This config is kept for future use when/if classifier-agent is split into two stages:
+#   Stage 1: classify only (3b, this config) → emit verdict JSON
+#   Stage 2: delegate to coordinator (14b) based on verdict
+# Until that split is implemented, this config is not referenced by any agent.
 # temperature: 0.0 for fully deterministic classification (same query → same verdict every time).
 apiVersion: kagent.dev/v1alpha2
 kind: ModelConfig

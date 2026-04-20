@@ -3,7 +3,9 @@
 # Sets service type to ClusterIP (Traefik handles external access via IngressRoute).
 # Configures OTEL tracing to the existing opentelemetry-collector in the monitoring namespace.
 #
-# Sampling at 10% for dev to minimize overhead. Increase to 1.0 for debugging.
+# Sampling at 1.0 (100% head sampling) for the agent plane: every A2A delegation chain
+# and MCP tool call is traced. Use the OTel Collector's tail-sampler processor to
+# downsample before sending to Jaeger if storage becomes a concern.
 # Reference: https://agentgateway.dev/docs/kubernetes/latest/reference/api/
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayParameters
@@ -24,4 +26,4 @@ spec:
     - name: OTEL_TRACES_SAMPLER
       value: "traceidratio"
     - name: OTEL_TRACES_SAMPLER_ARG
-      value: "0.1"
+      value: "1.0"

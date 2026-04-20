@@ -1,5 +1,9 @@
 ---
 # kagent IngressRoute
+# Defense-in-depth middleware chain (order matters — Traefik applies in declaration order):
+#   1. input-guardrail: regex safety gate (rejects prompt-injection, credential leak patterns)
+#   2. kagent-auth:     basicAuth identity gate (requires valid credentials)
+# For production, replace kagent-auth with JWT/OIDC (Traefik forwardAuth to an OIDC provider).
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -11,11 +15,10 @@ spec:
   routes:
     - match: Host(`kagent.local`)
       kind: Rule
-      # input-guardrail middleware: regex-based edge guardrail fires before any request
-      # reaches kagent-ui. Catches prompt-injection strings and credential leaks.
-      # Guard lives at apps/base/kagent/base/input-guardrail.yaml.
       middlewares:
         - name: input-guardrail
+          namespace: kagent
+        - name: kagent-auth
           namespace: kagent
       services:
         - name: kagent-ui

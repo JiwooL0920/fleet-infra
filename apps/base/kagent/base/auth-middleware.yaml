@@ -1,0 +1,45 @@
+---
+# ExternalSecret: pulls the shared Traefik htpasswd from LocalStack for basicAuth on kagent.local.
+# Reuses traefik/dashboard/credentials/htpasswd (created by LocalStack startup hooks).
+# For production, replace basicAuth with JWT/OIDC via an auth-service middleware.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: kagent-basic-auth
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: kagent-basic-auth
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: localstack-secretstore
+    kind: ClusterSecretStore
+  target:
+    name: kagent-basic-auth
+    creationPolicy: Owner
+    template:
+      data:
+        users: "{{ .htpasswd }}"
+  data:
+    - secretKey: htpasswd
+      remoteRef:
+        key: traefik/dashboard/credentials/htpasswd
+---
+# Traefik Middleware: basicAuth for kagent.local
+# Sits after input-guardrail (regex safety) and before kagent-ui.
+# removeHeader: true prevents the Authorization header from reaching kagent-ui.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: kagent-auth
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: kagent-auth
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  basicAuth:
+    secret: kagent-basic-auth
+    removeHeader: true

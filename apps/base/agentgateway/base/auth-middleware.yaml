@@ -1,0 +1,45 @@
+---
+# ExternalSecret: pulls the shared Traefik htpasswd from LocalStack for basicAuth.
+# Reuses traefik/dashboard/credentials/htpasswd (created by LocalStack startup hooks).
+# For production, replace basicAuth with JWT/OIDC via an auth-service middleware.
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: agentgateway-basic-auth
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: agentgateway-basic-auth
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: localstack-secretstore
+    kind: ClusterSecretStore
+  target:
+    name: agentgateway-basic-auth
+    creationPolicy: Owner
+    template:
+      data:
+        users: "{{ .htpasswd }}"
+  data:
+    - secretKey: htpasswd
+      remoteRef:
+        key: traefik/dashboard/credentials/htpasswd
+---
+# Traefik Middleware: basicAuth for agentgateway.local
+# Protects the A2A and MCP federation endpoints from unauthenticated access.
+# removeHeader: true prevents the Authorization header from being forwarded to agentgateway-proxy.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: agentgateway-auth
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: agentgateway-auth
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  basicAuth:
+    secret: agentgateway-basic-auth
+    removeHeader: true
