@@ -25,4 +25,4 @@ spec:
   description: Federated helm MCP endpoint via agentgateway — tools prefixed by cluster name
   url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local/mcp/helm
   protocol: STREAMABLE_HTTP
-  timeout: 30s
+  timeout: 20s

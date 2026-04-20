@@ -9,3 +9,7 @@ resources:
   - externalsecret-github.yaml
   - ingressroute.yaml
   - github-mcp-server.yaml
+  - model-warmer-cronjob.yaml
+  - prometheusrule.yaml
+  - input-guardrail.yaml
+  - podmonitor.yaml

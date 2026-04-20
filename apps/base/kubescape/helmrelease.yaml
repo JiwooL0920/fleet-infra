@@ -73,7 +73,7 @@ spec:
           memory: "${KUBESCAPE_MEMORY_REQUEST}"
         limits:
           cpu: "${KUBESCAPE_CPU_LIMIT}"
-          memory: "${KUBESCAPE_MEMORY_LIMIT}"
+          memory: "${KUBEVULN_MEMORY_LIMIT}"
 
     operator:
       resources:

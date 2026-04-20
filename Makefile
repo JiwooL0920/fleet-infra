@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -20,6 +20,7 @@ help:
 	@echo ""
 	@echo "Ollama (Local LLM for kagent):"
 	@echo "  serve-ollama         - Start native Ollama bound to all interfaces (required for kagent in dev)"
+	@echo "  setup-ollama         - Pull ALL models required by kagent (qwen2.5:72b, qwen2.5:14b-kagent, qwen2.5:3b)"
 	@echo "  pull-ollama          - Pull OLLAMA_MODEL into native Ollama (default: $(OLLAMA_MODEL))"
 	@echo "                         Override: make pull-ollama OLLAMA_MODEL=llama3.2"
 	@echo ""
@@ -120,6 +121,37 @@ pull-ollama:
 	@echo "Pulling $(OLLAMA_MODEL) model into Ollama..."
 	@ollama pull $(OLLAMA_MODEL)
 	@echo "Done. Run 'make serve-ollama' to start serving."
+
+# Pull ALL models required by kagent agents:
+#   qwen2.5:72b          → default-model-config  (coordinator-agent, k8s-agent, gitops-agent)
+#   qwen2.5:14b-kagent   → fast-model-config      (observability, flux, helm, security, finops agents)
+#   qwen2.5:3b           → classifier-model-config (classifier-agent — input safety gate)
+# Skips models that already exist locally (e.g. custom Modelfile builds like qwen2.5:14b-kagent).
+setup-ollama:
+	@echo "Pulling all kagent-required Ollama models..."
+	@echo ""
+	@echo "[1/3] qwen2.5:72b (default-model-config — coordinator, k8s, gitops agents)..."
+	@if ollama list | grep -q "^qwen2.5:72b "; then \
+		echo "  already present — skipping pull."; \
+	else \
+		ollama pull qwen2.5:72b; \
+	fi
+	@echo ""
+	@echo "[2/3] qwen2.5:14b-kagent (fast-model-config — observability, flux, helm, security, finops agents)..."
+	@if ollama list | grep -q "^qwen2.5:14b-kagent "; then \
+		echo "  already present — skipping pull."; \
+	else \
+		ollama pull qwen2.5:14b-kagent; \
+	fi
+	@echo ""
+	@echo "[3/3] qwen2.5:3b (classifier-model-config — input safety gate)..."
+	@if ollama list | grep -q "^qwen2.5:3b "; then \
+		echo "  already present — skipping pull."; \
+	else \
+		ollama pull qwen2.5:3b; \
+	fi
+	@echo ""
+	@echo "All kagent models ready. Run 'make serve-ollama' to start serving."
 
 # ==============================================================================
 # Pre-commit Hooks

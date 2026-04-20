@@ -107,6 +107,15 @@ spec:
       persistence:
         enabled: false
 
+      # Dashboard sidecar: auto-imports ConfigMaps with grafana_dashboard="1" label.
+      # Watches all namespaces so monitoring, kagent, etc. can contribute dashboards.
+      sidecar:
+        dashboards:
+          enabled: true
+          searchNamespace: ALL
+          label: grafana_dashboard
+          labelValue: "1"
+
       # Additional datasources
       additionalDataSources:
         - name: Loki

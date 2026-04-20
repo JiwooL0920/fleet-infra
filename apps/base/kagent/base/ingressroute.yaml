@@ -11,6 +11,12 @@ spec:
   routes:
     - match: Host(`kagent.local`)
       kind: Rule
+      # input-guardrail middleware: regex-based edge guardrail fires before any request
+      # reaches kagent-ui. Catches prompt-injection strings and credential leaks.
+      # Guard lives at apps/base/kagent/base/input-guardrail.yaml.
+      middlewares:
+        - name: input-guardrail
+          namespace: kagent
       services:
         - name: kagent-ui
           port: 8080

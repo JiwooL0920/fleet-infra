@@ -68,6 +68,17 @@ spec:
         limits:
           cpu: "${KAGENT_CONTROLLER_CPU_LIMIT}"
           memory: "${KAGENT_CONTROLLER_MEMORY_LIMIT}"
+      extraEnv:
+        # Belt-and-suspenders: set OTEL env vars in case the chart's otel.exporter block
+        # isn't honored by the installed kagent version. Both point to the same collector.
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://opentelemetry-collector.monitoring.svc.cluster.local:4317"
+        - name: OTEL_EXPORTER_OTLP_PROTOCOL
+          value: "grpc"
+        - name: OTEL_SERVICE_NAME
+          value: "kagent-controller"
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: "service.namespace=kagent,deployment.environment=dev"
       # Mount the kagent-postgres-credentials secret (created by ExternalSecret)
       # so kagent can read DATABASE_URL from a file instead of Helm values
       volumes:
@@ -148,10 +159,14 @@ spec:
         serviceAccountToken: "${KAGENT_GRAFANA_API_KEY}"
 
     # ---------------------------------------------------------
-    # Observability: wire to existing OTel Collector
+    # Observability: wire to existing OTel Collector in monitoring namespace.
+    # OTLP endpoint explicitly set to match agentgateway's collector target.
+    # Reference: apps/base/agentgateway/config/proxy-params.yaml
     # ---------------------------------------------------------
     otel:
       tracing:
         enabled: true
       logging:
         enabled: false
+      exporter:
+        endpoint: "http://opentelemetry-collector.monitoring.svc.cluster.local:4317"

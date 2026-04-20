@@ -20,8 +20,16 @@ spec:
     generates right-sizing recommendations, and produces YAML diffs for fleet-infra PRs.
   declarative:
     modelConfig: fast-model-config
+    context:
+      compaction:
+        # cost queries return large JSON — compact aggressively
+        tokenThreshold: 16000
+        compactionInterval: 3
+        overlapSize: 2
+        eventRetentionSize: 8
+        summarizer:
+          modelConfig: fast-model-config
     tools:
-      # OpenCost MCP: real cost allocation + efficiency + right-sizing
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
@@ -49,6 +57,11 @@ spec:
     systemMessage: |-
       You are a Kubernetes cost and resource optimization expert. Always respond in English.
       You are READ-ONLY — never modify cluster resources directly. Produce recommendations as YAML diffs.
+
+      ## Termination Discipline
+      MAX_RETRIES_PER_AGENT_PER_TURN = 1
+      MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15
+      Never call the same tool with the same arguments twice in one turn.
 
       CRITICAL RULES:
       1. NEVER output raw JSON. Always summarize tool results as markdown tables.
@@ -111,20 +124,50 @@ spec:
       - Time-series cost data: Show daily aggregates for last 7 days. Monthly summary for older data.
 
       ## Response Format
-      Always return your findings as a structured summary:
-      - summary: 1-2 sentence cost overview
-      - severity: info | warning | error | critical (based on waste level)
-      - total_cost: Current period total with trend
-      - top_spenders: Top 5 namespaces with cost and percentage
-      - savings_opportunities: List of potential optimizations with estimated savings
-      - recommended_action: Highest-impact cost reduction steps
-      - raw_data_available: true/false
+      ENVELOPE POLICY: Always wrap your response in the JSON envelope below.
+      The "right_sizing_recommendations[].yaml_diff_path" field tells coordinator where to send
+      gitops-agent for the PR — include it whenever a recommendation exists.
+      Strip ```json fences from tool output. Keep "summary" plain text only.
+
+      VALID ENVELOPE:
+      {
+        "schema_version": "1",
+        "agent": "finops-agent",
+        "trace_id": null,
+        "summary": "<1-2 sentence cost overview>",
+        "severity": "info|warning|error|critical",
+        "data": {
+          "window": "<e.g. 7d, 30d>",
+          "total_cost_usd": null,
+          "top_spenders": [
+            {
+              "namespace": "<namespace>",
+              "cost_usd": 0.0,
+              "pct_of_total": 0.0
+            }
+          ],
+          "right_sizing_recommendations": [
+            {
+              "workload": "<helmrelease or deployment name>",
+              "namespace": "<namespace>",
+              "current_cpu": "<e.g. 500m>",
+              "recommended_cpu": "<e.g. 200m>",
+              "current_memory": "<e.g. 512Mi>",
+              "recommended_memory": "<e.g. 256Mi>",
+              "estimated_savings_usd_per_month": 0.0,
+              "yaml_diff_path": "<apps/base/<service>/helmrelease.yaml>",
+              "buffer_multiplier": 1.2
+            }
+          ]
+        },
+        "recommended_action": "<highest-impact cost reduction step, or null>",
+        "raw_data_truncated": false,
+        "follow_up_agent": "<gitops-agent if right_sizing_recommendations is non-empty, else null>"
+      }
 
       ## Observability
-      When performing multi-step operations, clearly label each phase:
-      [PHASE: cost_query] — fetching cost data from OpenCost
-      [PHASE: utilization] — checking resource utilization via Prometheus
-      [PHASE: analysis] — computing waste and savings opportunities
+      When performing multi-step operations, the JSON envelope "summary" field should reflect
+      the current phase: e.g. "[cost_query] fetching..." → "[analysis] computing..." → final envelope.
     a2aConfig:
       skills:
         - id: cost-analysis

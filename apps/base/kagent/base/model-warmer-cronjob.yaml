@@ -1,0 +1,56 @@
+---
+# CronJob: keeps qwen2.5:72b, qwen2.5:14b-kagent, and qwen2.5:3b loaded in Ollama VRAM.
+#
+# Cold-start TTFR for qwen2.5:72b is ~90s; warm TTFR drops to ~10-15s.
+# Running a 1-token ping every 5min with keep_alive=10m pins the model in VRAM continuously.
+#
+# Models warmed:
+#   qwen2.5:72b         — coordinator-agent (default-model-config, gitops-agent)
+#   qwen2.5:14b-kagent  — cluster-agent, observability-agent, finops-agent (fast-model-config)
+#   qwen2.5:3b          — classifier-agent (classifier-model-config)
+#
+# concurrencyPolicy: Forbid ensures no overlapping warm jobs if a run is slow to complete.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ollama-model-warmer
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: ollama-model-warmer
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: warmer
+              image: curlimages/curl:8.10.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  for model in qwen2.5:72b qwen2.5:14b-kagent qwen2.5:3b; do
+                    echo "Warming model: $model"
+                    curl -sf -X POST "${OLLAMA_HOST}/api/generate" \
+                      -H "Content-Type: application/json" \
+                      -d "{\"model\":\"${model}\",\"prompt\":\"ok\",\"stream\":false,\"keep_alive\":\"10m\"}" \
+                      && echo "OK: $model" \
+                      || echo "WARN: warm failed for $model (may not be pulled yet)"
+                  done
+              env:
+                - name: OLLAMA_HOST
+                  value: "http://host.docker.internal:11434"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi

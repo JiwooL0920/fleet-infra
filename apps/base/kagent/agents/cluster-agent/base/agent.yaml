@@ -27,6 +27,26 @@
 #
 # Hop budget: every query = 1 A2A hop (coordinator → this agent).
 # Tool-selection accuracy: ~25 tools at deployment → ~80% per Anthropic benchmarks.
+#
+# ADR: God-Agent boundary (Phase 5 anti-pattern audit — deliberately kept at 26 tools)
+# ─────────────────────────────────────────────────────────────────────────────────────
+# DECISION: cluster-agent owns ~26 tools (18 k8s + 5 helm + 3 grafana).
+#
+# RATIONALE (why NOT split into k8s-agent + flux-agent + helm-agent):
+#   1. These tools share one domain boundary: "everything scoped to one cluster."
+#      Splitting by tool type would create three agents per cluster that always
+#      need to be called together — multiplying A2A hops from 1→3 per query.
+#   2. Anthropic's 25-tool accuracy benchmark (~80% tool selection) was the ceiling
+#      at initial deployment. With 26 tools we are marginally above that — acceptable
+#      given the tools are highly distinct (k8s_ vs helm_ vs query_ prefixes).
+#   3. The pre-existing k8s-agent, flux-agent, and helm-agent were merged into
+#      cluster-agent in a prior refactor — re-splitting would undo that work without
+#      improving accuracy (the federation boundary, not tool count, is the right axis).
+#
+# ALERT: PrometheusRule KagentAgentToolCountExceeded fires if count exceeds 32.
+#   At 33+ tools: evaluate splitting argocd + observability into dedicated agents.
+#   See apps/base/kagent/base/prometheusrule.yaml for the alert definition.
+# ─────────────────────────────────────────────────────────────────────────────────────
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
@@ -83,6 +103,11 @@ spec:
       Always respond in English. Keep responses concise.
       NEVER output raw JSON — always summarize in plain text or markdown tables.
       Always call a tool for new questions — never answer from memory.
+
+      ## Termination Discipline
+      MAX_RETRIES_PER_AGENT_PER_TURN = 1
+      MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15
+      Never call the same tool with the same arguments twice in one turn.
 
       ## Kubernetes Operations
 
@@ -166,10 +191,67 @@ spec:
 
       ## Response Format
 
-      - summary: 1-2 sentence overview
-      - severity: info | warning | error | critical
-      - findings: key facts from tool results
-      - recommended_action: what to do next (if a change: "I'll ask gitops-agent to create a PR")
+      ENVELOPE POLICY: Always wrap your response in the JSON envelope below.
+      Output ONLY the JSON object — no prose before or after it, no ```json fences around it.
+      Keep "summary" to plain text only — no Markdown inside summary.
+
+      SCHEMA v2 — VALID ENVELOPE:
+      {
+        "schema_version": "2",
+        "agent": "cluster-agent-<cluster>",
+        "summary": "<plain-text overview, e.g. '29 namespaces in services-amer, all Active.'>",
+        "severity": "info|warning|error|critical",
+        "data": {
+          "scope": {
+            "cluster": "<cluster name, e.g. services-amer>",
+            "operation_class": "k8s|flux|helm|observability"
+          },
+          "resources": {
+            "<Kind>": {
+              "columns": ["<col1>", "<col2>"],
+              "items": [
+                {
+                  "name": "<resource name>",
+                  "namespace": "<ns for namespaced resources, or \"all\" for cluster-scoped (Namespace/Node/ClusterRole/PV)>",
+                  "<col1>": "<value>",
+                  "<col2>": "<value>"
+                }
+              ]
+            }
+          },
+          "issues": [
+            {
+              "resource_kind": "<Kind>",
+              "resource_name": "<name>",
+              "namespace": "<ns or \"all\">",
+              "severity": "info|warning|error|critical",
+              "message": "<short description of the problem>",
+              "evidence": "<single diagnostic string: event message or log line>"
+            }
+          ],
+          "proposed_change": {
+            "file_path": "<fleet-infra relative path, e.g. apps/base/n8n/helmrelease.yaml, or null>",
+            "yaml_diff": "<unified diff string or null>",
+            "rationale": "<why this change resolves the issue, or null>"
+          },
+          "tool_calls_made": 0
+        },
+        "recommended_action": "<what to do next, or null>",
+        "follow_up_agent": "<gitops-agent if proposed_change.file_path is not null, else null>"
+      }
+
+      KEY RULES:
+      - resources is a map keyed by Kind (e.g. "Namespace", "Pod", "Deployment", "HelmRelease").
+        Adding a new Kind = adding a new key. Coordinator renders each Kind as a separate table.
+      - Each Kind declares its own columns[] listing which fields appear in items[].
+      - Cluster-scoped resources (Namespace, Node, ClusterRole, PersistentVolume) use namespace: "all".
+      - Namespaced resources (Pod, Deployment, ConfigMap, Service) use their actual namespace string.
+      - data.issues[] is for diagnostics (crashing pods, sync errors, etc.) — separate from resource listings.
+      - Multi-kind queries: call each tool separately, populate one resources[Kind] entry per tool call.
+      - If issues is empty, set it to []. If resources is empty (e.g. pure diagnostic), set it to {}.
+
+      INVALID (never do this):
+      "The n8n pod is restarting due to OOMKilled. You should increase the memory limit."
     a2aConfig:
       skills:
         - id: cluster-diagnostics

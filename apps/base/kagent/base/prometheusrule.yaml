@@ -1,0 +1,118 @@
+---
+# PrometheusRule: kagent operational alerts.
+#
+# KagentOllamaRequestSurge: detects runaway agent loops by watching sustained high invocation rate.
+#   Fires when any agent is called >10 times/min over a 5-minute window.
+#
+# KagentAgentLoopDetected: detects tight A2A loops where the same agent fires repeatedly within 60s.
+#   Fires when any single agent accounts for >5 invocations in a 60-second sliding window.
+#
+# KagentEdgeRejectionSurge: detects bot scans or attack sweeps at the Traefik edge.
+#   Fires when edge guardrail rejections exceed 5/min sustained over 5 minutes.
+#
+# Requires kube-prometheus-stack (PrometheusOperator) to be deployed in the monitoring namespace.
+# Metrics source: kagent PodMonitor (apps/base/kagent/base/podmonitor.yaml)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kagent-operational
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kagent-operational
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+    # Required by kube-prometheus-stack to pick up this rule
+    release: monitoring
+spec:
+  groups:
+    - name: kagent.guardrails
+      interval: 30s
+      rules:
+        - alert: KagentOllamaRequestSurge
+          expr: |
+            sum by (agent) (
+              rate(kagent_agent_invocations_total[5m])
+            ) * 60 > 10
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "kagent agent invocation rate is unusually high"
+            description: >-
+              Agent {{ $labels.agent }} is being invoked at
+              {{ $value | humanize }} calls/min (threshold: 10/min).
+              Possible runaway loop — check coordinator routing logic and
+              verify MAX_AGENT_DELEGATIONS_PER_TURN is enforced.
+            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
+
+        - alert: KagentAgentLoopDetected
+          expr: |
+            sum by (agent) (
+              increase(kagent_agent_invocations_total[60s])
+            ) > 5
+          for: 0m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Possible agent loop detected in kagent"
+            description: >-
+              Agent {{ $labels.agent }} was invoked {{ $value }} times
+              in the last 60 seconds. This indicates a tight A2A loop.
+              Immediate action: check Jaeger traces for the active session.
+            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
+
+        - alert: KagentEdgeRejectionSurge
+          expr: |
+            sum(
+              rate(traefik_entrypoint_requests_total{
+                code="400",
+                entrypoint="web"
+              }[5m])
+            ) * 60 > 5
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Traefik edge guardrail is rejecting at high rate"
+            description: >-
+              Edge guardrail is rejecting {{ $value | humanize }} requests/min
+              (threshold: 5/min) — possible bot scan or attack sweep against
+              the kagent endpoint. Check Loki: {app="traefik"} |~ "edge_regex_block".
+            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
+
+        - alert: KagentPromptInjectionSurge
+          expr: |
+            sum(
+              increase(kagent_agent_invocations_total{agent="classifier-agent"}[5m])
+            ) > 20
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "High classifier-agent refusal rate — possible injection attack"
+            description: >-
+              classifier-agent received {{ $value }} queries in 5 minutes with
+              an unusually high refusal rate. Check Loki for category=prompt_injection.
+            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
+
+    - name: kagent.antipatterns
+      interval: 60s
+      rules:
+        - alert: KagentAgentToolCountExceeded
+          expr: |
+            max by (agent) (kagent_agent_tool_count) > 32
+          for: 0m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Agent tool count exceeds God-Agent threshold"
+            description: >-
+              Agent {{ $labels.agent }} has {{ $value }} tools registered
+              (threshold: 32 — Anthropic 25-tool accuracy benchmark baseline).
+              Review whether tools can be split into a new specialist agent.
+            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
