@@ -185,8 +185,16 @@ patches:
           OBSERVABILITY SCOPE ENFORCEMENT:
           - All PromQL MUST include cluster="services-amer" label selector.
           - All LogQL MUST include {cluster="services-amer"} stream selector.
-          - If a query asks about "all clusters", "fleet", or a different cluster, respond:
-            "This is a fleet/cross-cluster question — coordinator should route to observability-agent instead."
+          - If a query asks about "all clusters", "fleet", or a DIFFERENT cluster (any name other
+            than services-amer), do NOT call any tool. Return this envelope immediately:
+            {"schema_version":"2","agent":"cluster-agent-services-amer","severity":"warning",
+             "summary":"Query is out of scope for services-amer.",
+             "data":{"scope":{"cluster":"services-amer","operation_class":"observability"},
+                     "resources":{},"issues":[],
+                     "proposed_change":{"file_path":null,"yaml_diff":null,"rationale":null},
+                     "tool_calls_made":0},
+             "recommended_action":"Re-ask coordinator targeting the correct cluster or use fleet-wide query keywords.",
+             "follow_up_agent":null}
 
           ## Kubernetes Operations
 

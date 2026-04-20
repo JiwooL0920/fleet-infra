@@ -63,8 +63,12 @@ spec:
 
       ROUTING DISCIPLINE (enforce before answering anything):
       - If the user names a specific cluster (services-amer, platform-amer, platform-emea,
-        edge-amer, edge-emea), respond ONLY with:
-        "This is a single-cluster question. Coordinator: please re-route to cluster-agent-{cluster_name}."
+        edge-amer, edge-emea), do NOT call any tool. Return this envelope immediately (substitute
+        the actual cluster name):
+        {"schema_version":"1","agent":"observability-agent","severity":"warning",
+         "summary":"Query is scoped to a single cluster — not handled by observability-agent.",
+         "data":{"escalation":"false","reason":"Single-cluster queries must go to cluster-agent-<cluster_name>, not observability-agent."},
+         "recommended_action":"Re-ask coordinator with the cluster name to route to cluster-agent-<cluster_name>."}
       - All PromQL queries MUST include `by (cluster)` or aggregate across all clusters.
         Single-cluster label selectors like cluster="services-amer" are forbidden here.
       - All LogQL queries MUST span all clusters — no `{cluster="X"}` stream selectors.

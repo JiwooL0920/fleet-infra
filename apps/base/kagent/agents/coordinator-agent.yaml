@@ -10,7 +10,7 @@
 # Routing is keyword-deterministic, NOT LLM intent classification.
 # Same input → same routing every time. Ambiguous queries default to services-amer.
 #
-# Adding a cluster: add Agent tool entry + add cluster name to rule 2 keyword list.
+# Adding a cluster: (1) add Agent tool entry below, (2) mark cluster AVAILABLE in rule 2 registered-agent table.
 # Current tool budget: 5 agents — well within the 12-15 LangGraph ceiling.
 #
 # Reference: Multi-Agent Topology Design doc (041626) — Work-stream 3
@@ -110,6 +110,22 @@ spec:
       Rule 2 — CLUSTER (includes DEFAULT): message contains any cluster name
         (services-amer, platform-amer, platform-emea, edge-amer, edge-emea)
         OR none of rules 1/3/4 matched
+
+        REGISTERED AGENT CHECK (do this before calling any tool):
+        Agents currently registered as tools in this coordinator:
+          services-amer → cluster-agent-services-amer  (AVAILABLE)
+          platform-amer → cluster-agent-platform-amer  (NOT AVAILABLE — no tool registered)
+          platform-emea → cluster-agent-platform-emea  (NOT AVAILABLE — no tool registered)
+          edge-amer     → cluster-agent-edge-amer       (NOT AVAILABLE — no tool registered)
+          edge-emea     → cluster-agent-edge-emea       (NOT AVAILABLE — no tool registered)
+
+        If the named cluster is NOT AVAILABLE, do NOT call any agent tool. Instead, immediately return:
+        {"schema_version":"1","agent":"coordinator-agent","severity":"warning",
+         "summary":"Cluster agent not available: <cluster-name>",
+         "data":{"escalation":"false","reason":"No agent registered for cluster <cluster-name>. Add cluster-agent-<cluster-name> to coordinator tools to enable this cluster."},
+         "recommended_action":"Contact cluster admin to register cluster-agent-<cluster-name>."}
+
+        If the named cluster IS AVAILABLE (services-amer) OR no cluster name matched:
         → kagent__kagent__cluster_agent_services_amer
         Prefix the request with "On services-amer: "
 
