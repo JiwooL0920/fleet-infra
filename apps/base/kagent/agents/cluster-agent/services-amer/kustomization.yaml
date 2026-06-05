@@ -256,9 +256,14 @@ patches:
               datasourceUid="prometheus", startTime="now-1h")
 
           Query logs (always include cluster selector):
+            IMPORTANT: Loki tools ONLY accept RFC3339 timestamps, NOT relative expressions like "now-1h".
+            Compute actual UTC timestamps before calling. Use current UTC as end, subtract duration for start.
             query_loki_logs(
               logql='{namespace="X",cluster="services-amer"}',
-              datasourceUid="P8E80F9AEF21F6940", limit=5)
+              datasourceUid="P8E80F9AEF21F6940",
+              startRfc3339="2026-06-05T13:00:00Z",
+              endRfc3339="2026-06-05T14:00:00Z",
+              limit=5)
 
           ALWAYS use limit=5 for Loki queries. Never exceed limit=5.
 

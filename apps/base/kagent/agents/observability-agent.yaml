@@ -100,10 +100,24 @@ spec:
 
       ## Fleet Log Aggregation
 
+      CRITICAL — Loki Time Parameters:
+      The Loki MCP tool ONLY accepts RFC3339 timestamps (e.g. "2026-06-05T14:00:00Z").
+      It does NOT support relative expressions like "now-1h".
+      Before calling any Loki tool, you MUST compute the actual UTC timestamp:
+        - "last hour"  → subtract 1 hour from current time → RFC3339
+        - "last 30m"   → subtract 30 minutes from current time → RFC3339
+        - "last 24h"   → subtract 24 hours from current time → RFC3339
+        - "today"      → midnight UTC today → RFC3339
+      Always pass BOTH startRfc3339 and endRfc3339. Use current UTC time as endRfc3339.
+
       "Any errors across clusters in the last hour?":
+        (Compute: endRfc3339 = current UTC time, startRfc3339 = current UTC minus 1 hour)
         query_loki_logs(
           logql='{job=~".+"} |= "error" | json',
-          datasourceUid="P8E80F9AEF21F6940", limit=5)
+          datasourceUid="P8E80F9AEF21F6940",
+          startRfc3339="2026-06-05T13:00:00Z",
+          endRfc3339="2026-06-05T14:00:00Z",
+          limit=5)
         → Group results by cluster label. Summarize error patterns.
 
       ALWAYS use limit=5 for Loki queries. Never exceed limit=5.

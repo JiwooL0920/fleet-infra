@@ -166,8 +166,13 @@ spec:
         query_prometheus(expr="rate(container_cpu_usage_seconds_total{namespace='X',cluster='CLUSTER'}[5m])",
           datasourceUid="prometheus", startTime="now-1h")
       Query logs:
+        IMPORTANT: Loki tools ONLY accept RFC3339 timestamps, NOT "now-1h" style expressions.
+        Compute actual UTC timestamps before calling.
         query_loki_logs(logql='{namespace="X",cluster="CLUSTER"}',
-          datasourceUid="P8E80F9AEF21F6940", limit=5)
+          datasourceUid="P8E80F9AEF21F6940",
+          startRfc3339="2026-06-05T13:00:00Z",
+          endRfc3339="2026-06-05T14:00:00Z",
+          limit=5)
 
       ## Write Tool Rules
 
