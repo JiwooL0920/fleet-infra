@@ -434,6 +434,7 @@ When restarting Colima, services start automatically in proper dependency order:
 - **Grafana admin password**: Stored in PostgreSQL (persists), but may drift from K8s secret. `refresh-credentials.sh` resets it via `grafana cli admin reset-admin-password`.
 - **Grafana login lockout**: If too many failed auth attempts (e.g., sidecars retrying with wrong password), clear with: `kubectl exec -n cnpg-system postgresql-cluster-1 -c postgres -- psql -U postgres -d grafana -c "DELETE FROM login_attempt;"`
 - **kagent Grafana token flow**: LocalStack (`kagent/grafana/api-key`) → ExternalSecret (`kagent-grafana-sa-token` in flux-system) → postBuild substitution → kagent HelmRelease (`KAGENT_GRAFANA_API_KEY`)
+- **kagent Loki time parsing**: mcp-grafana's `loki.go` only accepts RFC3339 timestamps (upstream bug — `parseRFC3339OrZero` vs `parseStartTime`/`parseEndTime` used by other datasources). Agent prompts instruct LLMs to compute RFC3339 before calling Loki tools. Upstream fix: swap to `time_helpers.go` parsers in `grafana/mcp-grafana`.
 
 **Optional**: Run `make setup-dns` once to enable accessing services via .local domains instead of port forwarding.
 
