@@ -423,10 +423,17 @@ To enable a disabled service, uncomment it in `base/services/kustomization.yaml`
 ### After Colima Restart
 When restarting Colima, services start automatically in proper dependency order:
 1. Run `make post-colima-restart` to fix control plane IP configuration
-2. Dependencies are automatically handled by Flux `dependsOn` clauses
-3. Extended timeouts (10-15m) allow for slower startups
-4. Health checks prevent services from starting before dependencies are ready
-5. Secrets are automatically restored from LocalStack persistence
+2. Run `./scripts/refresh-credentials.sh` to fix credential drift (Grafana admin password, CNPG passwords, ExternalSecrets sync)
+3. Dependencies are automatically handled by Flux `dependsOn` clauses
+4. Extended timeouts (10-15m) allow for slower startups
+5. Health checks prevent services from starting before dependencies are ready
+6. Secrets are automatically restored from LocalStack persistence
+
+**Credential Self-Healing**:
+- **Grafana SA token** (`apps/base/grafana-sa-setup/job.yaml`): One-shot Job with `ttlSecondsAfterFinished: 300` for pod cleanup. Validates existing token before creating a new one to avoid churn. Re-runs automatically on cluster restart (Flux recreates completed Jobs whose pods were cleaned up by TTL).
+- **Grafana admin password**: Stored in PostgreSQL (persists), but may drift from K8s secret. `refresh-credentials.sh` resets it via `grafana cli admin reset-admin-password`.
+- **Grafana login lockout**: If too many failed auth attempts (e.g., sidecars retrying with wrong password), clear with: `kubectl exec -n cnpg-system postgresql-cluster-1 -c postgres -- psql -U postgres -d grafana -c "DELETE FROM login_attempt;"`
+- **kagent Grafana token flow**: LocalStack (`kagent/grafana/api-key`) → ExternalSecret (`kagent-grafana-sa-token` in flux-system) → postBuild substitution → kagent HelmRelease (`KAGENT_GRAFANA_API_KEY`)
 
 **Optional**: Run `make setup-dns` once to enable accessing services via .local domains instead of port forwarding.
 
