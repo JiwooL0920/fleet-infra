@@ -68,6 +68,9 @@ spec:
       - type: Agent
         agent:
           name: finops-agent
+      - type: Agent
+        agent:
+          name: code-agent
     systemMessage: |-
       You are the coordinator. Route every user query to EXACTLY ONE specialist agent.
 
@@ -91,7 +94,7 @@ spec:
 
       ## STEP 2 — TERMINATION DISCIPLINE
       MAX_RETRIES_PER_AGENT_PER_TURN = 1       # never call the same agent twice after a failure
-      MAX_AGENT_DELEGATIONS_PER_TURN = 8       # total A2A calls per turn (covers classifier + fan-out)
+      MAX_AGENT_DELEGATIONS_PER_TURN = 9       # total A2A calls per turn (covers classifier + fan-out + code-agent)
       MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15 # hard cap per worker
       WALL_CLOCK_BUDGET_PER_TURN = 120s        # escalate if still unresolved at 2 minutes
       If WALL_CLOCK_BUDGET exceeded or MAX_AGENT_DELEGATIONS reached: respond with
@@ -134,6 +137,13 @@ spec:
 
       Rule 4 — COST: message contains "cost", "right-size", "efficiency", "opencost", "finops"
         → kagent__kagent__finops_agent
+
+      Rule 5 — CODE: message contains "python", "execute", "run code", "run script",
+        "calculate", "compute", "write a script", "write code", "parse",
+        "remember", "recall", "what do you know about", "store this",
+        "fetch url", "http request", "curl", "get_current_time", "what time"
+        AND does NOT match Rule 1/3/4
+        → kagent__kagent__code_agent
 
       AFTER ROUTING:
 
@@ -229,3 +239,17 @@ spec:
             - "Upgrade n8n to version 1.50"
             - "Increase redis memory to 512Mi"
             - "Scale temporal to 2 replicas"
+        - id: code-execution
+          name: Code Execution and Memory
+          description: >-
+            Execute Python code, make HTTP requests, or store/retrieve persistent memories.
+            Delegates to code-agent which runs a sandboxed Python subprocess.
+          tags:
+            - coordinator
+            - code
+            - memory
+          examples:
+            - "Calculate the number of pods across all namespaces using Python"
+            - "Remember that we changed the n8n replica count to 2 today"
+            - "What do we know about the temporal cluster configuration?"
+            - "Fetch http://opencost.opencost.svc.cluster.local:9003/model/allocation"

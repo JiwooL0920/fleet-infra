@@ -1,0 +1,293 @@
+---
+# ConfigMap containing the FastMCP server script.
+# Mounted into the container at /app/server.py.
+#
+# Tools exposed:
+#   execute_python    - Run arbitrary Python code in a subprocess sandbox
+#   make_http_request - Make HTTP GET/POST/PUT/DELETE/PATCH requests
+#   get_current_time  - Return current timestamp in any IANA timezone
+#   add_memory        - Store a memory for a user/session (mem0 + FAISS, PVC-backed)
+#   search_memories   - Semantic search over stored memories
+#   list_memories     - List all memories for a user/session
+#
+# Memory backend: mem0ai FAISS vector store + Ollama nomic-embed-text embeddings.
+# Data is persisted to /data/mem0 (mounted from code-tools-data PVC).
+#
+# MCP transport: Streamable HTTP on port 8765 at path /mcp.
+# Compatible with kagent RemoteMCPServer protocol: STREAMABLE_HTTP.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: code-tools-server
+  namespace: code-tools
+  labels:
+    app.kubernetes.io/name: code-tools
+data:
+  server.py: |
+    #!/usr/bin/env python3
+    """
+    code-tools-mcp: FastMCP server exposing code execution, HTTP, and memory tools
+    to kagent agents in the homelab.
+
+    Tools:
+      execute_python    Run Python code in a subprocess sandbox
+      make_http_request Make HTTP GET/POST/PUT/DELETE/PATCH requests
+      get_current_time  Return current timestamp in any timezone
+      add_memory        Store a memory for a user/session (mem0 + FAISS, persistent)
+      search_memories   Semantic search across stored memories
+      list_memories     List all memories for a user/session
+
+    Memory backend: mem0ai with FAISS vector store + Ollama nomic-embed-text embeddings.
+    Data is persisted to /data/mem0 (PVC-backed, survives pod restarts).
+    MCP transport: Streamable HTTP on port 8765.
+    """
+    import json
+    import logging
+    import os
+    import subprocess
+    import tempfile
+    import textwrap
+    from datetime import datetime, timezone
+    from typing import Optional
+
+    import httpx
+    from mcp.server.fastmcp import FastMCP
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    )
+    logger = logging.getLogger(__name__)
+
+    # ----- FastMCP server -----
+    mcp = FastMCP("code-tools")
+
+    # ----- Tool: execute_python -----
+    @mcp.tool()
+    def execute_python(
+        code: str,
+        timeout: int = 30,
+        packages: Optional[str] = None,
+    ) -> str:
+        """Execute Python code in a subprocess and return stdout + stderr.
+
+        Args:
+            code: Python code to execute.
+            timeout: Max seconds before killing the process (default 30, max 120).
+            packages: Comma-separated PyPI package names to install before running (optional).
+
+        Returns:
+            Combined stdout and stderr output, or an error message.
+        """
+        timeout = min(timeout, 120)
+
+        if packages:
+            pkg_list = [p.strip() for p in packages.split(",") if p.strip()]
+            try:
+                install = subprocess.run(
+                    ["pip", "install", "--quiet", "--no-cache-dir"] + pkg_list,
+                    capture_output=True, text=True, timeout=120,
+                )
+                if install.returncode != 0:
+                    return f"pip install failed:\n{install.stderr[:2048]}"
+            except subprocess.TimeoutExpired:
+                return "pip install timed out after 120s"
+
+        with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
+            f.write(textwrap.dedent(code))
+            tmp_path = f.name
+
+        try:
+            result = subprocess.run(
+                ["python3", tmp_path],
+                capture_output=True, text=True, timeout=timeout,
+                env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            )
+            parts = []
+            if result.stdout:
+                parts.append(f"stdout:\n{result.stdout[:4096]}")
+            if result.stderr:
+                parts.append(f"stderr:\n{result.stderr[:2048]}")
+            if result.returncode != 0:
+                parts.append(f"returncode: {result.returncode}")
+            return "\n".join(parts) or "(no output)"
+        except subprocess.TimeoutExpired:
+            return f"Execution timed out after {timeout}s"
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    # ----- Tool: make_http_request -----
+    @mcp.tool()
+    def make_http_request(
+        url: str,
+        method: str = "GET",
+        body: Optional[str] = None,
+        headers: Optional[str] = None,
+        timeout: int = 30,
+    ) -> str:
+        """Make an HTTP request and return the response.
+
+        Args:
+            url: Target URL (http or https).
+            method: HTTP method: GET, POST, PUT, DELETE, PATCH (default: GET).
+            body: Request body as a JSON string or plain text (optional).
+            headers: Additional request headers as a JSON object string (optional).
+            timeout: Max seconds to wait (default 30, max 60).
+
+        Returns:
+            JSON string with status_code, headers, and body (capped at 4KB).
+        """
+        timeout = min(timeout, 60)
+        extra_headers: dict = {}
+        if headers:
+            try:
+                extra_headers = json.loads(headers)
+            except json.JSONDecodeError:
+                return f"Invalid headers JSON: {headers}"
+
+        json_body = None
+        content_body: Optional[bytes] = None
+        if body:
+            try:
+                json_body = json.loads(body)
+            except json.JSONDecodeError:
+                content_body = body.encode()
+
+        try:
+            with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+                resp = client.request(
+                    method.upper(),
+                    url,
+                    json=json_body,
+                    content=content_body,
+                    headers=extra_headers,
+                )
+            body_text = resp.text
+            return json.dumps({
+                "status_code": resp.status_code,
+                "headers": dict(resp.headers),
+                "body": body_text[:4096],
+                "truncated": len(body_text) > 4096,
+            }, indent=2)
+        except Exception as e:
+            return f"Request failed: {type(e).__name__}: {e}"
+
+    # ----- Tool: get_current_time -----
+    @mcp.tool()
+    def get_current_time(timezone_name: str = "UTC") -> str:
+        """Return the current date and time in ISO 8601 format.
+
+        Args:
+            timezone_name: IANA timezone name (default: UTC).
+                           Examples: UTC, America/Toronto, Asia/Seoul, Europe/London.
+
+        Returns:
+            ISO 8601 datetime string, e.g. "2026-06-05T14:30:00+00:00".
+        """
+        try:
+            import zoneinfo
+            tz = zoneinfo.ZoneInfo(timezone_name)
+            return datetime.now(tz).isoformat()
+        except Exception:
+            return datetime.now(timezone.utc).isoformat()
+
+    # ----- Memory tools (lazy-initialized, mem0 + FAISS + Ollama embeddings) -----
+    _memory_instance = None
+
+    def _get_memory():
+        global _memory_instance
+        if _memory_instance is None:
+            from mem0 import Memory
+            ollama_host = os.environ.get("OLLAMA_HOST", "http://ollama.ollama.svc.cluster.local:11434")
+            embed_model = os.environ.get("EMBED_MODEL", "nomic-embed-text")
+            llm_model   = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b-kagent")
+            data_dir    = os.environ.get("MEM0_DATA_DIR", "/data/mem0")
+            config = {
+                "vector_store": {
+                    "provider": "faiss",
+                    "config": {
+                        "collection_name": "kagent_memories",
+                        "path": data_dir,
+                        "embedding_model_dims": 768,  # nomic-embed-text v1.5
+                    },
+                },
+                "embedder": {
+                    "provider": "ollama",
+                    "config": {
+                        "model": embed_model,
+                        "ollama_base_url": ollama_host,
+                        "embedding_dims": 768,
+                    },
+                },
+                "llm": {
+                    "provider": "ollama",
+                    "config": {
+                        "model": llm_model,
+                        "ollama_base_url": ollama_host,
+                        "temperature": 0.1,
+                        "max_tokens": 1024,
+                    },
+                },
+            }
+            logger.info("Initializing mem0 with FAISS backend at %s", data_dir)
+            _memory_instance = Memory.from_config(config_dict=config)
+        return _memory_instance
+
+    @mcp.tool()
+    def add_memory(content: str, user_id: str = "default") -> str:
+        """Store a memory. Memories persist across agent sessions.
+
+        Args:
+            content: The information to remember.
+            user_id: User or session identifier (default: "default").
+
+        Returns:
+            JSON with the created memory ID and metadata.
+        """
+        try:
+            result = _get_memory().add(content, user_id=user_id)
+            return json.dumps(result, default=str)
+        except Exception as e:
+            return f"add_memory failed: {type(e).__name__}: {e}"
+
+    @mcp.tool()
+    def search_memories(query: str, user_id: str = "default", limit: int = 5) -> str:
+        """Semantic search over stored memories.
+
+        Args:
+            query: Natural language search query.
+            user_id: User or session identifier (default: "default").
+            limit: Maximum number of results (default: 5, max: 20).
+
+        Returns:
+            JSON array of matching memories with relevance scores.
+        """
+        try:
+            results = _get_memory().search(query, user_id=user_id, limit=min(limit, 20))
+            return json.dumps(results, indent=2, default=str)
+        except Exception as e:
+            return f"search_memories failed: {type(e).__name__}: {e}"
+
+    @mcp.tool()
+    def list_memories(user_id: str = "default") -> str:
+        """List all stored memories for a user.
+
+        Args:
+            user_id: User or session identifier (default: "default").
+
+        Returns:
+            JSON array of all memories for this user.
+        """
+        try:
+            results = _get_memory().get_all(user_id=user_id)
+            return json.dumps(results, indent=2, default=str)
+        except Exception as e:
+            return f"list_memories failed: {type(e).__name__}: {e}"
+
+    if __name__ == "__main__":
+        port = int(os.environ.get("SERVER_PORT", "8765"))
+        logger.info("Starting code-tools MCP server on 0.0.0.0:%d", port)
+        mcp.run(transport="streamable-http", host="0.0.0.0", port=port)

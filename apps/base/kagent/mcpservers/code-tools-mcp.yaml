@@ -1,0 +1,33 @@
+---
+# RemoteMCPServer: registers the code-tools MCP server with kagent.
+# Referenced by code-agent as name: code-tools-mcp-server.
+# The Deployment and Service live in apps/base/code-tools/.
+#
+# Tools available via this MCP server:
+#   execute_python    - Run Python code in a subprocess (timeout 30s default, max 120s)
+#   make_http_request - Make HTTP GET/POST/PUT/DELETE/PATCH requests (max 60s)
+#   get_current_time  - Return current timestamp in any IANA timezone
+#   add_memory        - Store a memory for a user/session (mem0 FAISS, PVC-persistent)
+#   search_memories   - Semantic search over stored memories
+#   list_memories     - List all memories for a user
+#
+# Protocol: STREAMABLE_HTTP (compatible with FastMCP streamable-http transport)
+# Timeout: 120s — execute_python can take up to 120s; memory init may be slow first call.
+apiVersion: kagent.dev/v1alpha2
+kind: RemoteMCPServer
+metadata:
+  name: code-tools-mcp-server
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: code-tools-mcp-server
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  description: >-
+    Code execution, HTTP requests, time awareness, and persistent memory tools.
+    execute_python runs Python in a sandbox; add_memory/search_memories persist
+    across sessions using mem0 FAISS backed by Ollama embeddings.
+  url: http://code-tools.code-tools.svc.cluster.local:8765/mcp
+  protocol: STREAMABLE_HTTP
+  timeout: 120s
+  sseReadTimeout: 3m0s

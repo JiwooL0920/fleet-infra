@@ -1,0 +1,158 @@
+---
+# code-agent: Specialist agent for code execution, data processing, and memory.
+#
+# Topology role: Worker agent delegated to by coordinator-agent for tasks requiring:
+#   - Executing Python scripts or quick calculations
+#   - Making HTTP requests to in-cluster or external services
+#   - Storing/retrieving information across agent sessions (persistent memory)
+#   - Any task needing a Python REPL or scripted data transformation
+#
+# Tools:
+#   - code-tools-mcp-server: execute_python, make_http_request, get_current_time,
+#                             add_memory, search_memories, list_memories
+#
+# Model: fast-model-config (qwen2.5:14b-kagent) — tool-calling workload, no deep reasoning.
+#
+# IMPORTANT: execute_python runs code in a subprocess inside the code-tools pod.
+#   It is not a cluster-level privileged operation. Any code runs as UID 1000 in
+#   the code-tools namespace without cluster RBAC. Safe for homelab use.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: code-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: code-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+    tier: worker
+spec:
+  type: Declarative
+  description: >-
+    Code execution and memory agent. Runs Python scripts, makes HTTP requests,
+    queries time, and stores or retrieves persistent memories across sessions.
+    Delegate here for: "run this code", "calculate X", "remember Y", "what do
+    you know about Z", "fetch URL", "write a script that...".
+  declarative:
+    modelConfig: fast-model-config
+    context:
+      compaction:
+        tokenThreshold: 8000
+        compactionInterval: 3
+        overlapSize: 2
+        eventRetentionSize: 8
+        summarizer:
+          modelConfig: fast-model-config
+    tools:
+      - type: McpServer
+        mcpServer:
+          kind: RemoteMCPServer
+          name: code-tools-mcp-server
+          toolNames:
+            - execute_python
+            - make_http_request
+            - get_current_time
+            - add_memory
+            - search_memories
+            - list_memories
+    systemMessage: |-
+      You are the code-agent. You execute Python code, make HTTP requests, and manage persistent memories for other agents.
+
+      ## Termination Discipline
+      MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 10
+      WALL_CLOCK_BUDGET_PER_TURN = 120s
+      Never call the same tool with the same arguments twice in one turn.
+
+      ## Tool Usage Guide
+
+      ### execute_python
+      - Use for: calculations, data processing, text manipulation, JSON parsing, generating output
+      - code: always use `print()` to surface results — only stdout is returned
+      - packages: comma-separated pip packages to install before running (e.g. "pandas,requests")
+      - timeout: default 30s; increase for heavy computation (max 120s)
+      - Example: execute_python(code="import math\nprint(math.sqrt(144))")
+
+      ### make_http_request
+      - Use for: checking service health, fetching JSON APIs, testing in-cluster endpoints
+      - body: pass as JSON string for JSON APIs, or plain text otherwise
+      - headers: pass as JSON object string, e.g. '{"Authorization": "Bearer token"}'
+      - Response body is capped at 4KB; set truncated=true means response was longer
+
+      ### get_current_time
+      - Use for: any task needing the current date/time
+      - timezone_name: IANA timezone (UTC, America/Toronto, Asia/Seoul, etc.)
+
+      ### Memory tools (add_memory / search_memories / list_memories)
+      - user_id: use a stable identifier — agent name, session ID, or "default"
+      - add_memory: store facts, preferences, past decisions, context that should persist
+      - search_memories: semantic search — "what do we know about X?"
+      - list_memories: enumerate all stored memories for a user_id
+      - Memories persist across pod restarts (FAISS index on PVC)
+
+      ## Response Format
+      Always wrap your response in this JSON envelope. Strip ```json fences.
+
+      {
+        "schema_version": "1",
+        "agent": "code-agent",
+        "trace_id": null,
+        "summary": "<1-2 sentence summary of what was done>",
+        "severity": "info|warning|error|critical",
+        "data": {
+          "result": "<primary output — code stdout, HTTP response, memory ID, search results>",
+          "tool_calls": [
+            {
+              "tool": "<tool name>",
+              "input_summary": "<brief description of input>",
+              "output_summary": "<brief description of output>"
+            }
+          ]
+        },
+        "recommended_action": null,
+        "raw_data_truncated": false,
+        "follow_up_agent": null
+      }
+    a2aConfig:
+      skills:
+        - id: execute-code
+          name: Execute Python Code
+          description: >-
+            Run Python code in a sandboxed subprocess and return stdout/stderr.
+            Use for calculations, data processing, scripted transformations, or any
+            task that benefits from a Python REPL.
+          tags:
+            - code
+            - python
+            - execute
+            - calculate
+          examples:
+            - "Calculate the SHA256 hash of the string 'hello world'"
+            - "Parse this JSON and extract all pod names"
+            - "Run a quick Fibonacci sequence up to 1000"
+            - "Convert this CSV data to a markdown table"
+        - id: persistent-memory
+          name: Persistent Memory
+          description: >-
+            Store and retrieve memories that persist across agent sessions.
+            Memories are semantically searchable via Ollama embeddings.
+          tags:
+            - memory
+            - remember
+            - recall
+            - search
+          examples:
+            - "Remember that the staging cluster uses namespace 'staging-apps'"
+            - "What do we know about the n8n configuration?"
+            - "Store this incident summary for future reference"
+            - "List everything we know about the temporal cluster setup"
+        - id: http-request
+          name: HTTP Request
+          description: >-
+            Make HTTP requests to in-cluster or external services.
+          tags:
+            - http
+            - fetch
+            - api
+          examples:
+            - "Check if http://ollama.ollama.svc.cluster.local:11434 is healthy"
+            - "Fetch the OpenCost API cost summary"

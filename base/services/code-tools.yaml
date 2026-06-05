@@ -1,0 +1,26 @@
+---
+# code-tools: FastMCP server providing code execution, HTTP, and memory tools to kagent agents.
+# Depends on:
+#   - ollama: LLM backend for mem0 memory extraction (nomic-embed-text embeddings)
+#   - postgresql-cluster: referenced for future pgvector memory backend upgrade
+# Reference: apps/base/code-tools/
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: code-tools
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/base/code-tools
+  prune: true
+  wait: true
+  timeout: 15m0s
+  dependsOn:
+    - name: ollama
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-vars

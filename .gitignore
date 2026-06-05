@@ -33,3 +33,5 @@ Thumbs.db
 
 # Sisyphus orchestrator (local notes, evidence, plans)
 .sisyphus/
+
+.serena/

@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - github-mcp.yaml
   - opencost-mcp.yaml
+  - code-tools-mcp.yaml
   - k8s-tools-federated.yaml
   - helm-tools-federated.yaml
   # - argocd-federated.yaml  # ArgoCD MCP placeholder — uncomment when deployed (see argocd-federated.yaml)

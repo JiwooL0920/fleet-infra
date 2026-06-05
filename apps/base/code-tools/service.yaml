@@ -1,0 +1,21 @@
+---
+# ClusterIP service for code-tools MCP server.
+# kagent RemoteMCPServer connects to: http://code-tools.code-tools.svc.cluster.local:8765/mcp
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-tools
+  namespace: code-tools
+  labels:
+    app.kubernetes.io/name: code-tools
+    app.kubernetes.io/instance: code-tools
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: code-tools
+  ports:
+    - name: mcp
+      port: 8765
+      targetPort: mcp
+      protocol: TCP

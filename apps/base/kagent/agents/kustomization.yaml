@@ -16,6 +16,7 @@ resources:
   - observability-agent.yaml   # fleet-only — cross-cluster aggregations
   - gitops-agent.yaml
   - finops-agent.yaml
+  - code-agent.yaml            # code execution + HTTP + persistent memory (mem0 + FAISS)
   # Deleted agents (capabilities folded into cluster-agent):
   # - k8s-agent.yaml            # DELETED — k8s tools now in cluster-agent-{cluster}
   # - flux-agent.yaml           # DELETED — Flux CRD tools now in cluster-agent-{cluster}

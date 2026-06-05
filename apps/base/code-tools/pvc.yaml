@@ -1,0 +1,18 @@
+---
+# Single PVC for both pip package cache (/data/lib) and mem0 FAISS data (/data/mem0).
+# - First startup installs packages to /data/lib (~2-3 min), subsequent restarts reuse cache.
+# - mem0 FAISS index persists at /data/mem0 across pod restarts.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: code-tools-data
+  namespace: code-tools
+  labels:
+    app.kubernetes.io/name: code-tools
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: "${CODE_TOOLS_DATA_STORAGE_SIZE}"
+  storageClassName: standard
