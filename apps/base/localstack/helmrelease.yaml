@@ -186,9 +186,9 @@ spec:
       # GitHub PAT for gitops-agent GitHub MCP server.
       # Injected from the github-pat-bootstrap K8s Secret via GITHUB_PAT env var.
       # Create the bootstrap secret once: make setup-github-secret
-      if [[ -n "${GITHUB_PAT:-}" ]]; then
+      if [[ -n "$${GITHUB_PAT:-}" ]]; then
           create_secret "github/mcp/token" \
-              "{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"$GITHUB_PAT\"}" \
+              "{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"$$GITHUB_PAT\"}" \
               "GitHub PAT for gitops-agent GitHub MCP server"
       else
           echo "[SKIP] github/mcp/token — GITHUB_PAT env var not set"

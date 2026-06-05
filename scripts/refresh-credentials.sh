@@ -52,6 +52,86 @@ echo -e "${BLUE}🔄 Refreshing credentials — force-syncing secrets and restar
 echo ""
 
 # ---------------------------------------------------------------------------
+# Step 0 — Sync CNPG-generated passwords INTO LocalStack
+# ---------------------------------------------------------------------------
+# CNPG auto-generates credentials stored in K8s secrets. After a restart,
+# these may differ from what LocalStack has persisted. We must push the
+# current CNPG password into LocalStack BEFORE ExternalSecrets re-syncs,
+# otherwise stale passwords propagate to all consumers (Grafana, N8N, etc.).
+
+info "Syncing CNPG credentials into LocalStack..."
+
+CNPG_PASSWORD=$(secret_value cnpg-system postgresql-cluster-app password)
+
+if [[ -z "${CNPG_PASSWORD}" ]]; then
+  warn "Could not read postgresql-cluster-app secret — skipping LocalStack sync"
+else
+  LOCALSTACK_POD=$(kubectl get pods -n localstack -l app.kubernetes.io/name=localstack \
+    -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+  if [[ -z "${LOCALSTACK_POD}" ]]; then
+    warn "LocalStack pod not found — skipping secret sync"
+  else
+    # CNPG secrets are managed by PushSecret (push-cnpg-app-secret) — trigger it
+    if kubectl get pushsecret push-cnpg-app-secret -n cnpg-system &>/dev/null; then
+      kubectl annotate pushsecret push-cnpg-app-secret -n cnpg-system \
+        force-sync="$(date +%s)" --overwrite >/dev/null 2>&1
+      sleep 3
+      PS_STATUS=$(kubectl get pushsecret push-cnpg-app-secret -n cnpg-system \
+        -o jsonpath='{.status.conditions[0].reason}' 2>/dev/null || echo "")
+      if [[ "${PS_STATUS}" == "Synced" ]]; then
+        echo "  push-cnpg-app-secret: synced"
+      else
+        warn "  push-cnpg-app-secret: ${PS_STATUS:-unknown} — CNPG secrets may be stale"
+      fi
+    else
+      warn "  PushSecret push-cnpg-app-secret not found — skipping CNPG sync"
+    fi
+
+    # grafana/database/password is NOT managed by PushSecret — sync directly
+    if ! kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
+        awslocal secretsmanager put-secret-value \
+        --secret-id "grafana/database/password" \
+        --secret-string "${CNPG_PASSWORD}" \
+        --region us-east-1 >/dev/null 2>&1; then
+      kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
+        awslocal secretsmanager create-secret \
+        --name "grafana/database/password" \
+        --secret-string "${CNPG_PASSWORD}" \
+        --region us-east-1 >/dev/null 2>&1 && \
+        echo "  created grafana/database/password" || \
+        warn "  failed to sync grafana/database/password"
+    else
+      echo "  updated grafana/database/password"
+    fi
+
+    success "CNPG credential sync complete"
+  fi
+fi
+
+# Sync GitHub PAT into LocalStack (from the bootstrap K8s secret)
+GITHUB_PAT_TOKEN=$(secret_value localstack github-pat-bootstrap token)
+if [[ -n "${GITHUB_PAT_TOKEN}" && -n "${LOCALSTACK_POD:-}" ]]; then
+  if ! kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
+      awslocal secretsmanager put-secret-value \
+      --secret-id "github/mcp/token" \
+      --secret-string "{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"${GITHUB_PAT_TOKEN}\"}" \
+      --region us-east-1 >/dev/null 2>&1; then
+    kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
+      awslocal secretsmanager create-secret \
+      --name "github/mcp/token" \
+      --secret-string "{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"${GITHUB_PAT_TOKEN}\"}" \
+      --region us-east-1 >/dev/null 2>&1 && \
+      echo "  created github/mcp/token" || \
+      warn "  failed to sync github/mcp/token"
+  else
+    echo "  updated github/mcp/token"
+  fi
+fi
+
+echo ""
+
+# ---------------------------------------------------------------------------
 # Step 1 — Force-sync every ExternalSecret
 # ---------------------------------------------------------------------------
 
@@ -198,7 +278,49 @@ fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# Step 5 — Verify
+# Step 5 — pgAdmin4: reset internal SQLite DB if password drifted
+# ---------------------------------------------------------------------------
+# pgAdmin4 persists its admin password in /var/lib/pgadmin/pgadmin4.db on its
+# PVC. The PGADMIN_DEFAULT_PASSWORD env var is only used on initial DB creation.
+# If the K8s secret rotated, the internal DB still holds the old hash.
+# Fix: delete pgadmin4.db and restart — pgAdmin re-initializes from env vars.
+
+PGADMIN_DEPLOY="pgadmin4"
+PGADMIN_NS="pgadmin4"
+
+if kubectl get deployment "${PGADMIN_DEPLOY}" -n "${PGADMIN_NS}" &>/dev/null; then
+  info "Checking pgAdmin4 credential alignment..."
+
+  PGADMIN_K8S_PASS=$(secret_value "${PGADMIN_NS}" "pgadmin4-credentials" "password")
+  PGADMIN_POD_PASS=$(kubectl exec -n "${PGADMIN_NS}" "deploy/${PGADMIN_DEPLOY}" -- \
+    printenv PGADMIN_DEFAULT_PASSWORD 2>/dev/null || echo "")
+
+  if [[ -n "${PGADMIN_K8S_PASS}" && "${PGADMIN_K8S_PASS}" != "${PGADMIN_POD_PASS}" ]]; then
+    info "pgAdmin4 password drifted — resetting internal database..."
+    PGADMIN_POD_NAME=$(kubectl get pods -n "${PGADMIN_NS}" -l app.kubernetes.io/name=pgadmin4 \
+      -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+    if [[ -n "${PGADMIN_POD_NAME}" ]]; then
+      kubectl exec -n "${PGADMIN_NS}" "${PGADMIN_POD_NAME}" -- \
+        rm -f /var/lib/pgadmin/pgadmin4.db 2>/dev/null || true
+      kubectl delete pod -n "${PGADMIN_NS}" "${PGADMIN_POD_NAME}" --grace-period=5 >/dev/null 2>&1
+      wait_for_rollout "${PGADMIN_NS}" "${PGADMIN_DEPLOY}" "60s" && \
+        success "pgAdmin4 re-initialized with current credentials" || \
+        warn "pgAdmin4 rollout timed out"
+    else
+      warn "pgAdmin4 pod not found — skipping reset"
+    fi
+  else
+    success "pgAdmin4 credentials already aligned"
+  fi
+else
+  warn "pgAdmin4 deployment not found — skipping"
+fi
+
+echo ""
+
+# ---------------------------------------------------------------------------
+# Step 6 — Verify
 # ---------------------------------------------------------------------------
 
 info "Verifying credentials match between K8s secrets and running pods..."
