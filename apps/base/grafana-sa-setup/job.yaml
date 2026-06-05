@@ -1,31 +1,24 @@
 ---
-# Job: creates a Grafana service account + token and stores it in LocalStack Secrets Manager.
+# Job: ensures a valid Grafana service account token exists in LocalStack.
 #
-# Runs once after kube-prometheus-stack (Grafana) is healthy.
-# Idempotent: checks if SA already exists before creating; always generates a fresh token.
-# Uses existing grafana-admin-credentials Secret (created by ExternalSecret from LocalStack).
+# Validates current token first — only creates a new one if invalid (e.g. after
+# cluster restart when Grafana loses its ephemeral SA database).
 #
-# After completion the ExternalSecret in flux-system pulls the token, creating
-# kagent-grafana-sa-token Secret which postBuild.substituteFrom injects into the
-# kagent HelmRelease as KAGENT_GRAFANA_API_KEY.
+# ttlSecondsAfterFinished causes auto-cleanup; Flux recreates it on next
+# reconcile, so it re-runs automatically after every cluster restart.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: create-grafana-sa-token
   namespace: monitoring
 spec:
-  # No ttlSecondsAfterFinished — the completed Job persists indefinitely.
-  # In GitOps, a short TTL causes Flux to prune and recreate the Job on each
-  # reconcile cycle, generating unnecessary token churn. A completed Job uses
-  # zero resources (no running containers). To force a re-run (e.g. token
-  # rotation), delete the Job manually — Flux recreates it on next reconcile.
+  ttlSecondsAfterFinished: 300
   backoffLimit: 5
   template:
     spec:
       serviceAccountName: grafana-sa-setup
       restartPolicy: OnFailure
       initContainers:
-        # Init container: uses curl to create SA + token, writes token to shared volume
         - name: create-token
           image: curlimages/curl:8.11.1
           command: ["/bin/sh", "-c"]
@@ -34,35 +27,61 @@ spec:
               set -eu
 
               GRAFANA_URL="http://monitoring-kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
-
-              echo "=== Grafana SA Token Setup ==="
+              LOCALSTACK_URL="http://localstack.localstack.svc.cluster.local:4566"
 
               GRAFANA_USER="$(cat /var/secrets/grafana/admin-user)"
               GRAFANA_PASS="$(cat /var/secrets/grafana/admin-password)"
 
-              echo "[1/3] Checking if service account 'kagent' already exists..."
+              echo "=== Grafana SA Token Setup ==="
+
+              # Fetch current token from LocalStack and validate against Grafana
+              echo "[1/4] Fetching current token from LocalStack..."
+              CURRENT_TOKEN=$(curl -sf \
+                "${LOCALSTACK_URL}/secretsmanager" \
+                -X POST \
+                -H "Content-Type: application/x-amz-json-1.1" \
+                -H "X-Amz-Target: secretsmanager.GetSecretValue" \
+                -d '{"SecretId":"kagent/grafana/api-key"}' \
+                | grep -o '"SecretString":"[^"]*"' | sed 's/"SecretString":"//;s/"$//' || echo "")
+
+              if [ -n "${CURRENT_TOKEN}" ] && [ "${CURRENT_TOKEN}" != "placeholder-run-grafana-sa-setup" ]; then
+                echo "[2/4] Validating current token..."
+                HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+                  -H "Authorization: Bearer ${CURRENT_TOKEN}" \
+                  "${GRAFANA_URL}/api/org")
+
+                if [ "${HTTP_CODE}" = "200" ]; then
+                  echo "[2/4] Token is valid. Nothing to do."
+                  echo "SKIP" > /shared/action
+                  exit 0
+                fi
+                echo "[2/4] Token invalid (HTTP ${HTTP_CODE}). Recreating..."
+              else
+                echo "[2/4] No valid token found. Creating..."
+              fi
+
+              echo "[3/4] Ensuring service account 'kagent' exists..."
               SA_SEARCH=$(curl -sf -u "${GRAFANA_USER}:${GRAFANA_PASS}" \
                 "${GRAFANA_URL}/api/serviceaccounts/search?query=kagent" || echo '{}')
 
               SA_ID=$(echo "${SA_SEARCH}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*' || true)
 
               if [ -z "${SA_ID}" ]; then
-                echo "[2/3] Creating service account 'kagent' with Admin role..."
                 CREATE_RESP=$(curl -sf -u "${GRAFANA_USER}:${GRAFANA_PASS}" \
                   -H "Content-Type: application/json" \
                   -X POST "${GRAFANA_URL}/api/serviceaccounts" \
                   -d '{"name":"kagent","role":"Admin","isDisabled":false}')
                 SA_ID=$(echo "${CREATE_RESP}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
-                echo "[2/3] Created SA with id=${SA_ID}"
+                echo "[3/4] Created SA id=${SA_ID}"
               else
-                echo "[2/3] Service account 'kagent' already exists with id=${SA_ID}"
+                echo "[3/4] SA exists id=${SA_ID}"
               fi
 
-              echo "[3/3] Generating service account token..."
+              echo "[4/4] Generating service account token..."
               TOKEN_RESP=$(curl -sf -u "${GRAFANA_USER}:${GRAFANA_PASS}" \
                 -H "Content-Type: application/json" \
                 -X POST "${GRAFANA_URL}/api/serviceaccounts/${SA_ID}/tokens" \
-                -d "{\"name\":\"kagent-mcp-token-$(date +%s)\"}")
+                -d "{\"name\":\"kagent-mcp-$(date +%s)\"}")
 
               TOKEN=$(echo "${TOKEN_RESP}" | grep -o '"key":"[^"]*"' | head -1 | sed 's/"key":"//;s/"//')
 
@@ -72,7 +91,8 @@ spec:
               fi
 
               echo "${TOKEN}" > /shared/grafana-token
-              echo "=== Token generated and written to shared volume ==="
+              echo "REFRESH" > /shared/action
+              echo "=== Token generated ==="
           volumeMounts:
             - name: grafana-admin-creds
               mountPath: /var/secrets/grafana
@@ -87,7 +107,6 @@ spec:
               cpu: 100m
               memory: 64Mi
       containers:
-        # Main container: uses AWS CLI to store token in LocalStack Secrets Manager
         - name: store-secret
           image: amazon/aws-cli:2.24.3
           command: ["/bin/sh", "-c"]
@@ -95,9 +114,14 @@ spec:
             - |
               set -eu
 
-              LOCALSTACK_URL="http://localstack.localstack.svc.cluster.local:4566"
-              SA_SECRET_KEY="kagent/grafana/api-key"
+              ACTION="$(cat /shared/action 2>/dev/null || echo 'REFRESH')"
 
+              if [ "${ACTION}" = "SKIP" ]; then
+                echo "Token already valid. Skipping."
+                exit 0
+              fi
+
+              LOCALSTACK_URL="http://localstack.localstack.svc.cluster.local:4566"
               TOKEN="$(cat /shared/grafana-token)"
 
               if [ -z "${TOKEN}" ]; then
@@ -105,14 +129,14 @@ spec:
                 exit 1
               fi
 
-              echo "Storing token in LocalStack at '${SA_SECRET_KEY}'..."
+              echo "Storing token in LocalStack..."
               aws --endpoint-url="${LOCALSTACK_URL}" \
                   --region us-east-1 \
                   secretsmanager put-secret-value \
-                  --secret-id "${SA_SECRET_KEY}" \
+                  --secret-id "kagent/grafana/api-key" \
                   --secret-string "${TOKEN}"
 
-              echo "=== Token stored successfully ==="
+              echo "=== Token stored ==="
           env:
             - name: AWS_ACCESS_KEY_ID
               value: "test"
