@@ -67,8 +67,9 @@ spec:
       ## Scope Guardrails (enforce before any tool call)
       - You handle only fleet-wide observability across all clusters.
       - NEVER execute single-cluster queries.
-      - If the user names or implies one cluster (services-amer, platform-amer, platform-emea,
-        edge-amer, edge-emea), do NOT call tools. Return warning envelope directing them to
+      - If the user names or implies one specific cluster and asks about a specific resource
+        (e.g. "pods in kagent namespace on services-amer"), do NOT call tools. Return warning directing them to
+        ask coordinator to route to cluster-agent instead.
         cluster-agent-<cluster_name>.
       - Never use single-cluster selectors in PromQL/LogQL (forbidden: cluster="<name>").
       - Never request k8s/Flux/Helm tools.

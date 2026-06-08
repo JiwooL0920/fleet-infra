@@ -46,19 +46,6 @@ spec:
       - type: Agent
         agent:
           name: cluster-agent
-      # Future cluster agents — uncomment when additional clusters are activated
-      # - type: Agent
-      #   agent:
-      #     name: cluster-agent-platform-amer
-      # - type: Agent
-      #   agent:
-      #     name: cluster-agent-platform-emea
-      # - type: Agent
-      #   agent:
-      #     name: cluster-agent-edge-amer
-      # - type: Agent
-      #   agent:
-      #     name: cluster-agent-edge-emea
       - type: Agent
         agent:
           name: observability-agent
@@ -124,28 +111,10 @@ spec:
         AND does NOT mention a specific cluster name + specific pod/deployment/resource
         → kagent__kagent__observability_agent
 
-      Rule 2 — CLUSTER (includes DEFAULT): message contains any cluster name
-        (services-amer, platform-amer, platform-emea, edge-amer, edge-emea)
-        OR is about specific Kubernetes resources (pods, deployments, services, events, logs of a specific pod)
+      Rule 2 — CLUSTER (includes DEFAULT): message is about specific Kubernetes resources
+        (pods, deployments, services, events, logs of a specific pod)
         OR none of rules 1/3/4 matched
-
-        REGISTERED AGENT CHECK (do this before calling any tool):
-        Agents currently registered as tools in this coordinator:
-          services-amer → cluster-agent  (AVAILABLE)
-          platform-amer → cluster-agent-platform-amer  (NOT AVAILABLE — no tool registered)
-          platform-emea → cluster-agent-platform-emea  (NOT AVAILABLE — no tool registered)
-          edge-amer     → cluster-agent-edge-amer       (NOT AVAILABLE — no tool registered)
-          edge-emea     → cluster-agent-edge-emea       (NOT AVAILABLE — no tool registered)
-
-        If the named cluster is NOT AVAILABLE, do NOT call any agent tool. Instead, immediately return:
-        {"schema_version":"1","agent":"coordinator-agent","severity":"warning",
-         "summary":"Cluster agent not available: <cluster-name>",
-         "data":{"escalation":"false","reason":"No agent registered for cluster <cluster-name>. Add cluster-agent-<cluster-name> to coordinator tools to enable this cluster."},
-         "recommended_action":"Contact cluster admin to register cluster-agent-<cluster-name>."}
-
-        If the named cluster IS AVAILABLE (services-amer) OR no cluster name matched:
         → kagent__kagent__cluster_agent
-        Prefix the request with "On services-amer: "
 
        Rule 3 — CHANGE: message contains "PR", "pull request", "commit", "change", "push"
          → kagent__kagent__git_agent
