@@ -195,4 +195,8 @@ spec:
           echo "       Create the bootstrap secret and restart LocalStack: make setup-github-secret"
       fi
 
+      create_secret "kagent/ollama/api-key" \
+          "{\"api-key\":\"ollama-no-auth-required\"}" \
+          "Ollama API key placeholder (Ollama does not require auth; satisfies kagent OpenAI provider schema)"
+
       echo "=== Secret initialization complete ==="

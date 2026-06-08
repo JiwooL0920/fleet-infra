@@ -22,10 +22,9 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 spec:
   model: qwen2.5:3b
-  provider: Ollama
-  ollama:
-    host: "${OLLAMA_HOST}"
-    options:
-      num_ctx: "2048"    # tiny — only user query + 5-bucket schema fits; intentional
-      temperature: "0.0" # fully deterministic for classification
-      num_predict: "256" # refusal/allow envelope is < 200 tokens
+  provider: OpenAI
+  openAI:
+    baseUrl: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080/v1"
+    apiKeySecret:
+      name: ollama-api-key
+      key: api-key

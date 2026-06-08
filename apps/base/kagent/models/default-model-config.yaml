@@ -13,10 +13,9 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 spec:
   model: "${OLLAMA_MODEL}"
-  provider: Ollama
-  ollama:
-    host: "${OLLAMA_HOST}"
-    options:
-      num_ctx: "16384"    # 8x Ollama default; 72b coordinator accumulates longer history
-      temperature: "0.1"  # near-deterministic for routing decisions
-      num_predict: "4096" # coordinator responses can be longer (multi-step reasoning)
+  provider: OpenAI
+  openAI:
+    baseUrl: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080/v1"
+    apiKeySecret:
+      name: ollama-api-key
+      key: api-key
