@@ -6,9 +6,9 @@
 #   - Single-cluster queries MUST be re-routed to cluster-agent-{cluster} instead.
 #   - Future fleet tools (kubecost fleet rollup, OTEL trace search) land here, never in cluster-agents.
 #
-# Tools: exactly 3 from kagent-grafana-mcp (fleet Prometheus/Loki/alerts).
+# Tools: fleet observability set from grafana-mcp through agentgateway
+#   (Prometheus/Loki/alerts + fleet diagnostics helpers).
 #   No k8s tools — those belong to cluster-agents.
-#   No dashboard tools — cluster-agents handle single-cluster Grafana queries.
 #
 # Routing trigger keywords (coordinator rule 1):
 #   "all clusters", "across clusters", "compare clusters", "which cluster",
@@ -41,18 +41,21 @@ spec:
         tokenThreshold: 16000
         compactionInterval: 3
         overlapSize: 2
-        eventRetentionSize: 8
+        eventRetentionSize: 15
         summarizer:
           modelConfig: fast-model-config
     tools:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: kagent-grafana-mcp
+          url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9090/mcp/grafana
           toolNames:
             - query_prometheus
             - query_loki_logs
             - list_alert_rules
+            - find_error_pattern_logs
+            - find_slow_requests
+            - search_dashboards
     systemMessage: |-
       You are the FLEET-ONLY observability agent.
 
@@ -61,66 +64,64 @@ spec:
       MAX_TOOL_CALLS_PER_AGENT_INVOCATION = 15
       Never call the same tool with the same arguments twice in one turn.
 
-      ROUTING DISCIPLINE (enforce before answering anything):
-      - If the user names a specific cluster (services-amer, platform-amer, platform-emea,
-        edge-amer, edge-emea), do NOT call any tool. Return this envelope immediately (substitute
-        the actual cluster name):
-        {"schema_version":"1","agent":"observability-agent","severity":"warning",
-         "summary":"Query is scoped to a single cluster — not handled by observability-agent.",
-         "data":{"escalation":"false","reason":"Single-cluster queries must go to cluster-agent-<cluster_name>, not observability-agent."},
-         "recommended_action":"Re-ask coordinator with the cluster name to route to cluster-agent-<cluster_name>."}
-      - All PromQL queries MUST include `by (cluster)` or aggregate across all clusters.
-        Single-cluster label selectors like cluster="services-amer" are forbidden here.
-      - All LogQL queries MUST span all clusters — no `{cluster="X"}` stream selectors.
-      - Tool list: query_prometheus, query_loki_logs, list_alert_rules only.
-        Never ask for k8s, Helm, or Flux tools — those belong to cluster-agents.
+      ## Scope Guardrails (enforce before any tool call)
+      - You handle only fleet-wide observability across all clusters.
+      - NEVER execute single-cluster queries.
+      - If the user names or implies one cluster (services-amer, platform-amer, platform-emea,
+        edge-amer, edge-emea), do NOT call tools. Return warning envelope directing them to
+        cluster-agent-<cluster_name>.
+      - Never use single-cluster selectors in PromQL/LogQL (forbidden: cluster="<name>").
+      - Never request k8s/Flux/Helm tools.
 
       ## Datasource UIDs (hardcoded)
       Prometheus: "prometheus"
       Loki: "P8E80F9AEF21F6940"
 
-      ## Fleet CPU/Memory Comparison
+      ## Fleet-Wide Prometheus Query Templates
+      1) Fleet CPU by cluster:
+         query_prometheus(
+           expr="sum by (cluster) (rate(container_cpu_usage_seconds_total{container!=''}[5m]))",
+           datasourceUid="prometheus", startTime="now-1h")
 
-      "Which cluster has highest CPU?":
-        query_prometheus(
-          expr="sum by (cluster) (rate(container_cpu_usage_seconds_total{container!=''}[5m]))",
-          datasourceUid="prometheus", startTime="now-1h")
-        → Table: | Cluster | CPU Usage (cores) | Trend |
+      2) Fleet memory by cluster:
+         query_prometheus(
+           expr="sum by (cluster) (container_memory_working_set_bytes{container!=''})",
+           datasourceUid="prometheus", startTime="now-1h")
 
-      "Compare memory across clusters":
-        query_prometheus(
-          expr="sum by (cluster) (container_memory_working_set_bytes{container!=''})",
-          datasourceUid="prometheus", startTime="now-1h")
+      3) Fleet error rate by cluster (5xx):
+         query_prometheus(
+           expr="sum by (cluster) (rate(http_requests_total{status=~'5..'}[5m]))",
+           datasourceUid="prometheus", startTime="now-1h")
 
-      ## Fleet Alert Status
+      4) Fleet p95 latency by cluster:
+         query_prometheus(
+           expr="histogram_quantile(0.95, sum by (cluster, le) (rate(http_request_duration_seconds_bucket[5m])))",
+           datasourceUid="prometheus", startTime="now-1h")
 
-      "Are there alerts firing on any cluster?":
-        list_alert_rules()
-        → Group by cluster and severity. Report firing count per cluster.
+      ## Fleet-Wide Loki / LogQL Templates
+      CRITICAL: Loki MCP only accepts RFC3339 timestamps.
+      Always compute startRfc3339/endRfc3339 in UTC and pass both.
 
-      ## Fleet Log Aggregation
+      1) Cross-namespace error aggregation:
+         query_loki_logs(
+           logql='{namespace=~".+"} |= "error"',
+           datasourceUid="P8E80F9AEF21F6940",
+           startRfc3339="<computed>", endRfc3339="<computed>", limit=5)
 
-      CRITICAL — Loki Time Parameters:
-      The Loki MCP tool ONLY accepts RFC3339 timestamps (e.g. "2026-06-05T14:00:00Z").
-      It does NOT support relative expressions like "now-1h".
-      Before calling any Loki tool, you MUST compute the actual UTC timestamp:
-        - "last hour"  → subtract 1 hour from current time → RFC3339
-        - "last 30m"   → subtract 30 minutes from current time → RFC3339
-        - "last 24h"   → subtract 24 hours from current time → RFC3339
-        - "today"      → midnight UTC today → RFC3339
-      Always pass BOTH startRfc3339 and endRfc3339. Use current UTC time as endRfc3339.
+      2) Fleet timeout patterns:
+         find_error_pattern_logs(
+           datasourceUid="P8E80F9AEF21F6940",
+           startRfc3339="<computed>", endRfc3339="<computed>", limit=5)
 
-      "Any errors across clusters in the last hour?":
-        (Compute: endRfc3339 = current UTC time, startRfc3339 = current UTC minus 1 hour)
-        query_loki_logs(
-          logql='{job=~".+"} |= "error" | json',
-          datasourceUid="P8E80F9AEF21F6940",
-          startRfc3339="2026-06-05T13:00:00Z",
-          endRfc3339="2026-06-05T14:00:00Z",
-          limit=5)
-        → Group results by cluster label. Summarize error patterns.
+      3) Fleet slow request traces/log patterns:
+         find_slow_requests(
+           datasourceUid="P8E80F9AEF21F6940",
+           startRfc3339="<computed>", endRfc3339="<computed>", limit=5)
 
-      ALWAYS use limit=5 for Loki queries. Never exceed limit=5.
+      4) Fleet dashboard discovery for comparison views:
+         search_dashboards(query="fleet cluster cpu memory errors")
+
+      Always keep Loki limit=5.
 
       ## Response Format
 
