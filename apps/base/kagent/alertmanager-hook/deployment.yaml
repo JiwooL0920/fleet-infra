@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager-hook
+  namespace: kagent
+  labels:
+    app: alertmanager-hook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager-hook
+  template:
+    metadata:
+      labels:
+        app: alertmanager-hook
+    spec:
+      containers:
+      - name: alertmanager-hook
+        image: kagent-alertmanager-hook:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: REDIS_SENTINEL_HOST
+          value: "redis-sentinel.redis-sentinel.svc.cluster.local"
+        - name: REDIS_SENTINEL_PORT
+          value: "26379"
+        - name: REDIS_SENTINEL_MASTER_NAME
+          value: "mymaster"
+        - name: REDIS_DB
+          value: "4"
+        - name: REDIS_STREAM_NAME
+          value: "incident:events"
+        - name: ALERTMANAGER_TARGET_AGENT
+          value: "triage-agent"
+        - name: ALERTMANAGER_ALLOWED_SEVERITIES
+          value: "critical"
+        - name: ALERTMANAGER_INCLUDE_RESOLVED
+          value: "false"
+        - name: HTTP_ADDR
+          value: ":8080"
+        - name: KAGENT_A2A_URL
+          value: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:8080"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10

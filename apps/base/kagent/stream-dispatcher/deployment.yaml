@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stream-dispatcher
+  namespace: kagent
+  labels:
+    app: stream-dispatcher
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stream-dispatcher
+  template:
+    metadata:
+      labels:
+        app: stream-dispatcher
+    spec:
+      initContainers:
+      - name: redis-init
+        image: redis:7-alpine
+        command: [sh, /scripts/init.sh]
+        env:
+        - name: REDIS_SENTINEL_HOST
+          value: "redis-sentinel.redis-sentinel.svc.cluster.local"
+        - name: REDIS_SENTINEL_PORT
+          value: "26379"
+        - name: REDIS_SENTINEL_MASTER_NAME
+          value: "mymaster"
+        - name: REDIS_DB
+          value: "4"
+        - name: STREAM_NAME
+          value: "incident:events"
+        - name: CONSUMER_GROUP
+          value: "dispatch-group"
+        volumeMounts:
+        - name: redis-init-script
+          mountPath: /scripts
+      containers:
+      - name: stream-dispatcher
+        image: kagent-stream-dispatcher:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: REDIS_SENTINEL_HOST
+          value: "redis-sentinel.redis-sentinel.svc.cluster.local"
+        - name: REDIS_SENTINEL_PORT
+          value: "26379"
+        - name: REDIS_SENTINEL_MASTER_NAME
+          value: "mymaster"
+        - name: REDIS_DB
+          value: "4"
+        - name: STREAM_NAME
+          value: "incident:events"
+        - name: DLQ_STREAM
+          value: "incident:events:dlq"
+        - name: CONSUMER_GROUP
+          value: "dispatch-group"
+        - name: CONSUMER_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: DISPATCHER_WORKERS
+          value: "10"
+        - name: KAGENT_A2A_URL
+          value: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:8080"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+      volumes:
+      - name: redis-init-script
+        configMap:
+          name: redis-init-script
+          defaultMode: 0755

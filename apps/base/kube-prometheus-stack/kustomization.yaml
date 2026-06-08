@@ -8,3 +8,4 @@ resources:
   - ingressroute.yaml
   - servicemonitor-agentic-ai.yaml
   - grafana-dashboard-kagent.yaml
+  - alertmanager-config.yaml

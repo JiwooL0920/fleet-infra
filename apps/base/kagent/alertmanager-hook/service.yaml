@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-hook
+  namespace: kagent
+  labels:
+    app: alertmanager-hook
+spec:
+  selector:
+    app: alertmanager-hook
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  type: ClusterIP

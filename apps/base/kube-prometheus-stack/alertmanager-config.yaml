@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: kagent-incident-webhook
+  namespace: monitoring
+spec:
+  route:
+    receiver: kagent-hook
+    matchers:
+      - name: severity
+        value: critical
+        matchType: "="
+  receivers:
+    - name: kagent-hook
+      webhookConfigs:
+        - url: "http://alertmanager-hook.kagent.svc.cluster.local:8080/webhook/alertmanager"
+          sendResolved: false

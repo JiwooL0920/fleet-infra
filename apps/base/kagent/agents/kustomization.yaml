@@ -4,7 +4,6 @@ resources:
   # Safety gate — handles ambiguous queries from Traefik fast-path sniffer.
   # Fast-path unambiguous infra queries bypass this and go direct to coordinator.
   # See apps/base/kagent/base/input-guardrail.yaml for the Traefik two-tier fast-path.
-  - classifier-agent.yaml
   - coordinator-agent.yaml
   # Active cluster agents
   - cluster-agent/services-amer
