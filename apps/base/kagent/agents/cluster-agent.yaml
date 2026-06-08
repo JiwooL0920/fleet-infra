@@ -142,8 +142,8 @@ spec:
 
       ## Output Rules
 
-      - >30 rows → show first 20 + last 5 + "[N rows omitted]"
-      - Pod logs → first 50 + last 50 lines; omit middle
+      - Show ALL rows. Do not truncate or omit results.
+      - Pod logs → show all returned lines (tool already limits via tail_lines parameter)
       - Keep responses concise. No unnecessary preamble.
       - Batch independent tool calls in the same round.
       - Complete investigations in ≤4 tool-calling rounds.
