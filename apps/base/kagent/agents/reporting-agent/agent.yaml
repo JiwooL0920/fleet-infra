@@ -1,0 +1,40 @@
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: reporting-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: reporting-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: Declarative
+  description: "Creates structured GitHub issues from diagnosis results by delegating to git-agent"
+  declarative:
+    modelConfig: default-model-config
+    context:
+      compaction:
+        tokenThreshold: 100000
+        compactionInterval: 4
+        overlapSize: 2
+        eventRetentionSize: 8
+        summarizer:
+          modelConfig: fast-model-config
+    tools:
+      - type: Agent
+        agent:
+          name: git-agent
+    systemMessageFrom:
+      type: ConfigMap
+      name: reporting-agent-prompt
+      key: system-message.md
+    a2aConfig:
+      skills:
+        - id: incident-reporting
+          name: Incident Reporting
+          description: "Creates structured GitHub issues from investigation and diagnosis artifacts"
+          tags: ["incident", "reporting", "github", "gitops"]
+          examples:
+            - "Create a GitHub issue for the OOMKilled incident in namespace production"
+            - "Report the NodeNotReady incident with diagnosis findings"

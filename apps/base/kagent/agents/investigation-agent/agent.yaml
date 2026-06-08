@@ -1,0 +1,51 @@
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: investigation-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: investigation-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+    tier: supervisor
+spec:
+  type: Declarative
+  description: >-
+    Data gathering supervisor for incident investigation.
+    Orchestrates read-only investigation by delegating to cluster-agent and observability-agent.
+    Produces structured investigation artifacts with affected resources, timeline, error patterns, and root cause candidates.
+  declarative:
+    modelConfig: default-model-config
+    context:
+      compaction:
+        tokenThreshold: 100000
+        compactionInterval: 4
+        overlapSize: 2
+        eventRetentionSize: 10
+        summarizer:
+          modelConfig: fast-model-config
+    tools:
+      - type: Agent
+        agent:
+          name: cluster-agent-services-amer
+      - type: Agent
+        agent:
+          name: observability-agent
+    systemMessageFrom:
+      type: ConfigMap
+      name: investigation-agent-prompt
+      key: system-message.md
+    a2aConfig:
+      skills:
+        - id: incident-investigation
+          name: Incident Investigation
+          description: "Gathers evidence from cluster and observability agents for incident analysis"
+          tags:
+            - incident
+            - investigation
+            - forensics
+          examples:
+            - "Investigate OOMKilled alert on pod nginx-abc in namespace production"
+            - "Gather data for high latency incident on temporal service"
+            - "Investigate pod restart loop in scylla namespace"

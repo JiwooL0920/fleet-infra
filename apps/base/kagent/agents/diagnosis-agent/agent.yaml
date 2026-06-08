@@ -1,0 +1,55 @@
+---
+# diagnosis-agent: Zero-tool pure reasoning agent for root cause analysis.
+# Consumes investigation artifact (from investigation-agent) and produces
+# structured JSON diagnosis with root cause hypotheses, affected scope,
+# recommended actions, and evidence gaps assessment.
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: diagnosis-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: diagnosis-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: Declarative
+  description: >-
+    Pure reasoning agent that analyzes investigation artifacts to produce structured
+    root cause diagnosis. Uses deep reasoning model without any tool access. Always
+    produces JSON output even when evidence is incomplete (marks verdict as Inconclusive).
+  declarative:
+    modelConfig: default-model-config
+    context:
+      compaction:
+        # Deep reasoning over large investigation artifacts
+        tokenThreshold: 100000
+        compactionInterval: 4
+        overlapSize: 3
+        eventRetentionSize: 12
+        summarizer:
+          modelConfig: default-model-config
+    # Zero tools - pure reasoning only
+    tools: []
+    systemMessageFrom:
+      type: ConfigMap
+      name: diagnosis-agent-prompt
+      key: system-message.md
+    a2aConfig:
+      skills:
+        - id: incident-diagnosis
+          name: Incident Diagnosis
+          description: >-
+            Analyzes investigation findings to produce structured root cause diagnosis
+            with ranked hypotheses, affected scope assessment, recommended actions,
+            and evidence gap identification. Always produces JSON output with verdict
+            (Conclusive/Inconclusive) even when evidence is incomplete.
+          tags:
+            - incident
+            - diagnosis
+            - root-cause
+            - reasoning
+          examples:
+            - "Analyze this investigation artifact and provide root cause diagnosis"
+            - "What is the root cause based on these investigation findings?"
+            - "Diagnose the incident from this evidence"

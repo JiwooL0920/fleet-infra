@@ -1,0 +1,47 @@
+---
+apiVersion: kagent.dev/v1alpha2
+kind: Agent
+metadata:
+  name: triage-agent
+  namespace: kagent
+  labels:
+    app.kubernetes.io/name: triage-agent
+    app.kubernetes.io/instance: kagent
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  type: Declarative
+  description: "Automated incident triage gate — classifies, deduplicates, and escalates critical alerts"
+  declarative:
+    modelConfig: fast-model-config
+    deployment:
+      env:
+        - name: KAGENT_PROPAGATE_TOKEN
+          value: "true"
+    context:
+      compaction:
+        tokenThreshold: 16000
+        compactionInterval: 3
+        overlapSize: 2
+        eventRetentionSize: 10
+        summarizer:
+          modelConfig: fast-model-config
+    tools:
+      - type: Agent
+        agent:
+          name: git-agent
+      - type: Agent
+        agent:
+          name: incident-orchestrator
+    systemMessageFrom:
+      type: ConfigMap
+      name: triage-agent-prompt
+      key: system-message.md
+    a2aConfig:
+      skills:
+        - id: incident-triage
+          name: Incident Triage
+          description: "Classifies, deduplicates, and escalates critical alerts from Alertmanager"
+          tags: ["incident", "triage", "alertmanager"]
+          examples:
+            - "OOMKilled alert on pod nginx-abc in namespace production"
+            - "NodeNotReady alert on node worker-3"
