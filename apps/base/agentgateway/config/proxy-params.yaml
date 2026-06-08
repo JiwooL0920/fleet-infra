@@ -20,7 +20,7 @@ spec:
   # OTEL tracing to existing OTel Collector in monitoring namespace
   env:
     - name: OTEL_EXPORTER_OTLP_ENDPOINT
-      value: "http://opentelemetry-collector.monitoring.svc.cluster.local:4317"
+      value: "http://opentelemetry-collector.opentelemetry.svc.cluster.local:4317"
     - name: OTEL_SERVICE_NAME
       value: "agentgateway-proxy"
     - name: OTEL_TRACES_SAMPLER

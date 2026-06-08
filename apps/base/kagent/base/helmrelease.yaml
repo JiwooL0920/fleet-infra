@@ -178,4 +178,4 @@ spec:
       logging:
         enabled: false
       exporter:
-        endpoint: "http://opentelemetry-collector.monitoring.svc.cluster.local:4317"
+        endpoint: "http://opentelemetry-collector.opentelemetry.svc.cluster.local:4317"
