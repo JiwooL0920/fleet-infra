@@ -7,5 +7,7 @@ resources:
   - backend.yaml
   - backend-k8s-services-amer.yaml
   - backend-helm-services-amer.yaml
+  - backend-grafana.yaml
+  - backend-github.yaml
   - route.yaml
   - guardrail-policy.yaml

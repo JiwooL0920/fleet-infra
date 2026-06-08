@@ -1,0 +1,29 @@
+---
+# LLM HTTPRoute: routes /v1 requests to Ollama LLM inference backend.
+#
+# Route specificity (longest PathPrefix match wins per Gateway API precedence rules):
+#   /v1 → ollama (Ollama LLM inference service)
+#
+# Ollama service is in the ollama namespace and exposes the OpenAI-compatible API
+# on port 11434. This route enables agents to call LLM inference via the gateway.
+#
+# Reference: https://agentgateway.dev/docs/kubernetes/latest/tutorials/llm-routing
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: llm-ollama
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - name: agentgateway-proxy
+      namespace: agentgateway-system
+      sectionName: llm
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+      backendRefs:
+        - name: ollama
+          namespace: ollama
+          port: 11434

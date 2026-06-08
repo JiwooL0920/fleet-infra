@@ -1,0 +1,19 @@
+---
+# ReferenceGrant: allows agentgateway-system to reference Services in the ollama namespace.
+# Required by Gateway API security model for cross-namespace HTTPRoute backend references.
+# Without this, the LLM HTTPRoute cannot route to ollama in the ollama namespace.
+#
+# Reference: https://gateway-api.sigs.k8s.io/reference/spec/#gateway.networking.k8s.io/v1beta1.ReferenceGrant
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: agentgateway-to-ollama
+  namespace: ollama
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: agentgateway-system
+  to:
+    - group: ""
+      kind: Service

@@ -1,0 +1,32 @@
+---
+# AgentgatewayBackend: GitHub MCP server for repository and PR operations.
+# Target name 'github-mcp-server' becomes the MCP tool prefix:
+#   github-mcp-server_create_or_update_file
+#   github-mcp-server_push_files
+#   github-mcp-server_create_repository
+#   ... etc.
+#
+# Upstream: standalone github-mcp-server deployment in kagent namespace.
+# Referenced by RemoteMCPServer via route /mcp/github.
+#
+# Graceful degradation: failureMode FailOpen allows requests to continue even if
+# the GitHub MCP backend is unavailable (git operations shouldn't block other work).
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: github-mcp-backend
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: github-mcp-backend
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+    domain: git
+spec:
+  mcp:
+    failureMode: FailOpen
+    targets:
+      - name: github-mcp-server
+        static:
+          host: github-mcp-server.kagent.svc.cluster.local
+          port: 8082
+          protocol: StreamableHTTP

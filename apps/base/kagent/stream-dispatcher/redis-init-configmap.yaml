@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-init-script
+  namespace: kagent
+data:
+  init.sh: |
+    #!/bin/sh
+    set -e
+
+    # Redis Sentinel configuration
+    REDIS_SENTINEL_HOST="${REDIS_SENTINEL_HOST:-redis-sentinel.redis-sentinel.svc.cluster.local}"
+    REDIS_SENTINEL_PORT="${REDIS_SENTINEL_PORT:-26379}"
+    REDIS_SENTINEL_MASTER_NAME="${REDIS_SENTINEL_MASTER_NAME:-mymaster}"
+    REDIS_DB="${REDIS_DB:-4}"
+    STREAM_NAME="${STREAM_NAME:-incident:events}"
+    CONSUMER_GROUP="${CONSUMER_GROUP:-dispatch-group}"
+
+    echo "Resolving Redis master via Sentinel at $REDIS_SENTINEL_HOST:$REDIS_SENTINEL_PORT"
+
+    # Resolve Redis master via Sentinel
+    RESP=$(redis-cli -h "$REDIS_SENTINEL_HOST" -p "$REDIS_SENTINEL_PORT" \
+        SENTINEL get-master-addr-by-name "$REDIS_SENTINEL_MASTER_NAME")
+
+    MASTER_HOST=$(echo "$RESP" | sed -n '1p')
+    MASTER_PORT=$(echo "$RESP" | sed -n '2p')
+
+    if [ -z "$MASTER_HOST" ] || [ -z "$MASTER_PORT" ]; then
+      echo "ERROR: Failed to resolve Redis master from Sentinel"
+      exit 1
+    fi
+
+    echo "Resolved Redis master: $MASTER_HOST:$MASTER_PORT (DB $REDIS_DB)"
+
+    # Create consumer group (idempotent — ignore BUSYGROUP error)
+    echo "Creating consumer group '$CONSUMER_GROUP' for stream '$STREAM_NAME'..."
+    redis-cli -h "$MASTER_HOST" -p "$MASTER_PORT" -n "$REDIS_DB" \
+      XGROUP CREATE "$STREAM_NAME" "$CONSUMER_GROUP" 0 MKSTREAM \
+      2>&1 | grep -v BUSYGROUP || true
+
+    # Populate routing table
+    echo "Setting up incident routing table..."
+    redis-cli -h "$MASTER_HOST" -p "$MASTER_PORT" -n "$REDIS_DB" HSET incident:routing \
+      investigation triage-agent
+
+    echo "Redis initialization complete!"

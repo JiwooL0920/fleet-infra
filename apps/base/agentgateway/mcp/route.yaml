@@ -57,6 +57,28 @@ spec:
     #       group: agentgateway.dev
     #       kind: AgentgatewayBackend
 
+    # Grafana MCP tools — prefix: grafana-mcp_*
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp/grafana
+      backendRefs:
+        - name: grafana-mcp-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+
+    # GitHub MCP tools — prefix: github-mcp-server_*
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mcp/github
+      backendRefs:
+        - name: github-mcp-backend
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+
     # Aggregate IDE endpoint (Cursor /mcp, VS Code MCP extension)
     - matches:
         - path:
