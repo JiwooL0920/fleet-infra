@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
    - ./base
    - ./agents
-   # - ./alertmanager-hook    # Disabled until Docker images are built and loaded into cluster
-   # - ./stream-dispatcher    # Disabled until Docker images are built and loaded into cluster
+   - ./alertmanager-hook
+   - ./stream-dispatcher
    - ./models
    - ./mcpservers
