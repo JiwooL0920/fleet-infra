@@ -46,6 +46,26 @@ spec:
               - op: replace
                 path: /spec/url
                 value: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9090/mcp/grafana"
+          - target:
+              version: v1
+              kind: Deployment
+              name: kagent-controller
+            patch: |
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: "http://opentelemetry-collector.opentelemetry.svc.cluster.local:4317"
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: "grpc"
+              - op: add
+                path: /spec/template/spec/containers/0/env/-
+                value:
+                  name: OTEL_SERVICE_NAME
+                  value: "kagent-controller"
   chart:
     spec:
       chart: kagent
