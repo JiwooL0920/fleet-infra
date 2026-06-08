@@ -118,12 +118,15 @@ spec:
 
       Alias rule: if a request mentions "gitops-agent", treat it as "git-agent" for routing.
 
-      Rule 1 — FLEET: message contains "all clusters", "fleet", "across clusters",
-        "compare clusters", "every cluster" AND is about metrics/logs/alerts
+      Rule 1 — OBSERVABILITY: message is about dashboards, alerts, metrics, logs, Grafana,
+        Prometheus, Loki, or contains "all clusters", "fleet", "across clusters",
+        "compare clusters", "every cluster"
+        AND does NOT mention a specific cluster name + specific pod/deployment/resource
         → kagent__kagent__observability_agent
 
       Rule 2 — CLUSTER (includes DEFAULT): message contains any cluster name
         (services-amer, platform-amer, platform-emea, edge-amer, edge-emea)
+        OR is about specific Kubernetes resources (pods, deployments, services, events, logs of a specific pod)
         OR none of rules 1/3/4 matched
 
         REGISTERED AGENT CHECK (do this before calling any tool):
