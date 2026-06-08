@@ -1,8 +1,7 @@
 ---
 # code-tools: FastMCP server providing code execution, HTTP, and memory tools to kagent agents.
-# Depends on:
-#   - ollama: LLM backend for mem0 memory extraction (nomic-embed-text embeddings)
-#   - postgresql-cluster: referenced for future pgvector memory backend upgrade
+# Connects to Ollama via OLLAMA_HOST (host.docker.internal for native Ollama).
+# No in-cluster dependency needed — ollama kustomization is suspended (native mode).
 # Reference: apps/base/code-tools/
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -18,8 +17,6 @@ spec:
   prune: true
   wait: true
   timeout: 15m0s
-  dependsOn:
-    - name: ollama
   postBuild:
     substituteFrom:
       - kind: ConfigMap

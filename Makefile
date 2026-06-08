@@ -14,7 +14,7 @@ help:
 	@echo "  port-forward         - Start port forwarding for all services (alternative to DNS)"
 	@echo "  verify-startup       - Verify service startup order and health"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
-	@echo "  post-colima-restart  - Complete post-restart setup (fix IP + refresh credentials)"
+	@echo "  post-colima-restart  - Full recovery after Colima/Mac restart (single command)"
 	@echo "  get-ui-credentials   - Show login credentials for all UI services"
 	@echo "  refresh-credentials  - Force-sync secrets from LocalStack and restart pods"
 	@echo ""
@@ -91,18 +91,39 @@ fix-control-plane:
 	@./scripts/fix-control-plane-ip.sh
 
 # Complete post-restart setup (recommended after Colima restart)
-# Secrets are auto-initialized by LocalStack startup hooks - no manual init needed
+# Handles: IP fix, credential sync, failed job cleanup, Flux reconciliation, Ollama check
 post-colima-restart: fix-control-plane refresh-credentials
-	@echo "Post-Colima restart setup completed!"
-	@echo "Run 'make verify-startup' to check service health."
-	@echo "Run 'make get-ui-credentials' to view current credentials."
+	@echo ""
+	@echo "🧹 Cleaning up failed jobs from restart window..."
+	@kubectl delete job create-grafana-sa-token -n monitoring --ignore-not-found=true 2>/dev/null; true
+	@echo ""
+	@echo "⏳ Waiting for Grafana to be healthy..."
+	@kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n monitoring --timeout=120s 2>/dev/null || \
+		echo "⚠️  Grafana not ready yet — grafana-sa-setup may need manual reconcile later"
+	@echo ""
+	@echo "🔄 Reconciling grafana-sa-setup (creates SA token for kagent)..."
+	@flux reconcile kustomization grafana-sa-setup --timeout=3m 2>/dev/null || \
+		echo "⚠️  grafana-sa-setup reconcile timed out — retry with: flux reconcile kustomization grafana-sa-setup"
 	@echo ""
 	@if [[ -n "$$GITHUB_TOKEN" || -n "$$GITHUB_PAT" ]]; then \
-		echo "Detected GitHub token in environment. Re-syncing GitHub secret..."; \
+		echo "🔑 Detected GitHub token in environment. Re-syncing GitHub secret..."; \
 		./scripts/init-github-secret.sh; \
 	else \
-		echo "Tip: Run 'make setup-github-secret' if you use the gitops-agent (requires GitHub PAT)."; \
+		echo "💡 Tip: Run 'make setup-github-secret' if you use the gitops-agent (requires GitHub PAT)."; \
 	fi
+	@echo ""
+	@echo "🦙 Checking native Ollama (needed for kagent)..."
+	@if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then \
+		echo "  ✅ Ollama is running"; \
+	else \
+		echo "  ⚠️  Ollama is not running. Start with: make serve-ollama"; \
+	fi
+	@echo ""
+	@echo "📊 Final kustomization health:"
+	@flux get kustomizations 2>/dev/null | grep -E "False|Unknown" | grep -v "ollama" || echo "  ✅ All kustomizations healthy (ollama intentionally suspended)"
+	@echo ""
+	@echo "✅ Post-Colima restart setup completed!"
+	@echo "   Run 'make get-ui-credentials' for login credentials."
 
 get-ui-credentials:
 	@./scripts/get-ui-credentials.sh
