@@ -23,6 +23,6 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 spec:
   description: Federated k8s MCP endpoint via agentgateway — tools prefixed by cluster name
-  url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local/mcp/k8s
+  url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9090/mcp/k8s
   protocol: STREAMABLE_HTTP
   timeout: 20s
