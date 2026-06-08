@@ -45,8 +45,8 @@ spec:
       # Active cluster agents
       - type: Agent
         agent:
-          name: cluster-agent-services-amer
-      # Future cluster agents — uncomment when overlay is activated (see cluster-agent/README.md)
+          name: cluster-agent
+      # Future cluster agents — uncomment when additional clusters are activated
       # - type: Agent
       #   agent:
       #     name: cluster-agent-platform-amer
@@ -128,7 +128,7 @@ spec:
 
         REGISTERED AGENT CHECK (do this before calling any tool):
         Agents currently registered as tools in this coordinator:
-          services-amer → cluster-agent-services-amer  (AVAILABLE)
+          services-amer → cluster-agent  (AVAILABLE)
           platform-amer → cluster-agent-platform-amer  (NOT AVAILABLE — no tool registered)
           platform-emea → cluster-agent-platform-emea  (NOT AVAILABLE — no tool registered)
           edge-amer     → cluster-agent-edge-amer       (NOT AVAILABLE — no tool registered)
@@ -141,7 +141,7 @@ spec:
          "recommended_action":"Contact cluster admin to register cluster-agent-<cluster-name>."}
 
         If the named cluster IS AVAILABLE (services-amer) OR no cluster name matched:
-        → kagent__kagent__cluster_agent_services_amer
+        → kagent__kagent__cluster_agent
         Prefix the request with "On services-amer: "
 
        Rule 3 — CHANGE: message contains "PR", "pull request", "commit", "change", "push"

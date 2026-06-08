@@ -6,7 +6,7 @@
 |---|---|---|---|
 | `classifier-agent` | qwen2.5:3b | Input safety gate (ambiguous queries only) | Traefik fast-path fallback |
 | `coordinator-agent` | qwen2.5:72b | Orchestrator — keyword-deterministic router | Direct (fast-path) or via classifier |
-| `cluster-agent-services-amer` | qwen2.5:14b | All k8s/flux/helm/obs for services-amer cluster | A2A from coordinator |
+| `cluster-agent` | qwen2.5:14b | All k8s/flux/helm/obs for services-amer cluster (prefix-routed for multi-cluster) | A2A from coordinator |
 | `observability-agent` | qwen2.5:14b | Fleet-wide Prometheus/Loki/alerts only | A2A from coordinator |
 | `git-agent` | qwen2.5:72b | PR creation in fleet-infra | A2A from coordinator |
 | `finops-agent` | qwen2.5:14b | OpenCost cost analysis + right-sizing | A2A from coordinator |
@@ -30,7 +30,7 @@ Traefik (kagent.local)
   ▼
 coordinator-agent (qwen2.5:72b)
   ├─ Rule 1 FLEET  → observability-agent
-  ├─ Rule 2 CLUSTER (default) → cluster-agent-services-amer
+├─ Rule 2 CLUSTER (default) → cluster-agent
   ├─ Rule 3 CHANGE → git-agent
   └─ Rule 4 COST   → finops-agent
         │

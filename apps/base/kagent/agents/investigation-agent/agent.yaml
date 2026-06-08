@@ -28,7 +28,7 @@ spec:
     tools:
       - type: Agent
         agent:
-          name: cluster-agent-services-amer
+          name: cluster-agent
       - type: Agent
         agent:
           name: observability-agent
