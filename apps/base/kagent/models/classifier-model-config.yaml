@@ -23,8 +23,7 @@ metadata:
 spec:
   model: qwen2.5:3b
   provider: OpenAI
+  apiKeySecretRef: ollama-api-key
+  apiKeySecretKey: api-key
   openAI:
     baseUrl: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080/v1"
-    apiKeySecret:
-      name: ollama-api-key
-      key: api-key
