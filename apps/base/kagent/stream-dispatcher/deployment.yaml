@@ -62,6 +62,10 @@ spec:
           value: "10"
         - name: KAGENT_A2A_URL
           value: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:8080"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://opentelemetry-collector.opentelemetry.svc.cluster.local:4317"
+        - name: OTEL_SERVICE_NAME
+          value: "stream-dispatcher"
         resources:
           requests:
             cpu: 50m
