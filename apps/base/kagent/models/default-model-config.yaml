@@ -13,8 +13,10 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
 spec:
   model: "${OLLAMA_MODEL}"
-  provider: OpenAI
-  apiKeySecretRef: ollama-api-key
-  apiKeySecretKey: api-key
-  openAI:
-    baseUrl: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080/v1"
+  provider: Ollama
+  ollama:
+    host: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080"
+    options:
+      num_ctx: "16384"
+      temperature: "0.1"
+      num_predict: "4096"
