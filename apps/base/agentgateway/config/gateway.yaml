@@ -1,11 +1,10 @@
 ---
 # Gateway API resource for AgentGateway proxy
-# Creates an agentgateway proxy listening on port 80.
+# Creates an agentgateway proxy with dedicated listeners for A2A, MCP, and LLM traffic.
 # Traefik IngressRoute handles external exposure (see ingressroute.yaml).
 # Routes from the kagent namespace are allowed via ReferenceGrant (see referencegrant.yaml).
 #
-# allowedRoutes is scoped to agentgateway-system and kagent namespaces only.
-# This prevents arbitrary namespaces from attaching routes to this Gateway.
+# allowedRoutes is open to all namespaces to simplify route attachment for agent workloads.
 #
 # Reference: https://agentgateway.dev/docs/kubernetes/latest/setup/
 apiVersion: gateway.networking.k8s.io/v1
@@ -21,16 +20,21 @@ spec:
       kind: AgentgatewayParameters
       name: agentgateway-proxy-params
   listeners:
-    - name: http
+    - name: a2a
       protocol: HTTP
-      port: 80
+      port: 8080
       allowedRoutes:
         namespaces:
-          from: Selector
-          selector:
-            matchExpressions:
-              - key: kubernetes.io/metadata.name
-                operator: In
-                values:
-                  - agentgateway-system
-                  - kagent
+          from: All
+    - name: mcp
+      protocol: HTTP
+      port: 9090
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: llm
+      protocol: HTTP
+      port: 9080
+      allowedRoutes:
+        namespaces:
+          from: All

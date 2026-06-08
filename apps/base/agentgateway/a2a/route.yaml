@@ -23,6 +23,7 @@ spec:
   parentRefs:
     - name: agentgateway-proxy
       namespace: agentgateway-system
+      sectionName: a2a
   rules:
     - matches:
         - path:

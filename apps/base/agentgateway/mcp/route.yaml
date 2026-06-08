@@ -22,6 +22,7 @@ spec:
   parentRefs:
     - name: agentgateway-proxy
       namespace: agentgateway-system
+      sectionName: mcp
   rules:
     # Per-cluster k8s tools — prefix: k8s-tools-services-amer_*
     - matches:
