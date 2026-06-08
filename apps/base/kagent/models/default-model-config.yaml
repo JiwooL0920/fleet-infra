@@ -1,5 +1,5 @@
 ---
-# Primary ModelConfig for complex reasoning tasks (coordinator-agent, k8s-agent, gitops-agent).
+# Primary ModelConfig for complex reasoning tasks (coordinator-agent, k8s-agent, git-agent).
 # Uses qwen2.5:72b (~90s TTFR) — the highest quality local model for planning and delegation.
 # For latency-sensitive agents, use fast-model-config (qwen2.5:14b-kagent).
 apiVersion: kagent.dev/v1alpha2

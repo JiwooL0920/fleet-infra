@@ -11,7 +11,7 @@
 #   helm-tools-services-amer_helm_status
 #
 # Each cluster-agent overlay populates toolNames with the cluster-prefixed allowlist.
-# Helm write operations are intentionally excluded — changes go via gitops-agent PR flow.
+# Helm write operations are intentionally excluded — changes go via git-agent PR flow.
 apiVersion: kagent.dev/v1alpha2
 kind: RemoteMCPServer
 metadata:

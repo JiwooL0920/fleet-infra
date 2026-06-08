@@ -6,7 +6,7 @@
 # without overlapping runs (*/5 + 10m overlap was preventing unload on CPU-only Ollama).
 #
 # Models warmed:
-#   qwen2.5:72b         — coordinator-agent (default-model-config, gitops-agent)
+#   qwen2.5:72b         — coordinator-agent (default-model-config, git-agent)
 #   qwen2.5:14b-kagent  — cluster-agent, observability-agent, finops-agent (fast-model-config)
 #
 # qwen2.5:3b is NOT warmed: classifier-agent uses fast-model-config (14b), not classifier-model-config.

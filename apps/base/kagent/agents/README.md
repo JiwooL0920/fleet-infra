@@ -8,7 +8,7 @@
 | `coordinator-agent` | qwen2.5:72b | Orchestrator — keyword-deterministic router | Direct (fast-path) or via classifier |
 | `cluster-agent-services-amer` | qwen2.5:14b | All k8s/flux/helm/obs for services-amer cluster | A2A from coordinator |
 | `observability-agent` | qwen2.5:14b | Fleet-wide Prometheus/Loki/alerts only | A2A from coordinator |
-| `gitops-agent` | qwen2.5:72b | PR creation in fleet-infra | A2A from coordinator |
+| `git-agent` | qwen2.5:72b | PR creation in fleet-infra | A2A from coordinator |
 | `finops-agent` | qwen2.5:14b | OpenCost cost analysis + right-sizing | A2A from coordinator |
 
 ## Multi-Tier Request Flow
@@ -31,7 +31,7 @@ Traefik (kagent.local)
 coordinator-agent (qwen2.5:72b)
   ├─ Rule 1 FLEET  → observability-agent
   ├─ Rule 2 CLUSTER (default) → cluster-agent-services-amer
-  ├─ Rule 3 CHANGE → gitops-agent
+  ├─ Rule 3 CHANGE → git-agent
   └─ Rule 4 COST   → finops-agent
         │
         ▼ (via agentgateway A2A — defense-in-depth AgentgatewayPolicy on A2A path)
@@ -72,7 +72,7 @@ WALL_CLOCK_BUDGET_PER_TURN           = 120s (escalate → structured ESCALATION_
 | cluster-agent | 24000 | Handles large kubectl/log output; wider budget justified |
 | observability-agent | 16000 | Fleet aggregations; medium |
 | finops-agent | 16000 | Cost JSON can be large; medium |
-| gitops-agent | 16000 | Multi-step PR workflow; medium |
+| git-agent | 16000 | Multi-step PR workflow; medium |
 
 ## MCP Timeout Policy
 

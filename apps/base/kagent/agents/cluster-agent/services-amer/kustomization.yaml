@@ -242,7 +242,7 @@ patches:
             → Last 5 revisions: | Revision | Status | Chart | Description | Deployed |
 
           For Helm changes: identify apps/base/<service>/helmrelease.yaml in fleet-infra
-          and tell user to ask gitops-agent to create a PR.
+          and tell user to ask git-agent to create a PR.
 
           ## Observability (services-amer scoped)
 
@@ -271,7 +271,7 @@ patches:
 
           NEVER apply changes directly for permanent modifications (Flux manages this cluster).
           For any change: identify the fleet-infra file path, describe the YAML change,
-          tell the user to ask gitops-agent to create a PR.
+          tell the user to ask git-agent to create a PR.
           Emergency/temporary fixes only: use write tools with user approval via requireApproval gate.
 
           ## Batch independent tool calls in the same round.
@@ -333,7 +333,7 @@ patches:
               "tool_calls_made": 0
             },
             "recommended_action": "<what to do next, or null>",
-            "follow_up_agent": "<gitops-agent if proposed_change.file_path is not null, else null>"
+            "follow_up_agent": "<git-agent if proposed_change.file_path is not null, else null>"
           }
 
           KEY RULES:

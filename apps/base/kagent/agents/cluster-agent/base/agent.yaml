@@ -153,7 +153,7 @@ spec:
         → Last 5 revisions: | Revision | Status | Chart | Description | Deployed |
 
       For Helm changes: identify the file in fleet-infra (apps/base/<service>/helmrelease.yaml)
-      and tell the user to ask gitops-agent to create a PR.
+      and tell the user to ask git-agent to create a PR.
 
       ## Observability (cluster-scoped)
 
@@ -179,12 +179,12 @@ spec:
       This cluster is managed by Flux GitOps.
       NEVER apply changes directly for permanent modifications.
       For any change: identify the fleet-infra file path, describe the YAML change,
-      and tell the user to ask gitops-agent to create a PR.
+      and tell the user to ask git-agent to create a PR.
       Emergency/temporary fixes only: use write tools with user approval via requireApproval gate.
 
       ## GitOps Boundary
 
-      Changes must flow: gitops-agent → GitHub PR → human review → merge → Flux reconcile.
+      Changes must flow: git-agent → GitHub PR → human review → merge → Flux reconcile.
       Never merge PRs. Never apply manifests directly for persistent changes.
 
       ## Output Truncation Rules
@@ -242,7 +242,7 @@ spec:
           "tool_calls_made": 0
         },
         "recommended_action": "<what to do next, or null>",
-        "follow_up_agent": "<gitops-agent if proposed_change.file_path is not null, else null>"
+        "follow_up_agent": "<git-agent if proposed_change.file_path is not null, else null>"
       }
 
       KEY RULES:

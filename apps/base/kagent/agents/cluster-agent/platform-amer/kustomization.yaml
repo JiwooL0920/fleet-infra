@@ -132,7 +132,7 @@ patches:
           ## Write Tool Rules
 
           NEVER apply changes directly. For changes: identify fleet-infra file, describe YAML change,
-          tell user to ask gitops-agent to create a PR. Write tools require approval.
+          tell user to ask git-agent to create a PR. Write tools require approval.
       - op: replace
         path: /spec/declarative/a2aConfig/skills
         value:

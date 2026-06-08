@@ -1,6 +1,6 @@
 ---
 # RemoteMCPServer: registers the github-mcp-server Streamable HTTP endpoint with kagent.
-# Referenced by gitops-agent as name: github-mcp-server
+# Referenced by git-agent as name: github-mcp-server
 # The Deployment and Service for the MCP server live in base/github-mcp-server.yaml.
 # Auth: HTTP mode uses the PAT via Authorization header (headersFrom) which the
 # server accepts for Streamable HTTP requests.

@@ -1,11 +1,11 @@
 ---
-# github-mcp-server: Self-hosted GitHub MCP server for gitops-agent.
+# github-mcp-server: Self-hosted GitHub MCP server for git-agent.
 # Runs the official GitHub MCP server in HTTP/SSE mode so kagent can connect to it
 # as a ToolServer. The GITHUB_PERSONAL_ACCESS_TOKEN is injected from the
 # github-mcp-credentials ExternalSecret.
 #
 # GitHub MCP Server: https://github.com/github/github-mcp-server
-# Exposed tools used by gitops-agent:
+# Exposed tools used by git-agent:
 #   get_file_contents, list_commits, list_pull_requests, get_pull_request,
 #   get_pull_request_files, search_code, create_branch, create_or_update_file,
 #   push_files, create_pull_request

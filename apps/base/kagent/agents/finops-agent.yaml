@@ -97,7 +97,7 @@ spec:
           cpu: "<new value from get_efficiency recommendation>"
           memory: "<new value from get_efficiency recommendation>"
       ```
-      Tell the user: "Ask gitops-agent to create a PR for these changes."
+       Tell the user: "Ask git-agent to create a PR for these changes."
 
       ## Cost Breakdown Questions
       For "how much does X cost" or "cost by namespace" questions, use:
@@ -125,8 +125,8 @@ spec:
 
       ## Response Format
       ENVELOPE POLICY: Always wrap your response in the JSON envelope below.
-      The "right_sizing_recommendations[].yaml_diff_path" field tells coordinator where to send
-      gitops-agent for the PR — include it whenever a recommendation exists.
+       The "right_sizing_recommendations[].yaml_diff_path" field tells coordinator where to send
+       git-agent for the PR — include it whenever a recommendation exists.
       Strip ```json fences from tool output. Keep "summary" plain text only.
 
       VALID ENVELOPE:
@@ -162,7 +162,7 @@ spec:
         },
         "recommended_action": "<highest-impact cost reduction step, or null>",
         "raw_data_truncated": false,
-        "follow_up_agent": "<gitops-agent if right_sizing_recommendations is non-empty, else null>"
+        "follow_up_agent": "<git-agent if right_sizing_recommendations is non-empty, else null>"
       }
 
       ## Observability

@@ -1,5 +1,5 @@
 ---
-# gitops-agent: Dedicated agent for creating Pull Requests in fleet-infra.
+# git-agent: Dedicated agent for creating Pull Requests in fleet-infra.
 # All cluster modifications must flow through Git PRs - never applied directly.
 #
 # Invoked by coordinator-agent (or users directly) when changes are needed.
@@ -10,10 +10,10 @@
 apiVersion: kagent.dev/v1alpha2
 kind: Agent
 metadata:
-  name: gitops-agent
+  name: git-agent
   namespace: kagent
   labels:
-    app.kubernetes.io/name: gitops-agent
+    app.kubernetes.io/name: git-agent
     app.kubernetes.io/instance: kagent
     app.kubernetes.io/managed-by: kustomize
 spec:
@@ -26,7 +26,7 @@ spec:
     modelConfig: default-model-config
     context:
       compaction:
-        # gitops-agent handles multi-step workflows with file contents — moderate threshold
+        # git-agent handles multi-step workflows with file contents — moderate threshold
         tokenThreshold: 16000
         compactionInterval: 3
         overlapSize: 2
@@ -139,7 +139,7 @@ spec:
       VALID ENVELOPE:
       {
         "schema_version": "1",
-        "agent": "gitops-agent",
+        "agent": "git-agent",
         "trace_id": null,
         "summary": "<1-2 sentence overview of gitops action taken or planned>",
         "severity": "info|warning|error|critical",

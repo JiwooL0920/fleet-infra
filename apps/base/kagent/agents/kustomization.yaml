@@ -14,7 +14,7 @@ resources:
   # - cluster-agent/edge-amer
   # - cluster-agent/edge-emea
   - observability-agent.yaml   # fleet-only — cross-cluster aggregations
-  - gitops-agent.yaml
+  - git-agent.yaml
   - finops-agent.yaml
   - code-agent.yaml            # code execution + HTTP + persistent memory (mem0 + FAISS)
   # Deleted agents (capabilities folded into cluster-agent):
