@@ -34,7 +34,7 @@ spec:
           urlRewrite:
             path:
               type: ReplacePrefixMatch
-              replacePrefixMatch: /
+              replacePrefixMatch: /api/a2a/kagent/
       timeouts:
         request: 600s
         backendRequest: 120s
