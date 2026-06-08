@@ -3,5 +3,7 @@ kind: Kustomization
 resources:
   - proxy-params.yaml
   - gateway.yaml
+  - tracing-policy.yaml
+  - referencegrant-otel.yaml
   - ../a2a
   - ../mcp

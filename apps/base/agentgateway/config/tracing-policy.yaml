@@ -1,0 +1,18 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: otel-tracing
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - kind: Gateway
+      name: agentgateway-proxy
+      group: gateway.networking.k8s.io
+  frontend:
+    tracing:
+      backendRef:
+        name: opentelemetry-collector
+        namespace: opentelemetry
+        port: 4317
+      protocol: GRPC
+      randomSampling: "true"

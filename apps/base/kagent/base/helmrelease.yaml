@@ -81,7 +81,7 @@ spec:
         # Belt-and-suspenders: set OTEL env vars in case the chart's otel.exporter block
         # isn't honored by the installed kagent version. Both point to the same collector.
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: "http://opentelemetry-collector.monitoring.svc.cluster.local:4317"
+          value: "http://opentelemetry-collector.opentelemetry.svc.cluster.local:4317"
         - name: OTEL_EXPORTER_OTLP_PROTOCOL
           value: "grpc"
         - name: OTEL_SERVICE_NAME
