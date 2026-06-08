@@ -48,7 +48,7 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          url: http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9090/mcp/grafana
+          name: kagent-grafana-mcp
           toolNames:
             - query_prometheus
             - query_loki_logs
