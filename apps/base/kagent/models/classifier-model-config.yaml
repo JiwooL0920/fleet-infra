@@ -24,7 +24,7 @@ spec:
   model: qwen2.5:3b
   provider: Ollama
   ollama:
-    host: "${OLLAMA_HOST}"
+    host: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080"
     options:
       num_ctx: "2048"
       temperature: "0.0"

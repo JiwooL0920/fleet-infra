@@ -15,7 +15,7 @@ spec:
   model: "${OLLAMA_MODEL}"
   provider: Ollama
   ollama:
-    host: "${OLLAMA_HOST}"
+    host: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080"
     options:
       num_ctx: "16384"
       temperature: "0.1"
