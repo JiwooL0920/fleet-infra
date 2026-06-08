@@ -45,7 +45,7 @@ spec:
             patch: |
               - op: replace
                 path: /spec/url
-                value: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9090/mcp/grafana"
+                value: "http://agentgateway-proxy.agentgateway-system.svc.cluster.local/mcp/grafana"
   chart:
     spec:
       chart: kagent
