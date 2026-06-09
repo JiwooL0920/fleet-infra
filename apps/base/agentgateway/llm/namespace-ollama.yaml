@@ -1,0 +1,9 @@
+---
+# Namespace: ollama
+# Created independently so the LLM ReferenceGrant can be applied even when
+# the ollama Flux Kustomization is suspended (dev uses host-native Ollama).
+# Without this namespace, agentgateway-config dry-run fails on the ReferenceGrant.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ollama
