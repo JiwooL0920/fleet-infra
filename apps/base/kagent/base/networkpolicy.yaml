@@ -1,16 +1,10 @@
 ---
-# Default deny all ingress and egress for kagent namespace
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-all
-  namespace: kagent
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-    - Egress
----
+# NOTE: default-deny-all removed — Cilium 1.17 with kube-proxy mode does not
+# correctly enforce standard K8s NetworkPolicy allow-rules alongside a blanket
+# deny-all (stale BPF state on new pods blocks egress even when allow-rules
+# match). Re-enable once migrated to CiliumNetworkPolicy CRDs or Cilium
+# kube-proxy-replacement mode.
+# ---
 # Allow intra-namespace communication (UI→controller, stream-dispatcher→controller, etc.)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
