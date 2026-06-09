@@ -1,0 +1,60 @@
+- generic:
+  - navigation:
+    - generic:
+      - generic:
+        - link:
+          - /url: /
+          - img
+        - generic:
+          - link:
+            - /url: /
+            - img
+            - text: Home
+          - button:
+            - img
+            - text: Create
+            - img
+          - button [expanded]:
+            - text: View
+            - img
+          - link:
+            - /url: https://github.com/kagent-dev/kagent
+            - text: Contribute
+          - link:
+            - /url: https://discord.gg/Fu3k65f2k3
+            - text: Community
+          - button:
+            - img
+            - generic: Toggle theme
+  - main:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - img
+          - heading [level=2]: Error Encountered
+          - generic:
+            - paragraph: fetch failed
+          - link:
+            - /url: /
+            - img
+            - text: Return to Home
+  - contentinfo:
+    - generic:
+      - img
+      - paragraph: is an open source project
+  - region "Notifications alt+T"
+  - alert
+  - menu "View" [active] [ref=e40]:
+    - menuitem "My Agents" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: My Agents
+    - menuitem "Models" [ref=e46] [cursor=pointer]:
+      - img [ref=e47]
+      - text: Models
+    - menuitem "MCP & tools" [ref=e55] [cursor=pointer]:
+      - img [ref=e56]
+      - text: MCP & tools
+    - menuitem "Prompt Library" [ref=e60] [cursor=pointer]:
+      - img [ref=e61]
+      - text: Prompt Library

@@ -11,6 +11,24 @@ spec:
     - Ingress
     - Egress
 ---
+# Allow intra-namespace communication (UI→controller, stream-dispatcher→controller, etc.)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: kagent
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
+---
 # Allow ingress from agentgateway-system for A2A and MCP
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
