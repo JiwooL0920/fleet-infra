@@ -55,6 +55,26 @@ repos:
         files: '\.ya?ml$'
         exclude: '^(docs/|\.)'
 
+  # Documentation freshness and ADR index
+  - repo: local
+    hooks:
+      # Regenerate docs/adr/README.md index on every commit touching ADR files
+      - id: generate-adr-index
+        name: Regenerate ADR index
+        entry: bash -c 'scripts/pre-commit/generate-adr-index.sh'
+        language: system
+        files: '^docs/adr/.*\.md$'
+        stages: [pre-commit]
+        pass_filenames: false
+
+      # Ensure infra changes are accompanied by a doc update (pre-push only)
+      - id: docs-freshness
+        name: Ensure docs updated for infra changes
+        entry: bash -c 'scripts/pre-commit/check-docs-freshness.sh'
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+
   # Flux-specific validation
   - repo: local
     hooks:
@@ -92,7 +112,7 @@ repos:
         exclude: '^scripts/(fix-control-plane-ip|port-forward|setup-local-dns)\.sh$'
 
 # Global settings
-default_install_hook_types: [pre-commit, commit-msg]
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
 default_stages: [pre-commit]
 
 # Fail fast - stop on first failure

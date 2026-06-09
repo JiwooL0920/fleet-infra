@@ -1,0 +1,297 @@
+name: Draft Blog Post
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "apps/base/**"
+      - "base/services/**"
+      - "docs/adr/**"
+
+# Only one blog-draft job runs at a time per branch; cancel older ones.
+concurrency:
+  group: blog-draft-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Job 1: Deterministic change detection ───────────────────────────────────
+  detect:
+    name: Detect significant change
+    runs-on: ubuntu-latest
+    outputs:
+      should_draft: ${{ steps.check.outputs.should_draft }}
+      change_summary: ${{ steps.check.outputs.change_summary }}
+      change_slug: ${{ steps.check.outputs.change_slug }}
+      today: ${{ steps.check.outputs.today }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for significant change
+        id: check
+        run: |
+          set -euo pipefail
+
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.event.after }}"
+
+          # Fallback for first push (before SHA is all-zeros)
+          if [[ "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            BEFORE=$(git rev-parse HEAD~1 2>/dev/null || echo "HEAD")
+          fi
+
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null || git diff --name-only HEAD~1 HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Determine if this is significant:
+          # - New service directory added under apps/base/
+          # - New ADR file added
+          # - Existing service kustomization changed in base/services/
+          NEW_SERVICES=$(echo "$CHANGED" | grep -E '^apps/base/[^/]+/' | awk -F'/' '{print $3}' | sort -u || true)
+          CHANGED_SVCS=$(echo "$CHANGED" | grep -E '^base/services/[^/]+\.ya?ml$' | sed 's|base/services/||; s|\.ya\?ml$||' | sort -u || true)
+          NEW_ADRS=$(echo "$CHANGED" | grep -E '^docs/adr/[0-9]+-.*\.md$' || true)
+
+          ALL_SERVICES=$(echo -e "$NEW_SERVICES\n$CHANGED_SVCS" | grep -v '^$' | sort -u | tr '\n' ' ' | xargs || true)
+          ADR_COUNT=$(echo "$NEW_ADRS" | grep -c . || true)
+
+          SHOULD_DRAFT="false"
+          SUMMARY=""
+          SLUG=""
+
+          if [[ -n "$ALL_SERVICES" ]]; then
+            SHOULD_DRAFT="true"
+            SUMMARY="Service changes: $ALL_SERVICES"
+            # Use first service name for slug
+            FIRST_SVC=$(echo "$ALL_SERVICES" | awk '{print $1}')
+            SLUG="infra-update-${FIRST_SVC}"
+          fi
+
+          if [[ "$ADR_COUNT" -gt 0 ]]; then
+            SHOULD_DRAFT="true"
+            ADR_NAMES=$(echo "$NEW_ADRS" | sed 's|docs/adr/||; s|\.md$||' | tr '\n' ' ' | xargs)
+            SUMMARY="${SUMMARY} | New ADRs: $ADR_NAMES"
+            if [[ -z "$SLUG" ]]; then
+              FIRST_ADR=$(echo "$NEW_ADRS" | head -1 | sed 's|docs/adr/||; s|\.md$||')
+              SLUG="adr-${FIRST_ADR}"
+            fi
+          fi
+
+          TODAY=$(date '+%Y-%m-%d')
+          CHANGE_SIG="${TODAY}-${SLUG}"
+
+          # Deduplication: check if this change was already blogged
+          STATE_FILE=".github/blog-state.json"
+          if [[ -f "$STATE_FILE" ]]; then
+            if python3 -c "
+          import json, sys
+          with open('$STATE_FILE') as f:
+              state = json.load(f)
+          if '$CHANGE_SIG' in state.get('blogged', []):
+              sys.exit(1)
+          " 2>/dev/null; then
+              echo "Change '$CHANGE_SIG' not yet blogged — proceeding"
+            else
+              echo "Change '$CHANGE_SIG' already drafted — skipping"
+              SHOULD_DRAFT="false"
+            fi
+          fi
+
+          echo "should_draft=$SHOULD_DRAFT" >> "$GITHUB_OUTPUT"
+          echo "change_summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "change_slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "today=$TODAY" >> "$GITHUB_OUTPUT"
+
+  # ─── Job 2: Draft blog post with opencode ────────────────────────────────────
+  draft:
+    name: Draft blog post
+    needs: detect
+    if: needs.detect.outputs.should_draft == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
+
+      - name: Install opencode
+        run: |
+          curl -fsSL https://opencode.ai/install | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Prepare diff context
+        id: diff
+        run: |
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.event.after }}"
+
+          if [[ "$BEFORE" == "0000000000000000000000000000000000000000" ]]; then
+            BEFORE=$(git rev-parse HEAD~1 2>/dev/null || echo "HEAD")
+          fi
+
+          # Limit patch size to avoid token overflow (~8KB of diff context)
+          DIFF=$(git diff "$BEFORE" "$AFTER" -- 'apps/base/*' 'base/services/*' 'docs/adr/*' 2>/dev/null | head -c 8000 || true)
+          LOG=$(git log "$BEFORE..$AFTER" --format="%H %s" | head -10 || true)
+
+          # Write context file so we can pipe it to opencode
+          cat > /tmp/blog-context.txt <<EOF
+          ## Commit log
+          $LOG
+
+          ## Git diff (truncated to 8KB)
+          $DIFF
+          EOF
+
+          echo "context_file=/tmp/blog-context.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Generate blog post draft
+        id: generate
+        env:
+          # opencode reads provider credentials from env — set the model you want to use in CI.
+          # Options: set ANTHROPIC_API_KEY for Claude, or OPENAI_API_KEY for OpenAI.
+          # The github-copilot provider from opencode.jsonc works locally but not in GHA.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          TODAY="${{ needs.detect.outputs.today }}"
+          SLUG="${{ needs.detect.outputs.change_slug }}"
+          SUMMARY="${{ needs.detect.outputs.change_summary }}"
+          OUTPUT_FILE="/tmp/blog-draft.md"
+
+          PROMPT="You are writing a technical blog post for a MkDocs Material site authored by Jiwoo Lee, a platform engineer.
+
+          The blog is at https://jiwool0920.github.io. Existing posts are written in a direct, practical engineering style.
+
+          Context about this change:
+          $SUMMARY
+
+          Full diff context is in the file provided. Use it to understand:
+          - Which service(s) or architecture decisions changed
+          - Why this change matters operationally
+          - Any notable trade-offs or lessons
+
+          Write a complete blog post in Markdown with EXACTLY this frontmatter:
+          ---
+          date: ${TODAY}
+          categories:
+            - Infrastructure
+            - <add one more relevant category>
+          tags:
+            - <3-5 relevant lowercase tags>
+          authors:
+            - jiwoo
+          ---
+
+          Requirements:
+          - Start with a 2-3 sentence intro paragraph, then a <!-- more --> fold
+          - Use mermaid diagrams where architecture benefits from visualization
+          - Include sections: Overview, Why This Change, Technical Details, Operational Impact
+          - Target audience: platform/DevOps engineers
+          - Tone: direct and practical, no marketing fluff
+          - Output ONLY the markdown (no preamble, no explanation outside the post)"
+
+          cat "${{ steps.diff.outputs.context_file }}" | opencode run "$PROMPT" --output "$OUTPUT_FILE" 2>&1 || {
+            echo "opencode run failed, trying fallback approach..."
+            opencode run "$PROMPT
+
+          $(cat "${{ steps.diff.outputs.context_file }}")" --output "$OUTPUT_FILE" 2>&1
+          }
+
+          if [[ ! -f "$OUTPUT_FILE" || ! -s "$OUTPUT_FILE" ]]; then
+            echo "ERROR: opencode did not produce output"
+            exit 1
+          fi
+
+          echo "output_file=$OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+          echo "post_filename=${TODAY}-${SLUG}.md" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout blog repo and create PR
+        env:
+          BLOG_REPO_TOKEN: ${{ secrets.BLOG_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.BLOG_REPO_TOKEN }}
+        run: |
+          TODAY="${{ needs.detect.outputs.today }}"
+          SLUG="${{ needs.detect.outputs.change_slug }}"
+          POST_FILE="${{ steps.generate.outputs.post_filename }}"
+          BRANCH="blog-draft/${TODAY}-${SLUG}"
+          BLOG_REPO="jiwool0920/jiwool0920.github.io"
+
+          # Clone the blog repo
+          git clone "https://x-access-token:${BLOG_REPO_TOKEN}@github.com/${BLOG_REPO}.git" /tmp/blog-repo
+          cd /tmp/blog-repo
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+          git checkout -b "$BRANCH"
+
+          # Copy the generated draft
+          cp "${{ steps.generate.outputs.output_file }}" "docs/blog/posts/${POST_FILE}"
+
+          git add "docs/blog/posts/${POST_FILE}"
+          git commit -m "docs(blog): add draft post ${POST_FILE}
+
+          Auto-drafted from fleet-infra changes.
+          Source commit: ${{ github.sha }}
+          Change summary: ${{ needs.detect.outputs.change_summary }}
+
+          Review and edit before merging."
+
+          git push origin "$BRANCH"
+
+          # Create PR
+          gh pr create \
+            --repo "$BLOG_REPO" \
+            --title "[blog-draft] ${{ needs.detect.outputs.change_summary }}" \
+            --body "## Auto-drafted blog post
+
+          **Source:** fleet-infra @ \`${{ github.sha }}\`
+          **Change:** ${{ needs.detect.outputs.change_summary }}
+          **Branch:** \`${{ github.ref_name }}\`
+
+          This post was auto-drafted by the \`blog-draft\` workflow using opencode.
+
+          ### Before merging:
+          - [ ] Review and edit the content
+          - [ ] Verify mermaid diagrams render correctly
+          - [ ] Check frontmatter tags/categories are accurate
+          - [ ] Ensure the post passes \`mkdocs build --strict\` (CI will check this)
+
+          /cc @jiwool0920" \
+            --label "blog-draft" \
+            --base main
+
+      - name: Update blog-state.json to prevent duplicates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          STATE_FILE=".github/blog-state.json"
+          CHANGE_SIG="${{ needs.detect.outputs.today }}-${{ needs.detect.outputs.change_slug }}"
+
+          # Read or initialize state
+          if [[ -f "$STATE_FILE" ]]; then
+            CURRENT=$(cat "$STATE_FILE")
+          else
+            CURRENT='{"blogged":[]}'
+          fi
+
+          # Append new entry
+          python3 -c "
+          import json
+          state = json.loads('$CURRENT')
+          blogged = state.get('blogged', [])
+          if '$CHANGE_SIG' not in blogged:
+              blogged.append('$CHANGE_SIG')
+          # Keep last 100 entries
+          state['blogged'] = blogged[-100:]
+          print(json.dumps(state, indent=2))
+          " > "$STATE_FILE"
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add "$STATE_FILE"
+          git diff --cached --quiet || git commit -m "chore: record blogged change $CHANGE_SIG [skip ci]"
+          git push

@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-setup
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -24,6 +24,11 @@ help:
 	@echo "  setup-ollama         - Pull ALL models required by kagent (qwen2.5:72b, qwen2.5:14b-kagent, qwen2.5:3b)"
 	@echo "  pull-ollama          - Pull OLLAMA_MODEL into native Ollama (default: $(OLLAMA_MODEL))"
 	@echo "                         Override: make pull-ollama OLLAMA_MODEL=llama3.2"
+	@echo ""
+	@echo "Documentation & Blog:"
+	@echo "  docs-draft           - AI-draft README/ADR/CLAUDE updates for staged infra changes"
+	@echo "  docs-draft-blog      - AI-draft a blog post for the most recent commit(s)"
+	@echo "  blog-setup           - Show one-time setup instructions for blog-draft CI workflow"
 	@echo ""
 	@echo "Pre-commit Hooks:"
 	@echo "  precommit-install    - Install pre-commit hooks and required tools"
@@ -178,6 +183,87 @@ setup-ollama:
 	fi
 	@echo ""
 	@echo "All kagent models ready. Run 'make serve-ollama' to start serving."
+
+# ==============================================================================
+# Documentation Assist (AI-drafted, human-reviewed)
+# ==============================================================================
+
+# Draft README/ADR/CLAUDE updates for changed infra services.
+# Run this when the docs-freshness pre-push hook blocks you.
+docs-draft:
+	@echo "Preparing git diff for opencode..."
+	@DIFF=$$(git diff HEAD 2>/dev/null); \
+	STAGED=$$(git diff --cached 2>/dev/null); \
+	CONTEXT="$${STAGED:-$$DIFF}"; \
+	if [ -z "$$CONTEXT" ]; then \
+		echo "No staged or unstaged changes found. Stage or commit your changes first."; \
+		exit 1; \
+	fi; \
+	echo "$$CONTEXT" | opencode run \
+		"You are reviewing a git diff from the fleet-infra GitOps repository. \
+Identify which services changed (look for paths under apps/base/ and base/services/). \
+For each changed service, propose concise doc updates for: README.md (service list / dependency layer), \
+CLAUDE.md (if architecture changed), and a new or updated docs/adr/ entry if this is a significant decision. \
+Output the proposed changes as markdown diffs or file sections. Do NOT apply them — the human will review." \
+		2>&1 || true
+	@echo ""
+	@echo "Review the suggestions above and apply manually or with Cursor/opencode."
+
+# Draft a blog post for the most recent commit(s).
+# Output is printed to stdout for you to copy into docs/blog/posts/ in the blog repo.
+docs-draft-blog:
+	@echo "Drafting blog post from recent commits..."
+	@DIFF=$$(git log -1 --format="commit %H%nauthor: %an%ndate: %ai%nsubject: %s%n%nbody:%n%b" 2>/dev/null); \
+	PATCH=$$(git diff HEAD~1 HEAD -- 'apps/base/*' 'base/services/*' 'docs/adr/*' 2>/dev/null | head -c 8000); \
+	echo "commit: $$DIFF\n\npatch:\n$$PATCH" | opencode run \
+		"You are writing a technical blog post for a MkDocs Material site (https://jiwool0920.github.io). \
+The author is Jiwoo Lee, a platform engineer. \
+Write the complete blog post in Markdown matching this exact frontmatter format: \
+--- \
+date: YYYY-MM-DD \
+categories: [Infrastructure, <Component>] \
+tags: [<relevant-tags>] \
+authors: [jiwoo] \
+--- \
+Include a <!-- more --> fold after the intro paragraph. \
+Use mermaid diagrams where the architecture benefits from visualization. \
+Focus on: what changed, why it matters, operational impact, lessons learned. \
+Target audience: platform engineers. \
+Output ONLY the markdown file body (no explanation outside the post)." \
+		2>&1 || true
+	@echo ""
+	@echo "Copy the post above to: /Users/jiwoolee/Project/jiwool0920.github.io/docs/blog/posts/<date>-<slug>.md"
+
+# One-time setup instructions for blog-draft CI workflow
+blog-setup:
+	@echo ""
+	@echo "=== blog-draft CI Workflow: One-Time Setup ==="
+	@echo ""
+	@echo "1. Create a fine-grained GitHub PAT for cross-repo PR creation:"
+	@echo "   - Go to: https://github.com/settings/tokens?type=beta"
+	@echo "   - Repository access: jiwool0920/jiwool0920.github.io (only)"
+	@echo "   - Permissions: Contents (read+write), Pull requests (read+write)"
+	@echo "   - Expiry: 90 days (set a calendar reminder to rotate)"
+	@echo ""
+	@echo "2. Add it as a fleet-infra Actions secret:"
+	@echo "   - Go to: https://github.com/jiwool0920/fleet-infra/settings/secrets/actions"
+	@echo "   - Name: BLOG_REPO_TOKEN"
+	@echo "   - Value: <the PAT from step 1>"
+	@echo ""
+	@echo "3. Add an LLM API key for opencode in CI (choose one):"
+	@echo "   - ANTHROPIC_API_KEY (recommended: claude-3-5-haiku-20241022 is cheapest)"
+	@echo "   - OPENAI_API_KEY    (gpt-4o-mini works well)"
+	@echo "   - Also in fleet-infra Actions secrets (same page as above)"
+	@echo ""
+	@echo "4. Add the 'blog-draft' label to jiwool0920.github.io:"
+	@echo "   - Go to: https://github.com/jiwool0920/jiwool0920.github.io/labels"
+	@echo "   - Create label: blog-draft (any color)"
+	@echo ""
+	@echo "5. Run 'make precommit-install' to install the new pre-push hook locally."
+	@echo ""
+	@echo "That's it. The workflow fires automatically on next push to main/develop"
+	@echo "that touches apps/base/, base/services/, or docs/adr/."
+	@echo ""
 
 # ==============================================================================
 # Pre-commit Hooks
