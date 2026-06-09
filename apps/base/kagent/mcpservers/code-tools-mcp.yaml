@@ -29,5 +29,5 @@ spec:
     across sessions using mem0 FAISS backed by Ollama embeddings.
   url: http://code-tools.code-tools.svc.cluster.local:8765/mcp
   protocol: STREAMABLE_HTTP
-  timeout: 120s
+  timeout: 15s
   sseReadTimeout: 3m0s

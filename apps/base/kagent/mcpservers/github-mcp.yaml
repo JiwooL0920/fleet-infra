@@ -17,7 +17,7 @@ spec:
   description: GitHub MCP server for repository operations and Pull Request creation
   url: http://github-mcp-server.kagent.svc.cluster.local:8082/mcp
   protocol: STREAMABLE_HTTP
-  timeout: 45s
+  timeout: 15s
   headersFrom:
     - name: Authorization
       valueFrom:

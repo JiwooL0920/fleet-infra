@@ -22,5 +22,5 @@ spec:
   description: OpenCost MCP server for Kubernetes cost allocation and asset cost queries
   url: http://opencost.opencost.svc.cluster.local:8081
   protocol: STREAMABLE_HTTP
-  timeout: 45s
+  timeout: 15s
   sseReadTimeout: 2m0s
