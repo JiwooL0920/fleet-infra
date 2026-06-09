@@ -16,4 +16,3 @@ resources:
   - input-guardrail.yaml
   - podmonitor.yaml
   - pdb.yaml
-  - networkpolicy.yaml
