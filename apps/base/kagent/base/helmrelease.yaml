@@ -38,6 +38,21 @@ spec:
                 path: /spec/ports/0/appProtocol
                 value: kgateway.dev/a2a
           - target:
+              version: v1
+              kind: Service
+              name: kagent-querydoc
+            patch: |
+              - op: remove
+                path: /spec/ports/0/appProtocol
+          - target:
+              version: v1
+              kind: Deployment
+              name: kagent-querydoc
+            patch: |
+              - op: replace
+                path: /spec/replicas
+                value: 0
+          - target:
               group: kagent.dev
               version: v1alpha2
               kind: RemoteMCPServer
