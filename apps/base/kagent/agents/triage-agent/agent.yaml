@@ -12,6 +12,7 @@ spec:
   type: Declarative
   description: "Automated incident triage gate — classifies, deduplicates, and escalates critical alerts"
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: fast-model-config
     deployment:
       env:

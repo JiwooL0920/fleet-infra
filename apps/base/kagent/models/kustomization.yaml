@@ -3,4 +3,3 @@ kind: Kustomization
 resources:
   - default-model-config.yaml
   - fast-model-config.yaml
-  - classifier-model-config.yaml

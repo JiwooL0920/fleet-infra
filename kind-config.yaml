@@ -1,3 +1,5 @@
+# IMPORTANT: After any change here, recreate cluster and re-bootstrap:
+# kind delete cluster --name dev-services-amer && kind create cluster --config kind-config.yaml && make bootstrap-cilium
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: dev-services-amer
@@ -13,3 +15,6 @@ nodes:
         protocol: TCP
   - role: worker
   - role: worker
+networking:
+  disableDefaultCNI: true
+  podSubnet: "10.244.0.0/16"

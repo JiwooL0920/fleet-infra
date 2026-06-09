@@ -1,0 +1,42 @@
+---
+# AgentgatewayPolicy: rate limiting on the LLM inference path.
+#
+# SCOPE: This policy enforces request and token rate limits on LLM inference
+# traffic (agent → Ollama backend).
+#
+# PURPOSE: Prevent LLM inference exhaustion from runaway agents or
+# misconfigured prompts that generate excessive token consumption.
+#
+# Rate Limits:
+#   - Requests: 100 per minute with burst of 20 (conservative for inference)
+#   - Tokens: 100000 per minute (post-response enforcement)
+#
+# NOTE: token limits are post-response; a single request may exceed budget.
+# Enforcement applies to the next request.
+#
+# Unit: Minutes (sliding window per RFC 6584).
+#
+# Schema: spec.traffic.rateLimit.local is a list of limit objects.
+# Reference: kubectl get crd agentgatewaypolicies.agentgateway.dev -o json
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: llm-rate-limit
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: llm-rate-limit
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: llm-ollama
+  traffic:
+    rateLimit:
+      local:
+        - requests: 100
+          unit: Minutes
+          burst: 20
+        - tokens: 100000
+          unit: Minutes

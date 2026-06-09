@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - route.yaml
   - guardrail-policy.yaml
+  - rate-limit-policy.yaml

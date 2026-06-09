@@ -16,6 +16,7 @@ spec:
     Cluster agent for services-amer: Kubernetes, Flux, Helm, and cluster-scoped observability.
     Use for any operation on services-amer.
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: fast-model-config
     context:
       compaction:

@@ -7,3 +7,4 @@ resources:
   - referencegrant-otel.yaml
   - ../a2a
   - ../mcp
+  - ../llm

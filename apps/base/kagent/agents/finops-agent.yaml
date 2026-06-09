@@ -19,6 +19,7 @@ spec:
     data and Prometheus for utilization analysis. Identifies over-provisioned workloads,
     generates right-sizing recommendations, and produces YAML diffs for fleet-infra PRs.
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: fast-model-config
     context:
       compaction:

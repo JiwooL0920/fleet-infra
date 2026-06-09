@@ -12,6 +12,7 @@ spec:
   type: Declarative
   description: "Creates structured GitHub issues from diagnosis results by delegating to git-agent"
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: default-model-config
     context:
       compaction:

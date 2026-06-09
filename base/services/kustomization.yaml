@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
   # Foundation services (no dependencies - start immediately)
+  - cilium.yaml
   - traefik.yaml
   - localstack.yaml
   - cnpg-operator.yaml
@@ -20,6 +21,9 @@ resources:
 
   # Node maintenance (no dependencies - runs on schedule)
   - node-image-gc.yaml  # Prunes unused container images every 6 hours
+
+  # Event-driven autoscaling
+  - keda.yaml
 
   # Infrastructure as Code services (disabled)
   # - crossplane.yaml

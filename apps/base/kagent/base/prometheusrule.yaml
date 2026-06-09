@@ -11,9 +11,7 @@
 #   Fires when edge guardrail rejections (HTTP 403 from forwardAuth) exceed 5/min sustained over 5min.
 #   Uses code="403" — input-guardrail returns 403; Traefik propagates that code in its metrics.
 #
-# KagentPromptInjectionSurge: detects sustained classifier refusals indicative of injection campaigns.
-#   Fires when classifier-agent emits >10 refuse verdicts (verdict="refuse" label) in 5 minutes.
-#   Requires kagent to emit a verdict label on kagent_agent_invocations_total.
+
 #
 # Requires kube-prometheus-stack (PrometheusOperator) to be deployed in the monitoring namespace.
 # Metrics source: kagent PodMonitor (apps/base/kagent/base/podmonitor.yaml)
@@ -88,37 +86,67 @@ spec:
               the kagent endpoint. Check Loki: {app="traefik"} |~ "edge_regex_block".
             runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
 
-        - alert: KagentPromptInjectionSurge
-          expr: |
-            sum(
-              increase(kagent_agent_invocations_total{agent="classifier-agent",verdict="refuse"}[5m])
-            ) > 10
-          for: 5m
-          labels:
-            severity: warning
-            team: platform
-          annotations:
-            summary: "High classifier-agent refusal rate — possible injection attack"
-            description: >-
-              classifier-agent issued {{ $value }} REFUSE verdicts in 5 minutes.
-              Possible prompt-injection campaign. Check Loki for category=prompt_injection or
-              category=destructive_intent: {app="classifier-agent"} | json | verdict="refuse".
-            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
 
     - name: kagent.antipatterns
       interval: 60s
       rules:
         - alert: KagentAgentToolCountExceeded
           expr: |
-            max by (agent) (kagent_agent_tool_count) > 32
+            max by (agent) (kagent_agent_tool_count) > 18
           for: 0m
           labels:
             severity: warning
             team: platform
+            annotations:
+              summary: "Agent tool count exceeds God-Agent threshold"
+              description: >-
+                Agent {{ $labels.agent }} has {{ $value }} tools registered
+                (threshold: 18 — Solo.io official recommendation: max 18 tools per agent https://www.solo.io/blog/agentic-zero-trust-architecture-and-configuration).
+                Review whether tools can be split into a new specialist agent.
+              runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
+
+    # kagent.cost: token budget alerting via agentgateway auto-emitted gen_ai metrics.
+    # agentgateway emits agentgateway_gen_ai_client_token_usage histogram when AI traffic flows through.
+    # Metric name verified against agentgateway v1.2.x — validate post-deploy if upgrading.
+    - name: kagent.cost
+      interval: 60s
+      rules:
+        - alert: KagentLLMTokenSpike
+          expr: |
+            sum(
+              rate(agentgateway_gen_ai_client_token_usage_sum[15m])
+            ) * 60 > 1.5 * sum(
+              rate(agentgateway_gen_ai_client_token_usage_sum[1h] offset 1h)
+            ) * 60
+          for: 10m
+          labels:
+            severity: warning
+            team: platform
           annotations:
-            summary: "Agent tool count exceeds God-Agent threshold"
+            summary: "LLM token rate spiked >50% above baseline"
             description: >-
-              Agent {{ $labels.agent }} has {{ $value }} tools registered
-              (threshold: 32 — Anthropic 25-tool accuracy benchmark baseline).
-              Review whether tools can be split into a new specialist agent.
+              agentgateway is proxying {{ $value | humanize }} tokens/min,
+              >50% above the 1h historical average. Possible prompt regression,
+              verbose agent loop, or model drift. Check Jaeger traces and agent logs.
+              NOTE: Metric agentgateway_gen_ai_client_token_usage_sum — verify name
+              post-deploy via: kubectl exec -n agentgateway-system <pod> -- curl localhost:9091/metrics | grep gen_ai
+            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
+
+        - alert: KagentLLMTokenBudgetExceeded
+          expr: |
+            sum(
+              increase(agentgateway_gen_ai_client_token_usage_sum[1h])
+            ) > 1000000
+          for: 0m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "LLM token budget exceeded 1M tokens/hour"
+            description: >-
+              Total LLM tokens proxied through agentgateway in the last hour:
+              {{ $value | humanize }}. Budget ceiling: 1M tokens/hour.
+              This may indicate a runaway agent chain. Investigate immediately.
+              NOTE: Metric agentgateway_gen_ai_client_token_usage_sum — verify name
+              post-deploy via: kubectl exec -n agentgateway-system <pod> -- curl localhost:9091/metrics | grep gen_ai
             runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"

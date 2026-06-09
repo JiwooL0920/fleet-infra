@@ -19,6 +19,7 @@ spec:
     root cause diagnosis. Uses deep reasoning model without any tool access. Always
     produces JSON output even when evidence is incomplete (marks verdict as Inconclusive).
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: default-model-config
     context:
       compaction:

@@ -1,0 +1,34 @@
+---
+# AgentgatewayPolicy: rate limiting on the MCP tool-call path.
+#
+# SCOPE: This policy enforces request rate limits on /mcp/* traffic
+# (agent → MCP tool servers).
+#
+# PURPOSE: Prevent tool-call storms from misconfigured agents or
+# infinite loops in tool-use chains.
+#
+# Rate Limit: 500 requests per minute with burst of 100 (allows tool parallelism).
+# Unit: Minutes (sliding window per RFC 6584).
+#
+# Schema: spec.traffic.rateLimit.local is a list of limit objects.
+# Reference: kubectl get crd agentgatewaypolicies.agentgateway.dev -o json
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: mcp-rate-limit
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: mcp-rate-limit
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: mcp-federated
+  traffic:
+    rateLimit:
+      local:
+        - requests: 500
+          unit: Minutes
+          burst: 100

@@ -11,3 +11,4 @@ resources:
   - backend-github.yaml
   - route.yaml
   - guardrail-policy.yaml
+  - rate-limit-policy.yaml

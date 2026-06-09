@@ -31,6 +31,7 @@ spec:
     in strict order with pass-through behavior. Never summarizes or reformats agent responses.
     Ensures complete pipeline execution even on partial failures.
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: default-model-config
     context:
       compaction:

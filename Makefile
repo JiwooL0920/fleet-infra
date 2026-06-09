@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -8,6 +8,7 @@ help:
 	@echo "Available targets:"
 	@echo ""
 	@echo "Local Development:"
+	@echo "  bootstrap-cilium     - Bootstrap Cilium CNI (run BEFORE flux bootstrap after cluster recreation)"
 	@echo "  setup-dns            - Setup local DNS entries for Traefik ingress (recommended)"
 	@echo "  setup-github-secret  - Push GitHub PAT from env into LocalStack (needed for gitops-agent)"
 	@echo "  setup-grafana-db     - Store PG password in LocalStack for Grafana PostgreSQL backend"
@@ -47,6 +48,10 @@ help:
 setup-dns:
 	@echo "Setting up local DNS entries for Traefik ingress..."
 	@./scripts/setup-local-dns.sh
+
+# Bootstrap Cilium CNI (run BEFORE flux bootstrap after cluster recreation)
+bootstrap-cilium: ## Bootstrap Cilium CNI (run BEFORE flux bootstrap after cluster recreation)
+	@./scripts/bootstrap-cilium.sh
 
 # Push GitHub PAT from environment into LocalStack (needed for gitops-agent)
 # Reads GITHUB_TOKEN or GITHUB_PAT from env, or prompts interactively.

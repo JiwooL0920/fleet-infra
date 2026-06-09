@@ -34,6 +34,7 @@ spec:
     FLEET observability agent. Cross-cluster Prometheus/Loki/alert aggregations only.
     NOT for single-cluster questions — those route to cluster-agent-{cluster}.
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: fast-model-config
     context:
       compaction:

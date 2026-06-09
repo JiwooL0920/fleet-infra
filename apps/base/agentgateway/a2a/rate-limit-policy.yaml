@@ -1,0 +1,34 @@
+---
+# AgentgatewayPolicy: rate limiting on the A2A inter-agent path.
+#
+# SCOPE: This policy enforces request rate limits on INTER-AGENT traffic
+# (coordinator → workers via agentgateway).
+#
+# PURPOSE: Prevent resource exhaustion from runaway agent loops or
+# misconfigured worker agents that flood the coordinator with requests.
+#
+# Rate Limit: 300 requests per minute with burst of 50 (allows short spikes).
+# Unit: Minutes (sliding window per RFC 6584).
+#
+# Schema: spec.traffic.rateLimit.local is a list of limit objects.
+# Reference: kubectl get crd agentgatewaypolicies.agentgateway.dev -o json
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: a2a-rate-limit
+  namespace: agentgateway-system
+  labels:
+    app.kubernetes.io/name: a2a-rate-limit
+    app.kubernetes.io/instance: agentgateway
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: a2a-kagent
+  traffic:
+    rateLimit:
+      local:
+        - requests: 300
+          unit: Minutes
+          burst: 50

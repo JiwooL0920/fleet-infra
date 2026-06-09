@@ -16,6 +16,7 @@ spec:
     Orchestrates read-only investigation by delegating to cluster-agent and observability-agent.
     Produces structured investigation artifacts with affected resources, timeline, error patterns, and root cause candidates.
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: default-model-config
     context:
       compaction:

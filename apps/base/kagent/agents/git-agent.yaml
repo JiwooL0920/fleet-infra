@@ -23,6 +23,7 @@ spec:
     Reads current YAML, creates a feature branch, commits the change, and opens a draft PR.
     All write operations require human approval. PRs are always draft - humans merge.
   declarative:
+    runtime: go  # ~2s startup vs Python default (~15s)
     modelConfig: default-model-config
     context:
       compaction:
