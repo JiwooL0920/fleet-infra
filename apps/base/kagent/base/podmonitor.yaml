@@ -1,10 +1,8 @@
 ---
-# PodMonitor: scrapes kagent-controller and kagent-ui Prometheus metrics.
-# Required by Phase 3 Grafana dashboard for per-agent invocation rate, latency,
-# token consumption, and tools-per-agent panels.
-#
-# Requires kube-prometheus-stack PodMonitor CRD (monitoring.coreos.com/v1).
-# Assumes kagent-controller exposes /metrics on port 8080 (default for kagent v1alpha2).
+# PodMonitor: scrapes kagent-controller Prometheus metrics.
+# kagent-controller exposes metrics on the same port as A2A (named 'http', port 8083).
+# NOTE: kagent may not serve /metrics by default — if scraping fails with connection
+# timeout, enable metrics in the kagent HelmRelease: controller.metrics.enabled: true
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
@@ -14,7 +12,6 @@ metadata:
     app.kubernetes.io/name: kagent
     app.kubernetes.io/instance: kagent
     app.kubernetes.io/managed-by: kustomize
-    # Required by kube-prometheus-stack to pick up this PodMonitor
     release: monitoring-kube-prometheus-stack
 spec:
   namespaceSelector:
@@ -22,7 +19,7 @@ spec:
       - kagent
   selector:
     matchLabels:
-      app.kubernetes.io/name: kagent
+      app.kubernetes.io/component: controller
   podMetricsEndpoints:
     - port: http
       path: /metrics
@@ -30,7 +27,7 @@ spec:
       scrapeTimeout: 10s
 ---
 # PodMonitor: scrapes agentgateway-proxy Prometheus metrics.
-# Feeds rejection rate panels (edge guardrail blocks) and A2A hop latency.
+# agentgateway exposes metrics on named port 'metrics' (9092).
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
@@ -49,7 +46,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: agentgateway
   podMetricsEndpoints:
-    - port: http
+    - port: metrics
       path: /metrics
       interval: 30s
       scrapeTimeout: 10s
