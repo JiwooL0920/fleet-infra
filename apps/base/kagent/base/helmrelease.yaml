@@ -24,8 +24,10 @@ spec:
   upgrade:
     crds: CreateReplace
     timeout: 15m
+    force: true
     remediation:
       retries: 3
+      remediateLastFailure: true
   postRenderers:
     - kustomize:
         patches:
@@ -51,6 +53,9 @@ spec:
               kind: Deployment
               name: kagent-controller
             patch: |
+              - op: replace
+                path: /spec/template/spec/containers/0/startupProbe/failureThreshold
+                value: 20
               - op: add
                 path: /spec/template/spec/containers/0/env/-
                 value:
