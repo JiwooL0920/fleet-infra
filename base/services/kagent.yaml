@@ -18,7 +18,7 @@ spec:
     name: flux-system
   path: ./apps/base/kagent
   prune: true
-  wait: true
+  wait: false
   timeout: 15m0s
   dependsOn:
     - name: ollama
