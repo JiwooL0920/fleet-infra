@@ -97,13 +97,14 @@ spec:
           labels:
             severity: warning
             team: platform
-            annotations:
-              summary: "Agent tool count exceeds God-Agent threshold"
-              description: >-
-                Agent {{ $labels.agent }} has {{ $value }} tools registered
-                (threshold: 18 — Solo.io official recommendation: max 18 tools per agent https://www.solo.io/blog/agentic-zero-trust-architecture-and-configuration).
-                Review whether tools can be split into a new specialist agent.
-              runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
+          annotations:
+            summary: "Agent tool count exceeds God-Agent threshold"
+            description: >-
+              Agent {{ $labels.agent }} has {{ $value }} tools registered
+              (threshold: 18 — Solo.io official recommendation: max 18 tools per agent
+              https://www.solo.io/blog/agentic-zero-trust-architecture-and-configuration).
+              Review whether tools can be split into a new specialist agent.
+            runbook_url: "https://github.com/jiwoolee/fleet-infra/blob/main/apps/base/kagent/agents/README.md"
 
     # kagent.cost: token budget alerting via agentgateway auto-emitted gen_ai metrics.
     # agentgateway emits agentgateway_gen_ai_client_token_usage histogram when AI traffic flows through.
