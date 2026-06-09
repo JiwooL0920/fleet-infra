@@ -38,21 +38,6 @@ spec:
                 path: /spec/ports/0/appProtocol
                 value: kgateway.dev/a2a
           - target:
-              version: v1
-              kind: Service
-              name: kagent-querydoc
-            patch: |
-              - op: remove
-                path: /spec/ports/0/appProtocol
-          - target:
-              version: v1
-              kind: Deployment
-              name: kagent-querydoc
-            patch: |
-              - op: replace
-                path: /spec/replicas
-                value: 0
-          - target:
               group: kagent.dev
               version: v1alpha2
               kind: RemoteMCPServer
@@ -159,40 +144,34 @@ spec:
           host: "${OLLAMA_HOST}"
 
     # ---------------------------------------------------------
-    # Agents: all built-in subcharts disabled — our agents are managed
-    # as standalone CRs via Kustomize (custom systemMessages, tools, etc.)
+    # Built-in subcharts: disabled — we manage agents as standalone CRs
+    # and tools as RemoteMCPServer CRs via Kustomize.
+    # Subchart conditions use TOP-LEVEL keys (Chart.yaml condition: field).
     # ---------------------------------------------------------
-    agents:
-      k8s-agent:
-        enabled: false
-      kgateway-agent:
-        enabled: false
-      istio-agent:
-        enabled: false
-      promql-agent:
-        enabled: false
-      observability-agent:
-        enabled: false
-      argo-rollouts-agent:
-        enabled: false
-      helm-agent:
-        enabled: false
-      cilium-policy-agent:
-        enabled: false
-      cilium-manager-agent:
-        enabled: false
-      cilium-debug-agent:
-        enabled: false
-
-    # ---------------------------------------------------------
-    # MCP Tools: enable grafana-mcp for observability-agent
-    # querydoc disabled (we manage tools as standalone CRs)
-    # ---------------------------------------------------------
-    tools:
-      grafana-mcp:
-        enabled: true
-      querydoc:
-        enabled: false
+    k8s-agent:
+      enabled: false
+    kgateway-agent:
+      enabled: false
+    istio-agent:
+      enabled: false
+    promql-agent:
+      enabled: false
+    observability-agent:
+      enabled: false
+    argo-rollouts-agent:
+      enabled: false
+    helm-agent:
+      enabled: false
+    cilium-policy-agent:
+      enabled: false
+    cilium-manager-agent:
+      enabled: false
+    cilium-debug-agent:
+      enabled: false
+    querydoc:
+      enabled: false
+    kagent-tools:
+      enabled: false
 
     # ---------------------------------------------------------
     # Grafana MCP subchart config (v0.8.3 moved out of tools block)
@@ -200,6 +179,7 @@ spec:
     # apiKey injected via postBuild.substituteFrom from kagent-grafana-sa-token Secret.
     # ---------------------------------------------------------
     grafana-mcp:
+      enabled: true
       grafana:
         url: "http://monitoring-kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
         serviceAccountToken: "${KAGENT_GRAFANA_API_KEY}"
