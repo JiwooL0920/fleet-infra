@@ -9,3 +9,5 @@ resources:
   - ingressroute.yaml
   - referencegrant.yaml
   - pdb.yaml
+  - networkpolicy.yaml
+  - hpa.yaml

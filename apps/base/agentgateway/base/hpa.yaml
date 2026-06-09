@@ -1,0 +1,30 @@
+---
+# HorizontalPodAutoscaler: scale agentgateway-proxy based on memory utilization.
+#
+# NOTE: For production, replace with custom metrics (Prometheus Adapter + request rate).
+# Memory-based HPA demonstrates the pattern on local cluster.
+# LLM workloads are I/O-bound — CPU HPA would not scale appropriately.
+#
+# stabilizationWindowSeconds: 300 — prevents premature scale-down during long agent runs.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agentgateway-proxy
+  namespace: agentgateway-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agentgateway-proxy
+  minReplicas: 1
+  maxReplicas: 3
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75

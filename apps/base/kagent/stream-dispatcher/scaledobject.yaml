@@ -1,0 +1,37 @@
+---
+# KEDA ScaledObject: scale stream-dispatcher based on pending messages in Redis Sentinel stream.
+#
+# Uses redis-sentinel-streams scaler (NOT redis-streams) because Redis is deployed
+# with Sentinel topology (sentinel at redis-sentinel.redis-sentinel.svc.cluster.local:26379).
+#
+# Redis config (from redis-init-configmap.yaml):
+#   stream: incident:events
+#   consumerGroup: dispatch-group
+#   database: 4
+#   sentinelMaster: mymaster
+#   No authentication (Redis auth disabled)
+#
+# cooldownPeriod: 300s (5 min) — agent runs take minutes; avoid premature scale-down
+# minReplicaCount: 1 — always keep one consumer to avoid missed messages
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: stream-dispatcher
+  namespace: kagent
+spec:
+  scaleTargetRef:
+    name: stream-dispatcher
+  pollingInterval: 15
+  cooldownPeriod: 300
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  triggers:
+    - type: redis-sentinel-streams
+      metadata:
+        hosts: redis-sentinel.redis-sentinel.svc.cluster.local
+        ports: "26379"
+        sentinelMaster: mymaster
+        stream: incident:events
+        consumerGroup: dispatch-group
+        pendingEntriesCount: "5"
+        databaseIndex: "4"

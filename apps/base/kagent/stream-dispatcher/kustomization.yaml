@@ -4,3 +4,4 @@ namespace: kagent
 resources:
   - redis-init-configmap.yaml
   - deployment.yaml
+  - scaledobject.yaml
