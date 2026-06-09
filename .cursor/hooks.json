@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/flag-doc-drift.sh",
+        "matcher": "apps/base/|base/services/"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 # ADR-002: Loki Redis Direct Connection (Bypassing Sentinel)
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2025-08 (implemented), 2026-06 (documented as ADR)
 
 ## Context

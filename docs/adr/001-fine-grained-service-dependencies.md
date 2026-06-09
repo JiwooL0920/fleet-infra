@@ -1,6 +1,6 @@
 # ADR-001: Fine-Grained Service-Level Dependencies
 
-**Status:** Accepted  
+**Status:** Accepted
 **Date:** 2025-01 (implemented), 2026-06 (documented as ADR)
 
 ## Context
