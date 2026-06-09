@@ -15,7 +15,7 @@ metadata:
     app.kubernetes.io/instance: kagent
     app.kubernetes.io/managed-by: kustomize
     # Required by kube-prometheus-stack to pick up this PodMonitor
-    release: monitoring
+    release: monitoring-kube-prometheus-stack
 spec:
   namespaceSelector:
     matchNames:
@@ -40,7 +40,7 @@ metadata:
     app.kubernetes.io/name: agentgateway
     app.kubernetes.io/instance: agentgateway
     app.kubernetes.io/managed-by: kustomize
-    release: monitoring
+    release: monitoring-kube-prometheus-stack
 spec:
   namespaceSelector:
     matchNames:

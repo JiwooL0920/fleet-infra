@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "github-copilot": {
+      "options": {
+        // Hard cap: 5 min. Opus-4.6 max can legitimately take 2-3 min,
+        // but anything beyond 5 min is a dead request.
+        "timeout": 300000,
+        // If Copilot hasn't sent response headers in 2 min, the request
+        // is queued behind rate limits — fail fast instead of hanging forever.
+        "headerTimeout": 120000,
+        // If no chunk arrives for 45s during streaming, the connection is stalled.
+        "chunkTimeout": 45000
+      }
+    }
+  }
+}
