@@ -150,9 +150,10 @@ jobs:
       - name: Generate blog post draft
         id: generate
         env:
-          # opencode reads provider credentials from env — set the model you want to use in CI.
-          # Options: set ANTHROPIC_API_KEY for Claude, or OPENAI_API_KEY for OpenAI.
-          # The github-copilot provider from opencode.jsonc works locally but not in GHA.
+          # opencode reads provider credentials from env.
+          # Set ANTHROPIC_API_KEY for Claude or OPENAI_API_KEY for OpenAI in
+          # fleet-infra Actions secrets. The local github-copilot provider does
+          # not work in GitHub Actions (no browser auth flow available).
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
@@ -160,48 +161,67 @@ jobs:
           SLUG="${{ needs.detect.outputs.change_slug }}"
           SUMMARY="${{ needs.detect.outputs.change_summary }}"
           OUTPUT_FILE="/tmp/blog-draft.md"
+          PROMPT_FILE="/tmp/blog-prompt.txt"
+          CONTEXT_FILE="${{ steps.diff.outputs.context_file }}"
 
-          PROMPT="You are writing a technical blog post for a MkDocs Material site authored by Jiwoo Lee, a platform engineer.
+          # Write the full prompt + context into a single file.
+          # opencode run accepts positional words as the message and -f to attach
+          # files. We embed everything in one prompt file to avoid shell quoting
+          # issues with multi-line strings passed as positional args.
+          cat > "$PROMPT_FILE" <<PROMPT
+          You are writing a technical blog post for a MkDocs Material site authored by Jiwoo Lee, a platform engineer.
+          The blog is at https://jiwool0920.github.io. Existing posts are direct and practical.
 
-          The blog is at https://jiwool0920.github.io. Existing posts are written in a direct, practical engineering style.
+          Change context: ${SUMMARY}
 
-          Context about this change:
-          $SUMMARY
-
-          Full diff context is in the file provided. Use it to understand:
+          Below is the git diff and commit log for this push. Use it to explain:
           - Which service(s) or architecture decisions changed
-          - Why this change matters operationally
+          - Why it matters operationally
           - Any notable trade-offs or lessons
 
-          Write a complete blog post in Markdown with EXACTLY this frontmatter:
+          $(cat "$CONTEXT_FILE")
+
+          ---
+          Write a complete MkDocs Material blog post with EXACTLY this frontmatter structure:
+
           ---
           date: ${TODAY}
           categories:
             - Infrastructure
-            - <add one more relevant category>
+            - <one more relevant category>
           tags:
             - <3-5 relevant lowercase tags>
           authors:
             - jiwoo
           ---
 
-          Requirements:
-          - Start with a 2-3 sentence intro paragraph, then a <!-- more --> fold
-          - Use mermaid diagrams where architecture benefits from visualization
-          - Include sections: Overview, Why This Change, Technical Details, Operational Impact
-          - Target audience: platform/DevOps engineers
-          - Tone: direct and practical, no marketing fluff
-          - Output ONLY the markdown (no preamble, no explanation outside the post)"
+          Then a 2-3 sentence intro paragraph followed by a <!-- more --> fold.
+          Include sections: Overview, Why This Change, Technical Details, Operational Impact.
+          Use mermaid diagrams where architecture benefits from visualization.
+          Tone: direct and practical. Target audience: platform/DevOps engineers.
+          Output ONLY the markdown file body — no preamble, no explanation outside the post.
+          PROMPT
 
-          cat "${{ steps.diff.outputs.context_file }}" | opencode run "$PROMPT" --output "$OUTPUT_FILE" 2>&1 || {
-            echo "opencode run failed, trying fallback approach..."
-            opencode run "$PROMPT
+          # opencode run: message positional args + -f to attach the prompt/context file.
+          # Output is written to stdout; capture it to a file.
+          opencode run "Write the blog post described in the attached file." \
+            -f "$PROMPT_FILE" \
+            > "$OUTPUT_FILE" 2>/tmp/opencode-stderr.txt
 
-          $(cat "${{ steps.diff.outputs.context_file }}")" --output "$OUTPUT_FILE" 2>&1
-          }
+          EXIT_CODE=$?
+          if [[ $EXIT_CODE -ne 0 ]]; then
+            echo "opencode exited with code $EXIT_CODE"
+            cat /tmp/opencode-stderr.txt
+            exit 1
+          fi
 
-          if [[ ! -f "$OUTPUT_FILE" || ! -s "$OUTPUT_FILE" ]]; then
-            echo "ERROR: opencode did not produce output"
+          # Strip any ANSI escape codes opencode may emit in non-interactive mode
+          sed -i 's/\x1b\[[0-9;]*[mGKHF]//g' "$OUTPUT_FILE" 2>/dev/null || true
+
+          # Validate we got actual markdown content (must contain frontmatter)
+          if ! grep -q '^---' "$OUTPUT_FILE"; then
+            echo "ERROR: opencode output does not look like a valid blog post:"
+            head -20 "$OUTPUT_FILE"
             exit 1
           fi
 

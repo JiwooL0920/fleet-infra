@@ -199,13 +199,10 @@ docs-draft:
 		echo "No staged or unstaged changes found. Stage or commit your changes first."; \
 		exit 1; \
 	fi; \
-	echo "$$CONTEXT" | opencode run \
-		"You are reviewing a git diff from the fleet-infra GitOps repository. \
-Identify which services changed (look for paths under apps/base/ and base/services/). \
-For each changed service, propose concise doc updates for: README.md (service list / dependency layer), \
-CLAUDE.md (if architecture changed), and a new or updated docs/adr/ entry if this is a significant decision. \
-Output the proposed changes as markdown diffs or file sections. Do NOT apply them — the human will review." \
-		2>&1 || true
+	TMPFILE=$$(mktemp /tmp/docs-draft-XXXX.txt); \
+	printf "Review this git diff from the fleet-infra GitOps repository.\n\nIdentify which services changed (paths under apps/base/ and base/services/).\nFor each changed service, propose concise updates for:\n- README.md (service list / dependency layer)\n- CLAUDE.md (if architecture changed)\n- A new or updated docs/adr/ entry if this is a significant decision\n\nOutput proposed changes as markdown diffs or file sections.\nDo NOT apply them — the human will review.\n\n---\n%s\n" "$$CONTEXT" > "$$TMPFILE"; \
+	opencode run "Review the diff in the attached file and propose documentation updates." -f "$$TMPFILE"; \
+	rm -f "$$TMPFILE"
 	@echo ""
 	@echo "Review the suggestions above and apply manually or with Cursor/opencode."
 
@@ -213,24 +210,13 @@ Output the proposed changes as markdown diffs or file sections. Do NOT apply the
 # Output is printed to stdout for you to copy into docs/blog/posts/ in the blog repo.
 docs-draft-blog:
 	@echo "Drafting blog post from recent commits..."
-	@DIFF=$$(git log -1 --format="commit %H%nauthor: %an%ndate: %ai%nsubject: %s%n%nbody:%n%b" 2>/dev/null); \
+	@TMPFILE=$$(mktemp /tmp/blog-prompt-XXXX.txt); \
+	TODAY=$$(date '+%Y-%m-%d'); \
+	LOG=$$(git log -1 --format="commit %H%nauthor: %an%ndate: %ai%nsubject: %s%n%nbody:%n%b" 2>/dev/null); \
 	PATCH=$$(git diff HEAD~1 HEAD -- 'apps/base/*' 'base/services/*' 'docs/adr/*' 2>/dev/null | head -c 8000); \
-	echo "commit: $$DIFF\n\npatch:\n$$PATCH" | opencode run \
-		"You are writing a technical blog post for a MkDocs Material site (https://jiwool0920.github.io). \
-The author is Jiwoo Lee, a platform engineer. \
-Write the complete blog post in Markdown matching this exact frontmatter format: \
---- \
-date: YYYY-MM-DD \
-categories: [Infrastructure, <Component>] \
-tags: [<relevant-tags>] \
-authors: [jiwoo] \
---- \
-Include a <!-- more --> fold after the intro paragraph. \
-Use mermaid diagrams where the architecture benefits from visualization. \
-Focus on: what changed, why it matters, operational impact, lessons learned. \
-Target audience: platform engineers. \
-Output ONLY the markdown file body (no explanation outside the post)." \
-		2>&1 || true
+	printf "Write a MkDocs Material blog post for https://jiwool0920.github.io authored by Jiwoo Lee.\n\nCommit context:\n%s\n\nGit diff:\n%s\n\n---\nFrontmatter format:\n---\ndate: %s\ncategories:\n  - Infrastructure\n  - <Component>\ntags:\n  - <tags>\nauthors:\n  - jiwoo\n---\n\nRequirements:\n- 2-3 sentence intro then <!-- more --> fold\n- Mermaid diagrams where useful\n- Sections: Overview, Why This Change, Technical Details, Operational Impact\n- Tone: direct and practical\n- Output ONLY the markdown body\n" "$$LOG" "$$PATCH" "$$TODAY" > "$$TMPFILE"; \
+	opencode run "Write the blog post described in the attached file." -f "$$TMPFILE"; \
+	rm -f "$$TMPFILE"
 	@echo ""
 	@echo "Copy the post above to: /Users/jiwoolee/Project/jiwool0920.github.io/docs/blog/posts/<date>-<slug>.md"
 
