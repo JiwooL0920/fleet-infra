@@ -98,12 +98,14 @@ spec:
           cpu: "${KAGENT_CONTROLLER_CPU_LIMIT}"
           memory: "${KAGENT_CONTROLLER_MEMORY_LIMIT}"
       extraEnv:
-        # Belt-and-suspenders: set OTEL env vars in case the chart's otel.exporter block
-        # isn't honored by the installed kagent version. Both point to the same collector.
         - name: OTEL_EXPORTER_OTLP_ENDPOINT
           value: "http://opentelemetry-collector.opentelemetry.svc.cluster.local:4317"
         - name: OTEL_EXPORTER_OTLP_PROTOCOL
           value: "grpc"
+        - name: OTEL_EXPORTER_OTLP_TIMEOUT
+          value: "5000"
+        - name: OTEL_BSP_SCHEDULE_DELAY
+          value: "10000"
         - name: OTEL_SERVICE_NAME
           value: "kagent-controller"
         - name: OTEL_RESOURCE_ATTRIBUTES
