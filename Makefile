@@ -145,6 +145,7 @@ refresh-credentials:
 # Start native Ollama bound to all interfaces so Kind cluster pods can reach it via host.docker.internal
 serve-ollama:
 	@echo "Starting Ollama (bound to 0.0.0.0 for cluster access via host.docker.internal)..."
+	@lsof -ti :11434 | xargs kill -9 2>/dev/null || true
 	@OLLAMA_HOST=0.0.0.0 ollama serve
 
 # Pull the configured LLM model into native Ollama

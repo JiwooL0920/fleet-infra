@@ -12,7 +12,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kagent-tools
-  namespace: kagent-tools
+  namespace: kagent
   labels:
     app.kubernetes.io/name: kagent-tools
     app.kubernetes.io/instance: kagent-tools-remote
