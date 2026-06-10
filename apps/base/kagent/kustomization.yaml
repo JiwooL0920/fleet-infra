@@ -7,4 +7,3 @@ resources:
    - ./stream-dispatcher
    - ./models
    - ./mcpservers
-   - ../kagent-tools-remote

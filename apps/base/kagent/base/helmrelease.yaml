@@ -176,7 +176,7 @@ spec:
     querydoc:
       enabled: false
     kagent-tools:
-      enabled: false
+      enabled: true
 
     # ---------------------------------------------------------
     # Grafana MCP subchart config (v0.8.3 moved out of tools block)
