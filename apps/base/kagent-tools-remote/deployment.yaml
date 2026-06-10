@@ -31,7 +31,7 @@ spec:
       serviceAccountName: kagent-tools
       containers:
         - name: kagent-tools
-          image: ghcr.io/kagent-dev/kagent/tools:${KAGENT_CHART_VERSION}
+          image: cr.kagent.dev/kagent-dev/kagent/tools:${KAGENT_CHART_VERSION}
           ports:
             - name: mcp
               containerPort: 8084
