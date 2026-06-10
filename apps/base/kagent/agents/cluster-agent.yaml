@@ -30,51 +30,15 @@ spec:
       - type: McpServer
         mcpServer:
           kind: RemoteMCPServer
-          name: k8s-tools-federated
-          toolNames:
-            - k8s_get_resources
-            - k8s_describe_resource
-            - k8s_get_events
-            - k8s_get_pod_logs
-            - k8s_get_resource_yaml
-            - k8s_get_available_api_resources
-            - k8s_get_cluster_configuration
-            - k8s_check_service_connectivity
-            - k8s_annotate_resource
-            - k8s_label_resource
-            - k8s_remove_label
-            - k8s_remove_annotation
-            - k8s_patch_resource
-            - k8s_apply_manifest
-            - k8s_create_resource
-            - k8s_create_resource_from_url
-            - k8s_delete_resource
-            - k8s_execute_command
-          requireApproval:
-            - k8s_apply_manifest
-            - k8s_delete_resource
-            - k8s_patch_resource
-            - k8s_create_resource
-            - k8s_create_resource_from_url
-            - k8s_execute_command
-            - k8s_annotate_resource
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
-          name: helm-tools-federated
-          toolNames:
-            - helm_list_releases
-            - helm_get_release
-            - helm_get_values
-            - helm_history
-            - helm_status
-      - type: McpServer
-        mcpServer:
-          kind: RemoteMCPServer
           name: kagent-grafana-mcp
           toolNames:
             - query_prometheus
             - query_loki_logs
+            - list_dashboards
+            - get_dashboard_by_uid
+            - search_dashboards
+            - get_datasource_by_uid
+            - get_prometheus_alerts
     systemMessage: |-
       You are cluster-agent — the Kubernetes operations specialist for services-amer cluster.
 
