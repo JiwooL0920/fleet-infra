@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-setup update-docs
+PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-draft blog-setup update-docs
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -31,6 +31,9 @@ help:
 	@echo "  blog-setup           - Show one-time setup instructions for blog-draft CI workflow"
 	@echo "  update-docs          - Sync jiwool0920.github.io component docs (incremental from watermark)"
 	@echo "  update-docs MODE=all - Full reconcile: regenerate all component pages + index/nav"
+	@echo "  docs-draft-blog      - Preview AI-drafted blog post to stdout (no PR)"
+	@echo "  blog-draft           - Draft blog post + open PR in jiwool0920.github.io"
+	@echo "                         Optional: make blog-draft RANGE=HEAD~3..HEAD"
 	@echo ""
 	@echo "Pre-commit Hooks:"
 	@echo "  precommit-install    - Install pre-commit hooks and required tools"
@@ -204,55 +207,36 @@ docs-draft:
 	fi; \
 	TMPFILE=$$(mktemp /tmp/docs-draft-XXXX.txt); \
 	printf "Review this git diff from the fleet-infra GitOps repository.\n\nIdentify which services changed (paths under apps/base/ and base/services/).\nFor each changed service, propose concise updates for:\n- README.md (service list / dependency layer)\n- CLAUDE.md (if architecture changed)\n- A new or updated docs/adr/ entry if this is a significant decision\n\nOutput proposed changes as markdown diffs or file sections.\nDo NOT apply them — the human will review.\n\n---\n%s\n" "$$CONTEXT" > "$$TMPFILE"; \
-	opencode run "Review the diff in the attached file and propose documentation updates." -f "$$TMPFILE"; \
+	opencode run "Review the diff in the attached file and propose documentation updates." \
+		-f "$$TMPFILE" \
+		--dangerously-skip-permissions \
+		< /dev/null; \
 	rm -f "$$TMPFILE"
 	@echo ""
 	@echo "Review the suggestions above and apply manually or with Cursor/opencode."
 
-# Draft a blog post for the most recent commit(s).
-# Output is printed to stdout for you to copy into docs/blog/posts/ in the blog repo.
+# Preview a blog post draft to stdout (no PR).
+# Useful for checking output before committing via 'make blog-draft'.
 docs-draft-blog:
-	@echo "Drafting blog post from recent commits..."
+	@echo "Drafting blog post preview from recent commits..."
 	@TMPFILE=$$(mktemp /tmp/blog-prompt-XXXX.txt); \
 	TODAY=$$(date '+%Y-%m-%d'); \
 	LOG=$$(git log -1 --format="commit %H%nauthor: %an%ndate: %ai%nsubject: %s%n%nbody:%n%b" 2>/dev/null); \
-	PATCH=$$(git diff HEAD~1 HEAD -- 'apps/base/*' 'base/services/*' 'docs/adr/*' 2>/dev/null | head -c 8000); \
+	PATCH=$$(git diff HEAD~1 HEAD -- 'apps/base/' 'base/services/' 'docs/adr/' 2>/dev/null | head -c 8192); \
 	printf "Write a MkDocs Material blog post for https://jiwool0920.github.io authored by Jiwoo Lee.\n\nCommit context:\n%s\n\nGit diff:\n%s\n\n---\nFrontmatter format:\n---\ndate: %s\ncategories:\n  - Infrastructure\n  - <Component>\ntags:\n  - <tags>\nauthors:\n  - jiwoo\n---\n\nRequirements:\n- 2-3 sentence intro then <!-- more --> fold\n- Mermaid diagrams where useful\n- Sections: Overview, Why This Change, Technical Details, Operational Impact\n- Tone: direct and practical\n- Output ONLY the markdown body\n" "$$LOG" "$$PATCH" "$$TODAY" > "$$TMPFILE"; \
-	opencode run "Write the blog post described in the attached file." -f "$$TMPFILE"; \
+	opencode run "Write the blog post described in the attached file." \
+		-f "$$TMPFILE" \
+		--dangerously-skip-permissions \
+		< /dev/null; \
 	rm -f "$$TMPFILE"
 	@echo ""
-	@echo "Copy the post above to: /Users/jiwoolee/Project/jiwool0920.github.io/docs/blog/posts/<date>-<slug>.md"
+	@echo "Happy with the output? Run 'make blog-draft' to branch the blog repo and open a PR."
 
-# One-time setup instructions for blog-draft CI workflow
-blog-setup:
-	@echo ""
-	@echo "=== blog-draft CI Workflow: One-Time Setup ==="
-	@echo ""
-	@echo "1. Create a fine-grained GitHub PAT for cross-repo PR creation:"
-	@echo "   - Go to: https://github.com/settings/tokens?type=beta"
-	@echo "   - Repository access: jiwool0920/jiwool0920.github.io (only)"
-	@echo "   - Permissions: Contents (read+write), Pull requests (read+write)"
-	@echo "   - Expiry: 90 days (set a calendar reminder to rotate)"
-	@echo ""
-	@echo "2. Add it as a fleet-infra Actions secret:"
-	@echo "   - Go to: https://github.com/jiwool0920/fleet-infra/settings/secrets/actions"
-	@echo "   - Name: BLOG_REPO_TOKEN"
-	@echo "   - Value: <the PAT from step 1>"
-	@echo ""
-	@echo "3. Add an LLM API key for opencode in CI (choose one):"
-	@echo "   - ANTHROPIC_API_KEY (recommended: claude-3-5-haiku-20241022 is cheapest)"
-	@echo "   - OPENAI_API_KEY    (gpt-4o-mini works well)"
-	@echo "   - Also in fleet-infra Actions secrets (same page as above)"
-	@echo ""
-	@echo "4. Add the 'blog-draft' label to jiwool0920.github.io:"
-	@echo "   - Go to: https://github.com/jiwool0920/jiwool0920.github.io/labels"
-	@echo "   - Create label: blog-draft (any color)"
-	@echo ""
-	@echo "5. Run 'make precommit-install' to install the new pre-push hook locally."
-	@echo ""
-	@echo "That's it. The workflow fires automatically on next push to main/develop"
-	@echo "that touches apps/base/, base/services/, or docs/adr/."
-	@echo ""
+# Draft a blog post and open a PR in jiwool0920.github.io (full automation).
+# Uses your local opencode config and gh authentication — no secrets needed.
+# Optional: override the git range with RANGE=HEAD~3..HEAD
+blog-draft:
+	@./scripts/blog-draft.sh $(RANGE)
 
 # Sync docs/projects/flux-infra in jiwool0920.github.io with the current state of
 # fleet-infra services. Reads a watermark from the blog repo to determine what changed.
