@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-setup
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-setup update-docs
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -29,6 +29,8 @@ help:
 	@echo "  docs-draft           - AI-draft README/ADR/CLAUDE updates for staged infra changes"
 	@echo "  docs-draft-blog      - AI-draft a blog post for the most recent commit(s)"
 	@echo "  blog-setup           - Show one-time setup instructions for blog-draft CI workflow"
+	@echo "  update-docs          - Sync jiwool0920.github.io component docs (incremental from watermark)"
+	@echo "  update-docs MODE=all - Full reconcile: regenerate all component pages + index/nav"
 	@echo ""
 	@echo "Pre-commit Hooks:"
 	@echo "  precommit-install    - Install pre-commit hooks and required tools"
@@ -251,6 +253,18 @@ blog-setup:
 	@echo "That's it. The workflow fires automatically on next push to main/develop"
 	@echo "that touches apps/base/, base/services/, or docs/adr/."
 	@echo ""
+
+# Sync docs/projects/flux-infra in jiwool0920.github.io with the current state of
+# fleet-infra services. Reads a watermark from the blog repo to determine what changed.
+# Opens a PR in jiwool0920.github.io for review before merging.
+#
+# Incremental (default): only services changed since last sync
+#   make update-docs
+#
+# Full reconcile: all enabled services + regenerate all index/architecture/nav pages
+#   make update-docs MODE=all
+update-docs:
+	@./scripts/update-docs.sh $(MODE)
 
 # ==============================================================================
 # Pre-commit Hooks
