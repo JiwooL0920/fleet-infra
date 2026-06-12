@@ -57,3 +57,83 @@ features:
 - feature: Remote source reference
   detail: Resources are fetched directly from the upstream GitHub release tag rather than vendored into
     the repository, keeping the diff surface minimal during version bumps
+operations:
+- scenario: CRD fetch fails due to GitHub rate limiting or network timeout
+  symptoms: 'Flux Kustomization `gateway-api-crds` shows `Ready: False` with message containing
+
+    `failed to fetch remote resource` or `context deadline exceeded`. The agentgateway
+
+    HelmRelease remains suspended waiting on its dependency.
+
+    '
+  steps:
+  - kubectl get kustomization gateway-api-crds -n flux-system -o yaml | grep -A5 'status:'
+  - kubectl logs -n flux-system deploy/kustomize-controller --since=10m | grep gateway-api-crds
+  - '# Verify GitHub connectivity from inside the cluster:'
+  - kubectl run curl-test --rm -it --image=curlimages/curl -- curl -sI https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml
+  - '# Force reconciliation after transient failure resolves:'
+  - flux reconcile kustomization gateway-api-crds --with-source
+- scenario: CRD version conflict with pre-existing installation
+  symptoms: 'Kustomization reports `invalid: metadata.resourceVersion: Invalid value` or
+
+    `the server could not find the requested resource` for specific CRD fields.
+
+    This occurs when another tool (Helm chart, manual kubectl apply) installed a
+
+    different version of Gateway API CRDs.
+
+    '
+  steps:
+  - '# Check existing CRD versions and their managing field owners:'
+  - kubectl get crd gateways.gateway.networking.k8s.io -o jsonpath='{.metadata.labels}'
+  - kubectl get crd gatewayclasses.gateway.networking.k8s.io -o yaml | grep -A3 'managedFields' | head
+    -20
+  - '# If owned by another manager, force Flux to take ownership:'
+  - kubectl annotate crd gatewayclasses.gateway.networking.k8s.io kustomize.toolkit.fluxcd.io/force=enabled
+    --overwrite
+  - kubectl annotate crd gateways.gateway.networking.k8s.io kustomize.toolkit.fluxcd.io/force=enabled
+    --overwrite
+  - kubectl annotate crd httproutes.gateway.networking.k8s.io kustomize.toolkit.fluxcd.io/force=enabled
+    --overwrite
+  - flux reconcile kustomization gateway-api-crds
+- scenario: Downstream agentgateway fails with "no matches for kind GatewayClass"
+  symptoms: 'The agentgateway HelmRelease shows `install retries exhausted` or
+
+    `no matches for kind "GatewayClass" in version "gateway.networking.k8s.io/v1"`.
+
+    The gateway-api-crds Kustomization may show Ready but CRDs are not actually registered.
+
+    '
+  steps:
+  - '# Verify CRDs are actually registered in the API server:'
+  - kubectl get crd | grep gateway.networking.k8s.io
+  - '# Check if the Kustomization applied successfully but CRDs failed silently:'
+  - kubectl get kustomization gateway-api-crds -n flux-system -o jsonpath='{.status.inventory.entries}'
+  - '# Verify the dependsOn chain is correctly wired:'
+  - kubectl get kustomization agentgateway -n flux-system -o jsonpath='{.spec.dependsOn}'
+  - '# If CRDs are missing, force a full reconciliation:'
+  - flux reconcile kustomization gateway-api-crds --with-source
+  - '# Wait for CRDs then retry downstream:'
+  - kubectl wait --for=condition=Established crd gatewayclasses.gateway.networking.k8s.io --timeout=60s
+  - flux reconcile kustomization agentgateway
+- scenario: CRD accidentally deleted despite prune false
+  symptoms: '`kubectl get gatewayclasses` returns `error: the server doesn''t have a resource type "gatewayclasses"`.
+
+    All existing Gateway and HTTPRoute resources vanish from the cluster. Flux logs show no deletion event
+
+    (deletion was manual or from another controller).
+
+    '
+  steps:
+  - '# Confirm CRDs are gone:'
+  - kubectl get crd | grep gateway.networking.k8s.io || echo 'No Gateway API CRDs found'
+  - '# Check Flux did not delete them (prune: false should prevent this):'
+  - kubectl logs -n flux-system deploy/kustomize-controller --since=1h | grep -i 'delete\|prune' | grep
+    gateway
+  - '# Re-apply immediately — downstream resources are already gone:'
+  - flux reconcile kustomization gateway-api-crds --with-source
+  - '# Verify restoration:'
+  - kubectl wait --for=condition=Established crd gatewayclasses.gateway.networking.k8s.io --timeout=120s
+  - '# Note: Custom resources (Gateways, HTTPRoutes) that existed are permanently lost. They must be re-created
+    by reconciling their owning Kustomizations:'
+  - flux reconcile kustomization agentgateway

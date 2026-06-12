@@ -80,3 +80,76 @@ architecture_diagrams:
     \    KAgent->>AGW: POST /api/generate (inference request)\n    AGW->>Ollama: Forward to :11434\n \
     \   Ollama->>Ollama: Run inference (CPU)\n    Ollama-->>AGW: Streaming response\n    AGW-->>KAgent:\
     \ Forward tokens"
+operations:
+- scenario: Model pull stalls during pod startup
+  symptoms: 'Pod stays in `Init` or `Running` but never becomes Ready. Container logs show repeated
+
+    `pulling manifest` or `downloading` lines with no progress. HelmRelease shows install
+
+    timeout after 10 minutes, retries exhausting.
+
+    '
+  steps:
+  - kubectl logs -n ollama deploy/ollama --follow | grep -i "pull\|download\|error"
+  - kubectl describe pod -n ollama -l app.kubernetes.io/name=ollama | grep -A5 "Events"
+  - kubectl exec -n ollama deploy/ollama -- wget -q --spider https://registry.ollama.ai && echo "Registry
+    reachable" || echo "Registry blocked"
+  - kubectl get events -n ollama --sort-by='.lastTimestamp' | tail -20
+  - kubectl get pvc -n ollama -o wide
+  - kubectl describe helmrelease ollama -n flux-system | grep -A10 "Status"
+- scenario: OOMKilled during model loading
+  symptoms: 'Pod restarts with `OOMKilled` reason. `kubectl describe pod` shows last termination
+
+    reason as OOMKilled. Model partially loads then process is killed by the kernel OOM killer.
+
+    Repeated CrashLoopBackOff with increasing backoff intervals.
+
+    '
+  steps:
+  - kubectl get pod -n ollama -l app.kubernetes.io/name=ollama -o jsonpath='{.items[0].status.containerStatuses[0].lastState.terminated.reason}'
+  - kubectl top pod -n ollama
+  - kubectl describe pod -n ollama -l app.kubernetes.io/name=ollama | grep -A3 "Last State"
+  - kubectl logs -n ollama deploy/ollama --previous | tail -50
+  - kubectl get configmap cluster-vars -n flux-system -o yaml | grep -i "OLLAMA_MEMORY"
+- scenario: PersistentVolumeClaim stuck in Pending
+  symptoms: 'Pod cannot schedule — stuck in `Pending` state. Events show `waiting for a volume to be created`
+
+    or `no persistent volumes available`. New deployment or cluster rebuild triggers this when
+
+    the storage provisioner is not yet ready.
+
+    '
+  steps:
+  - kubectl get pvc -n ollama
+  - kubectl describe pvc -n ollama
+  - kubectl get storageclass
+  - kubectl get events -n ollama --field-selector reason=ProvisioningFailed
+  - kubectl get pod -n ollama -o wide
+- scenario: Inference requests timing out through Agent Gateway
+  symptoms: 'kagent agents report timeout errors or empty responses. Direct curl to ollama service succeeds
+
+    but requests through `agentgateway-proxy.agentgateway-system.svc.cluster.local:9080` fail.
+
+    Agent Gateway logs show upstream timeout or connection refused.
+
+    '
+  steps:
+  - kubectl exec -n ollama deploy/ollama -- curl -s http://localhost:11434/api/tags
+  - kubectl run curl-test --rm -i --restart=Never --image=curlimages/curl -- curl -s -m 10 http://ollama.ollama.svc.cluster.local:11434/api/tags
+  - kubectl run curl-test2 --rm -i --restart=Never --image=curlimages/curl -- curl -s -m 10 http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080/api/tags
+  - kubectl logs -n agentgateway-system deploy/agentgateway-proxy --tail=50 | grep -i "ollama\|timeout\|error"
+  - kubectl get endpoints ollama -n ollama
+- scenario: Model not available after pod reschedule
+  symptoms: 'Pod restarts successfully but inference requests return `model not found` errors.
+
+    The model pull did not trigger on restart, or the PVC data is corrupted/empty.
+
+    Ollama API returns empty model list from `/api/tags`.
+
+    '
+  steps:
+  - kubectl exec -n ollama deploy/ollama -- curl -s http://localhost:11434/api/tags
+  - kubectl exec -n ollama deploy/ollama -- ls -la /root/.ollama/models/
+  - kubectl get pvc -n ollama -o jsonpath='{.items[0].status.phase}'
+  - kubectl logs -n ollama deploy/ollama | grep -i "pull\|model\|error"
+  - kubectl rollout restart deployment/ollama -n ollama

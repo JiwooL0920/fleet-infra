@@ -56,3 +56,95 @@ architecture_diagrams:
     \ G as Grafana\n\n    Git->>Flux: Push dashboard CRD manifest\n    Flux->>GC: Reconcile grafana-config\
     \ path\n    GC->>OP: CRD appears in cluster (any namespace)\n    OP->>G: Provision dashboard via internal\
     \ API\n    Note over OP,G: Continuous reconciliation reverts UI drift"
+operations:
+- scenario: HelmRelease stuck in "install retries exhausted"
+  symptoms: '`flux get helmreleases -n flux-system grafana-operator` shows `False` ready status with message
+
+    "install retries exhausted". Events show `HelmChart` reconciliation failing or image pull errors.
+
+    '
+  steps:
+  - kubectl get helmrelease grafana-operator -n flux-system -o yaml | grep -A5 'status:'
+  - kubectl get events -n flux-system --field-selector involvedObject.name=grafana-operator --sort-by=.lastTimestamp
+  - kubectl get helmchart -n flux-system | grep grafana-operator
+  - '# Check if OCI registry is reachable from cluster'
+  - kubectl run oci-test --rm -it --image=curlimages/curl -- curl -s https://ghcr.io/v2/grafana/helm-charts/grafana-operator/tags/list
+  - '# Force retry after fixing the root cause'
+  - flux suspend helmrelease grafana-operator -n flux-system
+  - flux resume helmrelease grafana-operator -n flux-system
+- scenario: Operator pod OOMKilled under CRD load
+  symptoms: 'Pod restarts with reason `OOMKilled` visible in `kubectl describe pod`. Increasing restart
+    count.
+
+    Dashboards stop reconciling during restart cycles. `kubectl top pod -n grafana-operator` shows
+
+    memory approaching the 256Mi limit.
+
+    '
+  steps:
+  - kubectl get pods -n grafana-operator -o wide
+  - kubectl describe pod -n grafana-operator -l app.kubernetes.io/name=grafana-operator | grep -A3 "Last
+    State"
+  - kubectl top pod -n grafana-operator
+  - '# Check how many CRDs the operator is watching'
+  - kubectl get grafanadashboards -A --no-headers | wc -l
+  - kubectl get grafanadatasources -A --no-headers | wc -l
+  - '# If CRD count is high, memory limit needs increasing in HelmRelease values'
+  - kubectl logs -n grafana-operator -l app.kubernetes.io/name=grafana-operator --previous --tail=50
+- scenario: Dashboards not appearing in Grafana after CRD creation
+  symptoms: '`GrafanaDashboard` CRs exist and show no error in their status, but dashboards are missing
+    from
+
+    the Grafana UI. Operator logs show "no matching Grafana instances found" or instanceSelector
+
+    mismatch warnings.
+
+    '
+  steps:
+  - kubectl get grafanadashboards -A -o custom-columns=NAME:.metadata.name,SYNCED:.status.conditions[0].status,MSG:.status.conditions[0].message
+  - '# Check operator logs for selector mismatch'
+  - kubectl logs -n grafana-operator -l app.kubernetes.io/name=grafana-operator --tail=100 | grep -i "instance"
+  - '# Verify Grafana instance labels match the instanceSelector in dashboards'
+  - kubectl get grafana -A --show-labels
+  - '# Compare with dashboard instanceSelector'
+  - kubectl get grafanadashboards -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.instanceSelector}{"\n"}{end}'
+  - '# Verify operator has RBAC to read CRDs in target namespace'
+  - kubectl auth can-i get grafanadashboards --as=system:serviceaccount:grafana-operator:grafana-operator
+    -A
+  see_also:
+  - docs/adr/012-grafana-operator-dashboard-as-code.md
+- scenario: CRD version conflict after operator upgrade
+  symptoms: 'After upgrading the operator chart, existing `GrafanaDashboard` CRs show validation errors.
+
+    `kubectl apply` on dashboard manifests fails with "unknown field" or schema validation errors.
+
+    Operator logs show "failed to reconcile" with conversion webhook errors.
+
+    '
+  steps:
+  - kubectl get crd grafanadashboards.grafana.integreatly.org -o jsonpath='{.spec.versions[*].name}'
+  - kubectl get crd grafanadashboards.grafana.integreatly.org -o jsonpath='{.status.storedVersions[*]}'
+  - '# Check if operator registered its webhook'
+  - kubectl get validatingwebhookconfigurations | grep grafana
+  - kubectl get mutatingwebhookconfigurations | grep grafana
+  - '# Inspect a failing CRD for schema issues'
+  - kubectl get grafanadashboards -A -o yaml | head -80
+  - '# If CRDs are stale, force Flux to reapply the chart (which bundles updated CRDs)'
+  - flux reconcile helmrelease grafana-operator -n flux-system --force
+- scenario: Operator cannot reach Grafana API endpoint
+  symptoms: 'Operator logs show repeated "connection refused" or "context deadline exceeded" errors when
+
+    attempting to sync dashboards. CRD status shows "failed to get Grafana instance" or HTTP 503.
+
+    Grafana pod itself is healthy but operator cannot connect.
+
+    '
+  steps:
+  - kubectl logs -n grafana-operator -l app.kubernetes.io/name=grafana-operator --tail=50 | grep -iE "refused|timeout|503"
+  - '# Verify Grafana service is resolvable from operator namespace'
+  - kubectl run dns-test --rm -it --image=busybox -n grafana-operator -- nslookup kube-prometheus-stack-grafana.kube-prometheus-stack.svc.cluster.local
+  - '# Check network policies that might block cross-namespace traffic'
+  - kubectl get networkpolicies -n kube-prometheus-stack
+  - kubectl get ciliumnetworkpolicies -n kube-prometheus-stack
+  - '# Verify Grafana admin credentials secret exists and is referenced correctly'
+  - kubectl get grafana -A -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.external.adminPassword}{"\n"}{end}'

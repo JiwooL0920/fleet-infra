@@ -74,3 +74,80 @@ architecture_diagrams:
     \        Pod->>Pod: SKIP (idempotent)\n    end\n    Note over Pod,SM: Repeats for each service credential\n\
     \    ESO->>SM: Poll secrets (ClusterSecretStore → :4566)\n    SM-->>ESO: Secret values\n    ESO->>K8s:\
     \ Create/update Kubernetes Secrets"
+operations:
+- scenario: Pod CrashLoopBackOff due to startup script failure
+  symptoms: 'Pod enters CrashLoopBackOff state. `kubectl logs` shows `set -euo pipefail` exiting on a
+    failed `awslocal` command. Common when LocalStack services are not yet healthy when startup scripts
+    execute.
+
+    '
+  steps:
+  - kubectl -n localstack logs deployment/localstack --previous | grep -A5 'CREATE\|ERROR'
+  - kubectl -n localstack describe pod -l app.kubernetes.io/name=localstack | grep -A10 'Events:'
+  - kubectl -n localstack get events --sort-by='.lastTimestamp' | grep -i localstack
+  - kubectl -n localstack exec deployment/localstack -- awslocal secretsmanager list-secrets --region
+    us-east-1
+  - '# If OOMKilled, check resource limits in cluster-vars ConfigMap vs actual usage:'
+  - kubectl -n localstack top pod
+- scenario: ExternalSecrets stuck in SecretSyncedError
+  symptoms: 'ExternalSecret resources show `SecretSyncedError` status. Services depending on secrets (Redis,
+    Grafana, etc.) fail to start because their Kubernetes Secrets are empty or missing. ClusterSecretStore
+    health check fails.
+
+    '
+  steps:
+  - kubectl get clustersecretstore -A
+  - kubectl get externalsecret -A -o wide | grep -v Synced
+  - kubectl -n localstack get svc localstack -o jsonpath='{.spec.clusterIP}'
+  - kubectl -n localstack exec deployment/localstack -- curl -s http://localhost:4566/_localstack/health
+    | python3 -m json.tool
+  - kubectl -n localstack exec deployment/localstack -- awslocal secretsmanager list-secrets --region
+    us-east-1 --output table
+  - '# Verify connectivity from ESO namespace:'
+  - kubectl -n external-secrets run debug --rm -it --image=curlimages/curl -- curl -s http://localstack.localstack.svc:4566/_localstack/health
+  see_also:
+  - docs/adr/005-localstack-external-secrets.md
+- scenario: Secrets lost after pod restart despite persistence
+  symptoms: 'After pod restart, `awslocal secretsmanager list-secrets` returns empty. ExternalSecrets
+    go into error state. Services that were previously healthy begin failing credential checks.
+
+    '
+  steps:
+  - kubectl -n localstack get pvc | grep localstack
+  - kubectl -n localstack describe pvc -l app.kubernetes.io/name=localstack
+  - kubectl -n localstack exec deployment/localstack -- ls -la /var/lib/localstack/state/
+  - kubectl -n localstack exec deployment/localstack -- printenv PERSISTENCE
+  - '# If PVC was recreated (lost data), trigger secret re-initialization:'
+  - kubectl -n localstack rollout restart deployment/localstack
+  - kubectl -n localstack rollout status deployment/localstack --timeout=120s
+  - kubectl -n localstack exec deployment/localstack -- awslocal secretsmanager list-secrets --region
+    us-east-1
+- scenario: GitHub PAT not propagating to Secrets Manager
+  symptoms: '`github/mcp/token` secret missing from LocalStack. gitops-agent pods fail to authenticate
+    with GitHub. Startup logs show `[SKIP] github/mcp/token — GITHUB_PAT env var not set`.
+
+    '
+  steps:
+  - kubectl -n localstack exec deployment/localstack -- printenv GITHUB_PAT
+  - kubectl -n localstack get secret github-pat-bootstrap -o jsonpath='{.data.token}' | base64 -d
+  - '# If secret doesn''t exist, create it:'
+  - '# make setup-github-secret'
+  - '# Then restart LocalStack to re-run startup scripts:'
+  - kubectl -n localstack rollout restart deployment/localstack
+  - kubectl -n localstack exec deployment/localstack -- awslocal secretsmanager get-secret-value --secret-id
+    github/mcp/token --region us-east-1
+- scenario: Readiness probe failing — services not healthy
+  symptoms: 'Pod stays in `0/1 Running` state. Readiness probe returns non-200 from `/_localstack/health`.
+    Downstream Flux Kustomizations time out waiting for LocalStack health check.
+
+    '
+  steps:
+  - kubectl -n localstack get pods -l app.kubernetes.io/name=localstack -o wide
+  - kubectl -n localstack exec deployment/localstack -- curl -s http://localhost:4566/_localstack/health
+  - 'kubectl -n localstack exec deployment/localstack -- curl -s http://localhost:4566/_localstack/health
+    | python3 -c "import sys,json; h=json.load(sys.stdin); [print(f''{k}: {v}'') for k,v in h.get(''services'',{}).items()]"'
+  - kubectl -n localstack logs deployment/localstack | grep -i 'error\|exception\|traceback' | tail -20
+  - '# Check if port 4566 is actually listening:'
+  - kubectl -n localstack exec deployment/localstack -- ss -tlnp | grep 4566
+  see_also:
+  - docs/adr/001-fine-grained-service-dependencies.md

@@ -97,3 +97,100 @@ architecture_diagrams:
     \    HI->>MA: Schedule decision task\n    MA->>WK: Dispatch task (long poll)\n    WK->>FE: RespondDecisionTaskCompleted\n\
     \    FE->>HI: Record decision\n    HI->>PG: Append history events\n    HI->>PG: Update visibility\
     \ (temporal_visibility db)"
+operations:
+- scenario: Schema migration job fails on upgrade
+  symptoms: 'HelmRelease stuck in `upgrade retries exhausted` state. Schema init-container or Job shows
+    `Error: failed to execute statement` or `pq: relation already exists`. Temporal server pods never
+    start because Helm upgrade never completes.
+
+    '
+  steps:
+  - kubectl get helmrelease temporal-server -n flux-system -o jsonpath='{.status.conditions[*].message}'
+  - kubectl get jobs -n temporal -l app.kubernetes.io/component=schema --sort-by=.metadata.creationTimestamp
+  - kubectl logs job/$(kubectl get jobs -n temporal -l app.kubernetes.io/component=schema -o jsonpath='{.items[-1].metadata.name}')
+    -n temporal
+  - kubectl exec -it postgresql-cluster-1 -n cnpg-system -- psql -U app -d temporal -c "SELECT * FROM
+    schema_version ORDER BY version_id DESC LIMIT 5;"
+  - kubectl exec -it postgresql-cluster-1 -n cnpg-system -- psql -U app -d temporal_visibility -c "SELECT
+    * FROM schema_version ORDER BY version_id DESC LIMIT 5;"
+  - '# If schema is corrupted, manually mark version and retry:'
+  - flux suspend helmrelease temporal-server -n flux-system
+  - kubectl delete jobs -n temporal -l app.kubernetes.io/component=schema
+  - flux resume helmrelease temporal-server -n flux-system
+  see_also:
+  - docs/adr/004-single-shared-postgresql-cluster.md
+- scenario: Frontend pods unable to connect to PostgreSQL
+  symptoms: 'Temporal frontend pods in CrashLoopBackOff with logs showing `failed to initialize system
+    namespace` or `unable to establish connection to SQL database`. ExternalSecret may show `SecretSyncedError`
+    condition.
+
+    '
+  steps:
+  - kubectl get externalsecret postgresql-cluster-app -n temporal -o jsonpath='{.status.conditions[*]}'
+    | jq .
+  - kubectl get secret postgresql-cluster-app -n temporal -o jsonpath='{.data.host}' | base64 -d
+  - kubectl get secret postgresql-cluster-app -n temporal -o jsonpath='{.data.password}' | base64 -d |
+    head -c5; echo '...'
+  - kubectl run pg-check --rm -it --image=postgres:16 -n temporal -- psql postgresql://app@postgresql-cluster-rw.cnpg-system.svc.cluster.local:5432/temporal
+    -c 'SELECT 1;'
+  - kubectl logs deployment/temporal-server-frontend -n temporal --tail=50 | grep -i 'persistence\|connection\|sql'
+  - kubectl get cluster postgresql-cluster -n cnpg-system -o jsonpath='{.status.phase}'
+  see_also:
+  - docs/adr/004-single-shared-postgresql-cluster.md
+- scenario: History service OOMKilled under workflow load
+  symptoms: 'History pods restarting with `OOMKilled` exit reason. `kubectl top pods -n temporal` shows
+    history pods approaching memory limits. Workflow tasks timing out or returning `RESOURCE_EXHAUSTED`
+    errors to workers.
+
+    '
+  steps:
+  - kubectl get pods -n temporal -l app.kubernetes.io/component=history -o wide
+  - kubectl describe pod -n temporal -l app.kubernetes.io/component=history | grep -A5 'Last State\|Limits\|Requests'
+  - kubectl top pods -n temporal -l app.kubernetes.io/component=history
+  - kubectl logs -n temporal -l app.kubernetes.io/component=history --previous --tail=100 | grep -i 'memory\|oom\|cache'
+  - '# Check workflow history event counts (large histories consume history service memory):'
+  - kubectl exec -it postgresql-cluster-1 -n cnpg-system -- psql -U app -d temporal -c "SELECT workflow_id,
+    COUNT(*) as event_count FROM executions GROUP BY workflow_id ORDER BY event_count DESC LIMIT 10;"
+- scenario: ExternalSecret not syncing credentials
+  symptoms: 'Secret `postgresql-cluster-app` missing or stale in the `temporal` namespace. ExternalSecret
+    status shows `SecretSyncedError` or `ready: false`. Temporal pods fail to authenticate to PostgreSQL.
+
+    '
+  steps:
+  - kubectl get externalsecret postgresql-cluster-app -n temporal
+  - kubectl describe externalsecret postgresql-cluster-app -n temporal | grep -A10 'Status:'
+  - kubectl get clustersecretstore localstack-secretstore -o jsonpath='{.status.conditions[*]}' | jq .
+  - kubectl logs -n external-secrets deployment/external-secrets --tail=50 | grep -i 'temporal\|postgresql-cluster-app'
+  - '# Verify secret exists in LocalStack:'
+  - kubectl exec -n localstack deployment/localstack -- awslocal secretsmanager get-secret-value --secret-id
+    cnpg/postgresql-cluster-app/username --query SecretString --output text
+  - '# Force resync:'
+  - kubectl annotate externalsecret postgresql-cluster-app -n temporal force-sync=$(date +%s) --overwrite
+- scenario: Temporal Web UI unreachable via IngressRoute
+  symptoms: 'Browsing `http://temporal.local` returns 404 or connection refused. Other IngressRoutes on
+    the same Traefik instance work correctly. Temporal server pods are running and healthy.
+
+    '
+  steps:
+  - kubectl get ingressroute temporal-web -n temporal -o yaml | grep -A10 'routes:'
+  - kubectl get svc temporal-server-web -n temporal
+  - kubectl get endpoints temporal-server-web -n temporal
+  - kubectl port-forward svc/temporal-server-web -n temporal 8080:8080 &
+  - curl -s -o /dev/null -w '%{http_code}' http://localhost:8080
+  - '# If port-forward works but IngressRoute doesn''t, check Traefik routing:'
+  - kubectl logs -n traefik deployment/traefik --tail=100 | grep -i 'temporal'
+- scenario: Task queue backlog growing with no workers processing
+  symptoms: 'Temporal Web UI shows increasing pending task count on task queues. Worker pods are running
+    but not polling. Application workers report `context deadline exceeded` or `server is not accepting
+    new requests`.
+
+    '
+  steps:
+  - kubectl get pods -n temporal -l app.kubernetes.io/component=matching
+  - kubectl logs -n temporal -l app.kubernetes.io/component=matching --tail=50 | grep -i 'error\|queue\|dispatch'
+  - kubectl logs -n temporal -l app.kubernetes.io/component=frontend --tail=50 | grep -i 'rate\|limit\|reject'
+  - '# Check if frontend is reachable from within the cluster:'
+  - kubectl run grpc-check --rm -it --image=fullstorydev/grpcurl -n temporal -- -plaintext temporal-server-frontend.temporal.svc.cluster.local:7233
+    temporal.api.workflowservice.v1.WorkflowService/GetSystemInfo
+  - '# Verify matching service can reach history:'
+  - kubectl logs -n temporal -l app.kubernetes.io/component=matching --tail=100 | grep -i 'history\|unavailable\|connection'

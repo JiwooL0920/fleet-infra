@@ -1,29 +1,3 @@
-features:
-- detail: kubernetesCRD with allowCrossNamespace enables a single Traefik instance to route to services
-    in any namespace without per-namespace ingress controllers or explicit grants
-  feature: Cross-namespace CRD routing
-- detail: Both IngressRoute CRDs and standard Ingress resources are served simultaneously, allowing gradual
-    migration and third-party chart compatibility
-  feature: Dual provider mode
-- detail: requiredDuringSchedulingIgnoredDuringExecution on hostname topology ensures replicas never co-locate
-    on the same node, eliminating single-node failure as a traffic black hole
-  feature: Pod anti-affinity (HA)
-- detail: Structured JSON access logs keep general fields but explicitly redact Authorization, Cookie,
-    and Proxy-Authorization headers — queryable without leaking credentials into log aggregation
-  feature: JSON access logs with header redaction
-- detail: Ports 30080 and 30443 are statically assigned for Kind cluster compatibility, giving the host
-    machine deterministic ingress endpoints without cloud LoadBalancer provisioning
-  feature: NodePort fixed-port binding
-- detail: Dashboard enabled with insecure mode explicitly disabled — accessible only through authenticated
-    IngressRoute rather than an open internal port
-  feature: Secure dashboard
-- detail: Version check and anonymous usage reporting disabled via globalArguments, preventing unexpected
-    outbound traffic from the cluster and eliminating startup latency from DNS resolution to Traefik's
-    telemetry endpoints
-  feature: Telemetry suppression
-- detail: Dedicated ping endpoint enabled for liveness/readiness probes and Flux healthCheck verification
-    independent of traffic-serving ports
-  feature: Health ping endpoint
 intro: '[Traefik](https://traefik.io/traefik/) ([GitHub](https://github.com/traefik/traefik)) is a cloud-native
   reverse proxy and ingress controller designed for dynamic service discovery in container orchestrators.
   Unlike Nginx Ingress which relies on annotation-heavy Ingress resources and periodic config reloads,
@@ -65,3 +39,132 @@ purpose_rationale: '**Why Traefik over Nginx Ingress or Envoy:** The platform ro
   complexity and resource cost for a local development cluster.
 
   '
+features:
+- detail: kubernetesCRD with allowCrossNamespace enables a single Traefik instance to route to services
+    in any namespace without per-namespace ingress controllers or explicit grants
+  feature: Cross-namespace CRD routing
+- detail: Both IngressRoute CRDs and standard Ingress resources are served simultaneously, allowing gradual
+    migration and third-party chart compatibility
+  feature: Dual provider mode
+- detail: requiredDuringSchedulingIgnoredDuringExecution on hostname topology ensures replicas never co-locate
+    on the same node, eliminating single-node failure as a traffic black hole
+  feature: Pod anti-affinity (HA)
+- detail: Structured JSON access logs keep general fields but explicitly redact Authorization, Cookie,
+    and Proxy-Authorization headers — queryable without leaking credentials into log aggregation
+  feature: JSON access logs with header redaction
+- detail: Ports 30080 and 30443 are statically assigned for Kind cluster compatibility, giving the host
+    machine deterministic ingress endpoints without cloud LoadBalancer provisioning
+  feature: NodePort fixed-port binding
+- detail: Dashboard enabled with insecure mode explicitly disabled — accessible only through authenticated
+    IngressRoute rather than an open internal port
+  feature: Secure dashboard
+- detail: Version check and anonymous usage reporting disabled via globalArguments, preventing unexpected
+    outbound traffic from the cluster and eliminating startup latency from DNS resolution to Traefik's
+    telemetry endpoints
+  feature: Telemetry suppression
+- detail: Dedicated ping endpoint enabled for liveness/readiness probes and Flux healthCheck verification
+    independent of traffic-serving ports
+  feature: Health ping endpoint
+operations:
+- scenario: Pod stuck Pending due to anti-affinity conflict
+  symptoms: 'Traefik pod remains in `Pending` state. `kubectl describe pod` shows:
+
+    `0/N nodes are available: N node(s) didn''t match pod anti-affinity rules`
+
+    This occurs when replica count exceeds available nodes (common in single-node Kind).
+
+    '
+  steps:
+  - kubectl get pods -n traefik -l app.kubernetes.io/name=traefik
+  - kubectl describe pod -n traefik -l app.kubernetes.io/name=traefik | grep -A5 Events
+  - kubectl get nodes -o wide
+  - '# If single-node cluster: reduce replica count in cluster-vars ConfigMap or temporarily patch anti-affinity'
+  - kubectl get configmap cluster-vars -n flux-system -o yaml | grep TRAEFIK_REPLICA_COUNT
+  - '# For Kind (single node), set TRAEFIK_REPLICA_COUNT=1 in cluster-vars and reconcile'
+  - flux reconcile kustomization traefik --with-source -n flux-system
+- scenario: HelmRelease reconciliation failed
+  symptoms: '`flux get helmreleases -n flux-system` shows traefik with `Ready=False`.
+
+    Typical messages: `Helm upgrade failed: ...`, `values don''t meet the specifications`,
+
+    or chart version not found in repository.
+
+    '
+  steps:
+  - flux get helmreleases -n flux-system | grep traefik
+  - kubectl describe helmrelease traefik -n flux-system | tail -30
+  - kubectl get helmrepository traefik -n flux-system -o yaml | grep -A5 status
+  - '# Verify chart version exists in upstream repo'
+  - helm repo add traefik-upstream https://helm.traefik.io/traefik && helm search repo traefik-upstream/traefik
+    --versions | head -10
+  - '# Check variable substitution resolved correctly'
+  - kubectl get configmap cluster-vars -n flux-system -o yaml | grep TRAEFIK
+  - '# Force reconciliation after fixing'
+  - flux reconcile helmrelease traefik -n flux-system
+- scenario: IngressRoutes not routing traffic (cross-namespace)
+  symptoms: 'HTTP requests return 404 despite IngressRoute existing. `kubectl get ingressroute -A` shows
+
+    the route is created but Traefik dashboard shows no corresponding router entry.
+
+    '
+  steps:
+  - kubectl get ingressroute -A
+  - '# Verify Traefik is watching the target namespace (CRD provider)'
+  - kubectl logs -n traefik -l app.kubernetes.io/name=traefik --tail=50 | grep -i 'error\|warn\|skip'
+  - '# Check if IngressRoute references a service in another namespace correctly'
+  - kubectl get ingressroute <route-name> -n <route-namespace> -o yaml | grep -A3 services
+  - '# Verify the backend service and port exist'
+  - kubectl get svc -A | grep <backend-service>
+  - '# Check Traefik RBAC can read IngressRoutes across namespaces'
+  - kubectl get clusterrole -l app.kubernetes.io/name=traefik -o yaml | grep -A5 ingressroute
+  see_also:
+  - docs/adr/009-traefik-ingress.md
+- scenario: NodePort unreachable from host on Kind
+  symptoms: '`curl localhost:30080` returns connection refused despite Traefik pods running and ready.
+
+    Service shows correct NodePort allocation in `kubectl get svc -n traefik`.
+
+    '
+  steps:
+  - kubectl get svc -n traefik -o wide
+  - kubectl get pods -n traefik -o wide
+  - '# Verify Kind cluster has port mappings configured (kind-config extraPortMappings)'
+  - docker ps --format '{{.Names}} {{.Ports}}' | grep kind
+  - '# Check if container port matches NodePort expectations'
+  - docker port $(docker ps -q --filter name=kind-control-plane) | grep 30080
+  - '# If no port mapping exists, the Kind config needs extraPortMappings for 30080 and 30443'
+  - '# Test connectivity from inside the cluster'
+  - kubectl run curl-test --rm -i --restart=Never --image=curlimages/curl -- curl -s http://traefik.traefik.svc:8000
+- scenario: Traefik CrashLoopBackOff on startup
+  symptoms: 'Pod repeatedly crashes with `CrashLoopBackOff`. Logs show entrypoint binding errors
+
+    like `listen tcp :8000: bind: address already in use` or invalid flag errors after chart upgrade.
+
+    '
+  steps:
+  - kubectl logs -n traefik -l app.kubernetes.io/name=traefik --previous --tail=100
+  - '# Check for duplicate entrypoint definitions (additionalArguments conflicting with ports config)'
+  - kubectl get helmrelease traefik -n flux-system -o jsonpath='{.spec.values.additionalArguments}'
+  - kubectl get helmrelease traefik -n flux-system -o jsonpath='{.spec.values.ports}'
+  - '# Look for port conflicts with other pods on the same node'
+  - kubectl get pods -A -o wide | grep $(kubectl get pod -n traefik -l app.kubernetes.io/name=traefik
+    -o jsonpath='{.items[0].spec.nodeName}')
+  - '# If flag errors after chart upgrade, check chart changelog for removed/renamed arguments'
+  - helm show values traefik/traefik --version $(kubectl get helmrelease traefik -n flux-system -o jsonpath='{.spec.chart.spec.version}')
+    | head -50
+- scenario: Flux health check timeout for Traefik Kustomization
+  symptoms: '`flux get kustomizations -n flux-system` shows traefik with `Ready=False` and message
+
+    `Health check failed after 3m0s: Deployment/traefik/traefik not ready`.
+
+    '
+  steps:
+  - flux get kustomizations -n flux-system | grep traefik
+  - kubectl get deployment traefik -n traefik -o wide
+  - kubectl rollout status deployment/traefik -n traefik --timeout=30s
+  - kubectl get events -n traefik --sort-by=.lastTimestamp | tail -20
+  - '# Check if HelmRelease is stuck (Kustomization waits for deployment, which waits for HelmRelease)'
+  - flux get helmreleases -n flux-system | grep traefik
+  - '# If deployment exists but replicas not ready, check pod-level issues'
+  - kubectl describe deployment traefik -n traefik | grep -A10 Conditions
+  - kubectl get pods -n traefik -l app.kubernetes.io/name=traefik -o yaml | grep -A5 containerStatuses

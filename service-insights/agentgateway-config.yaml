@@ -80,3 +80,67 @@ architecture_diagrams:
     \    GW->>OTEL: Export span (OTLP gRPC, 100% sampling)\n    GW->>Backend: Proxy request with trace\
     \ headers\n    Backend-->>GW: Response\n    GW-->>Client: Response\n    GW->>OTEL: Export response\
     \ span"
+operations:
+- scenario: Gateway stuck in NotAccepted state after Kustomization applies
+  symptoms: 'Flux reports the Kustomization as healthy (YAML applied), but `kubectl get gateway agentgateway-proxy
+    -n agentgateway-system` shows no `Accepted` or `Programmed` conditions, or conditions show `False`.
+    The `agentgateway` controller pod may not be running or may not recognize the Gateway resource.
+
+    '
+  steps:
+  - kubectl get gateway agentgateway-proxy -n agentgateway-system -o yaml | grep -A 20 'status:'
+  - kubectl get pods -n agentgateway-system -l app.kubernetes.io/name=agentgateway
+  - kubectl logs -n agentgateway-system -l app.kubernetes.io/name=agentgateway --tail=50
+  - kubectl get gatewayclass agentgateway -o yaml | grep -A 10 'status:'
+  - kubectl get crd agentgatewayparameters.agentgateway.dev -o jsonpath='{.metadata.creationTimestamp}'
+- scenario: Kustomization fails with "no matches for kind AgentgatewayParameters"
+  symptoms: 'Flux Kustomization `agentgateway-config` shows `ReconciliationFailed` with error containing
+    `no matches for kind "AgentgatewayParameters" in version "agentgateway.dev/v1alpha1"`. The `dependsOn`
+    ordering should prevent this, but may occur if the upstream `agentgateway` HelmRelease failed silently.
+
+    '
+  steps:
+  - kubectl get kustomization agentgateway -n flux-system -o jsonpath='{.status.conditions[*].message}'
+  - kubectl get helmrelease -n agentgateway-system -o wide
+  - kubectl get crd | grep agentgateway
+  - flux reconcile kustomization agentgateway --with-source -n flux-system
+  - kubectl get kustomization agentgateway-config -n flux-system -o jsonpath='{.status.conditions[*].message}'
+- scenario: Tracing policy not producing spans in Jaeger
+  symptoms: 'Agent traffic flows correctly through the gateway but no traces appear in Jaeger for `agentgateway-proxy`
+    service. The `otel-tracing` AgentgatewayPolicy may not be attached, or the collector endpoint is unreachable
+    from the gateway pod.
+
+    '
+  steps:
+  - kubectl get agentgatewaypolicy otel-tracing -n agentgateway-system -o yaml | grep -A 10 'status:'
+  - kubectl exec -n agentgateway-system deploy/agentgateway-proxy -- wget -qO- --spider http://opentelemetry-collector.opentelemetry.svc.cluster.local:4317
+    2>&1 || true
+  - kubectl get referencegrant agentgateway-to-otel -n opentelemetry -o yaml
+  - kubectl get svc opentelemetry-collector -n opentelemetry
+  - kubectl logs -n agentgateway-system -l app.kubernetes.io/name=agentgateway --tail=100 | grep -i 'otel\|trace\|export'
+- scenario: Health check timeout causing Kustomization to report not ready
+  symptoms: '`flux get kustomization agentgateway-config` shows `Health check failed after 5m0s timeout`
+    referencing the `agentgateway-proxy` Gateway health check. The Gateway resource exists but its status
+    conditions are not satisfying the Flux health check.
+
+    '
+  steps:
+  - kubectl get gateway agentgateway-proxy -n agentgateway-system -o jsonpath='{.status.conditions}' |
+    jq .
+  - kubectl get agentgatewayparameters agentgateway-proxy-params -n agentgateway-system -o yaml | grep
+    -A 5 'status:'
+  - kubectl get endpoints -n agentgateway-system
+  - kubectl describe gateway agentgateway-proxy -n agentgateway-system | tail -30
+  - flux reconcile kustomization agentgateway-config -n flux-system
+- scenario: ReferenceGrant deleted or misconfigured blocking cross-namespace tracing
+  symptoms: 'The `otel-tracing` AgentgatewayPolicy shows a status condition indicating the backend reference
+    is not permitted. Tracing stops working but traffic routing continues normally since tracing is a
+    sidecar concern.
+
+    '
+  steps:
+  - kubectl get referencegrant -n opentelemetry
+  - kubectl get agentgatewaypolicy otel-tracing -n agentgateway-system -o jsonpath='{.status}' | jq .
+  - kubectl get referencegrant agentgateway-to-otel -n opentelemetry -o yaml
+  - flux reconcile kustomization agentgateway-config -n flux-system
+  - kubectl get referencegrant agentgateway-to-otel -n opentelemetry -o jsonpath='{.spec}' | jq .

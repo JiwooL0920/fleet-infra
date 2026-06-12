@@ -44,3 +44,60 @@ architecture_diagrams:
     \ redis-sentinel-ns[redis-sentinel namespace]\n        RS[Redis Sentinel<br/>StatefulSet]\n    end\n\
     \n    TR -->|entryPoint: web| IR\n    IR -->|port: 8080| SVC\n    SVC -->|targetPort: 5540| DEP\n\
     \    DEP -->|dependsOn| RS"
+operations:
+- scenario: Pod failing readiness probe on startup
+  symptoms: 'Pod stuck in `0/1 Running` state. Events show `Readiness probe failed: Get "http://10.x.x.x:5540/":
+    dial tcp connection refused`. Service receives no traffic.
+
+    '
+  steps:
+  - kubectl describe pod -l app=redisinsight -n redisinsight | grep -A5 "Conditions"
+  - kubectl logs -l app=redisinsight -n redisinsight --tail=50
+  - kubectl get events -n redisinsight --sort-by=.lastTimestamp | tail -20
+  - kubectl get deployment redisinsight -n redisinsight -o jsonpath='{.spec.template.spec.containers[0].resources}'
+- scenario: RedisInsight UI unreachable via redis.local
+  symptoms: 'Browser returns 404 or connection timeout when accessing `http://redis.local`. Pod and Service
+    are healthy. Traefik access logs show no matching route.
+
+    '
+  steps:
+  - kubectl get ingressroute redisinsight -n redisinsight -o yaml
+  - kubectl get endpoints redisinsight -n redisinsight
+  - kubectl logs -l app.kubernetes.io/name=traefik -n traefik --tail=30 | grep redis
+  - kubectl port-forward svc/redisinsight 8080:8080 -n redisinsight
+  - curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/
+- scenario: Cannot connect to Redis from RedisInsight UI
+  symptoms: 'RedisInsight UI loads but adding a Redis connection fails with "Error: connect ECONNREFUSED"
+    or "NOAUTH Authentication required". Database list remains empty.
+
+    '
+  steps:
+  - kubectl exec -it deploy/redisinsight -n redisinsight -- wget -qO- http://localhost:5540/api/databases
+    || true
+  - kubectl get statefulset redis-sentinel-node -n redis-sentinel
+  - kubectl exec -it redis-sentinel-node-0 -n redis-sentinel -c sentinel -- redis-cli -p 26379 sentinel
+    masters
+  - kubectl exec -it redis-sentinel-node-0 -n redis-sentinel -c redis -- redis-cli -p 6379 ping
+- scenario: Flux Kustomization stuck due to healthCheck failure
+  symptoms: '`flux get kustomization redisinsight` shows `Health check failed` or `dependency ''flux-system/redis-sentinel''
+    is not ready`. Deployment never reconciles.
+
+    '
+  steps:
+  - flux get kustomization redisinsight
+  - flux get kustomization redis-sentinel
+  - kubectl get statefulset redis-sentinel-node -n redis-sentinel -o jsonpath='{.status.readyReplicas}'
+  - kubectl get deployment redisinsight -n redisinsight -o jsonpath='{.status.conditions[?(@.type=="Available")].status}'
+  - flux reconcile kustomization redisinsight --with-source
+  see_also:
+  - docs/adr/001-fine-grained-service-dependencies.md
+- scenario: OOMKilled during heavy query visualization
+  symptoms: 'Pod restarts with `reason: OOMKilled` in events. `kubectl top pod` shows memory spike before
+    restart. Last container exit code 137.
+
+    '
+  steps:
+  - kubectl get events -n redisinsight --field-selector reason=OOMKilling --sort-by=.lastTimestamp
+  - kubectl top pod -l app=redisinsight -n redisinsight
+  - kubectl get deployment redisinsight -n redisinsight -o jsonpath='{.spec.template.spec.containers[0].resources.limits.memory}'
+  - kubectl logs -l app=redisinsight -n redisinsight --previous --tail=30

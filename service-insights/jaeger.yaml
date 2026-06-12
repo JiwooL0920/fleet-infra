@@ -64,3 +64,79 @@ architecture_diagrams:
     \ otel-ns[opentelemetry namespace]\n        OTEL[OpenTelemetry Collector]\n    end\n\n    HR -->|manages|\
     \ AIO\n    AIO --- SVC_QUERY\n    AIO --- SVC_COLLECTOR\n    OTEL -->|OTLP gRPC :4317| SVC_COLLECTOR\n\
     \    TRAEFIK -->|\"Host(jaeger.local) :16686\"| SVC_QUERY\n    IR -->|configures route| TRAEFIK"
+operations:
+- scenario: Traces not appearing in Jaeger UI
+  symptoms: 'Applications are instrumented and sending to OTel Collector, but Jaeger UI shows no services
+
+    or traces. OTel Collector logs may show `connection refused` or `context deadline exceeded`
+
+    when exporting to Jaeger.
+
+    '
+  steps:
+  - kubectl get deployment jaeger -n jaeger -o wide
+  - kubectl logs deployment/jaeger -n jaeger --tail=50 | grep -i 'otlp\|listen\|error'
+  - kubectl get svc -n jaeger -o wide
+  - kubectl exec -n opentelemetry-collector deploy/opentelemetry-collector -- wget -qO- --spider http://jaeger.jaeger.svc.cluster.local:4318/v1/traces
+    || echo 'OTLP HTTP unreachable'
+  - kubectl port-forward -n jaeger svc/jaeger-query 16686:16686 & curl -s http://localhost:16686/api/services
+    | jq .
+  - kubectl get kustomization jaeger -n flux-system -o jsonpath='{.status.conditions[*].message}'
+  see_also:
+  - docs/adr/010-opentelemetry-collector.md
+- scenario: Jaeger pod OOMKilled
+  symptoms: 'Pod restarts with reason `OOMKilled`. `kubectl describe pod` shows last termination due to
+
+    memory limit exceeded. All stored traces are lost after restart.
+
+    '
+  steps:
+  - kubectl get pod -n jaeger -l app.kubernetes.io/name=jaeger -o jsonpath='{.items[*].status.containerStatuses[*].lastState.terminated.reason}'
+  - kubectl top pod -n jaeger
+  - kubectl logs deployment/jaeger -n jaeger --previous --tail=100 | grep -i 'memory\|oom\|alloc'
+  - kubectl get helmrelease jaeger -n flux-system -o jsonpath='{.spec.values.allInOne.resources}' | jq
+    .
+  - kubectl get configmap cluster-vars -n flux-system -o jsonpath='{.data.JAEGER_MEMORY_LIMIT}'
+- scenario: IngressRoute not routing to Jaeger UI
+  symptoms: 'Browsing `http://jaeger.local` returns 404 or connection refused. Traefik dashboard shows
+
+    no route for `jaeger.local` or the route is marked as unhealthy.
+
+    '
+  steps:
+  - kubectl get ingressroute jaeger-ui -n jaeger -o yaml
+  - kubectl get svc jaeger-query -n jaeger -o jsonpath='{.spec.ports[*]}'
+  - kubectl get endpoints jaeger-query -n jaeger
+  - kubectl logs -n traefik deploy/traefik --tail=50 | grep -i 'jaeger\|error\|no endpoint'
+  - kubectl get kustomization traefik-config -n flux-system -o jsonpath='{.status.conditions[*].message}'
+- scenario: Flux Kustomization stuck waiting on health check
+  symptoms: '`kubectl get kustomization jaeger -n flux-system` shows `Health check failed` or
+
+    `HealthCheckFailed`. Downstream kustomization `opentelemetry-collector` is blocked in
+
+    `dependency not ready` state.
+
+    '
+  steps:
+  - kubectl get kustomization jaeger -n flux-system -o jsonpath='{.status.conditions[?(@.type=="Ready")]}'
+    | jq .
+  - kubectl get deployment jaeger -n jaeger -o jsonpath='{.status.conditions[*]}' | jq .
+  - kubectl get pods -n jaeger -l app.kubernetes.io/name=jaeger -o wide
+  - kubectl describe deployment jaeger -n jaeger | grep -A5 'Conditions\|Events'
+  - kubectl get kustomization opentelemetry-collector -n flux-system -o jsonpath='{.status.conditions[?(@.type=="Ready")].message}'
+  see_also:
+  - docs/adr/010-opentelemetry-collector.md
+- scenario: HelmRelease upgrade failure
+  symptoms: '`kubectl get helmrelease jaeger -n flux-system` shows `upgrade retries exhausted` or
+
+    `install retries exhausted`. Flux events show Helm operation timeout after 10m.
+
+    '
+  steps:
+  - kubectl get helmrelease jaeger -n flux-system -o jsonpath='{.status.conditions[*]}' | jq .
+  - kubectl get events -n flux-system --field-selector involvedObject.name=jaeger --sort-by='.lastTimestamp'
+    | tail -20
+  - kubectl logs -n flux-system deploy/helm-controller --tail=100 | grep 'jaeger'
+  - kubectl get helmrepository jaegertracing -n flux-system -o jsonpath='{.status.conditions[*]}' | jq
+    .
+  - flux suspend helmrelease jaeger -n flux-system && flux resume helmrelease jaeger -n flux-system

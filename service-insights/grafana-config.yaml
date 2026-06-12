@@ -60,3 +60,58 @@ architecture_diagrams:
     \ substitute| CV\n    FK -->|deploys| GR\n    GO -->|watches/reconciles| GR\n    GR -->|external.url\
     \ :80| GS\n    GR -->|adminPassword, adminUser| SEC\n    GD -->|instanceSelector<br>dashboards: grafana|\
     \ GR"
+operations:
+- scenario: Grafana CR stuck in failing state — operator cannot reach external instance
+  symptoms: '`kubectl get grafana grafana -n monitoring` shows status with error message like
+
+    `Could not connect to Grafana instance` or `401 Unauthorized`.
+
+    Operator logs show repeated reconciliation failures.
+
+    '
+  steps:
+  - kubectl get grafana grafana -n monitoring -o yaml | grep -A 20 status
+  - kubectl logs -n grafana-operator -l app.kubernetes.io/name=grafana-operator --tail=50
+  - kubectl get svc monitoring-kube-prometheus-stack-grafana -n monitoring
+  - kubectl run curl-test --rm -it --image=curlimages/curl --restart=Never -- curl -s -o /dev/null -w
+    '%{http_code}' http://monitoring-kube-prometheus-stack-grafana.monitoring.svc:80/api/health
+  - kubectl get secret grafana-admin-credentials -n monitoring -o jsonpath='{.data.admin-user}' | base64
+    -d
+  - kubectl get secret grafana-admin-credentials -n monitoring -o jsonpath='{.data.admin-password}' |
+    base64 -d
+- scenario: Admin credentials secret missing or malformed
+  symptoms: 'Grafana Operator logs report `secret "grafana-admin-credentials" not found` or
+
+    `key "admin-password" not found in secret`. GrafanaDashboard CRs downstream remain
+
+    in pending state.
+
+    '
+  steps:
+  - kubectl get secret grafana-admin-credentials -n monitoring
+  - kubectl get secret grafana-admin-credentials -n monitoring -o jsonpath='{.data}' | jq 'keys'
+  - kubectl get externalsecrets -n monitoring -l app=grafana-config
+  - kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets --tail=30 | grep grafana
+- scenario: Flux Kustomization not reconciling after git push
+  symptoms: '`flux get kustomization grafana-config` shows `Applied revision` stuck at an old commit hash,
+
+    or status shows `dependency ''flux-system/grafana-operator'' is not ready`.
+
+    '
+  steps:
+  - flux get kustomization grafana-config
+  - flux get kustomization grafana-operator
+  - kubectl get kustomization grafana-config -n flux-system -o jsonpath='{.status.conditions[*].message}'
+  - flux reconcile kustomization grafana-config --with-source
+- scenario: Downstream dashboards not provisioning despite healthy Grafana CR
+  symptoms: '`kubectl get grafanadashboards -n monitoring` shows dashboards with `No matching instances
+    found`
+
+    or empty `instanceSelector` resolution. The Grafana UI shows no new dashboards appearing.
+
+    '
+  steps:
+  - kubectl get grafana grafana -n monitoring -o jsonpath='{.metadata.labels}'
+  - kubectl get grafanadashboards -n monitoring -o yaml | grep -A 3 instanceSelector
+  - kubectl logs -n grafana-operator -l app.kubernetes.io/name=grafana-operator --tail=50 | grep -i "instance"
+  - kubectl get grafana -n monitoring --show-labels

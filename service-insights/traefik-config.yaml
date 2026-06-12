@@ -68,3 +68,67 @@ architecture_diagrams:
     \    MW->>MW: Validate against htpasswd\n    Note over MW: Set X-WebAuth-User header\n    Note over\
     \ MW: Strip Authorization header (removeHeader: true)\n    MW->>D: Forward authenticated request\n\
     \    D->>C: 200 Dashboard response"
+operations:
+- scenario: Dashboard returns 401 despite correct credentials
+  symptoms: 'Accessing `traefik.local` returns HTTP 401. Credentials known to be correct.
+
+    The Secret may be empty or contain stale htpasswd data.
+
+    '
+  steps:
+  - kubectl get externalsecret traefik-dashboard-credentials -n traefik -o jsonpath='{.status.conditions[*].message}'
+  - kubectl get secret traefik-dashboard-credentials -n traefik -o jsonpath='{.data.users}' | base64 -d
+  - kubectl get clustersecretstore localstack-secretstore -o jsonpath='{.status.conditions[*].message}'
+  - kubectl annotate externalsecret traefik-dashboard-credentials -n traefik force-sync=$(date +%s) --overwrite
+  - kubectl get externalsecret traefik-dashboard-credentials -n traefik -w
+- scenario: ExternalSecret stuck in SecretSyncedError
+  symptoms: '`kubectl get externalsecret -n traefik` shows `SecretSyncedError` status.
+
+    Downstream services (jaeger, scylla-cluster) may be blocked waiting for traefik-config readiness.
+
+    '
+  steps:
+  - kubectl get externalsecret traefik-dashboard-credentials -n traefik -o yaml | grep -A5 'conditions'
+  - kubectl get clustersecretstore localstack-secretstore -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  - kubectl logs -n external-secrets -l app.kubernetes.io/name=external-secrets --tail=50 | grep traefik
+  - kubectl get pods -n localstack -o wide
+  - kubectl exec -n localstack deploy/localstack -- awslocal secretsmanager get-secret-value --secret-id
+    traefik/dashboard/credentials/htpasswd
+- scenario: IngressRoute not matching requests
+  symptoms: 'Requests to `traefik.local` return 404 instead of reaching the dashboard.
+
+    Traefik access logs show no match for the Host header.
+
+    '
+  steps:
+  - kubectl get ingressroute traefik-dashboard -n traefik -o yaml
+  - kubectl get middleware dashboard-auth -n traefik -o yaml
+  - kubectl port-forward -n traefik svc/traefik 9000:9000
+  - curl -s http://localhost:9000/api/http/routers | jq '.[] | select(.name | contains("dashboard"))'
+  - 'curl -v -H ''Host: traefik.local'' http://localhost:80/'
+- scenario: Flux Kustomization traefik-config stuck not ready
+  symptoms: '`flux get kustomization traefik-config` shows `dependency ''flux-system/traefik'' is not
+    ready` or
+
+    `dependency ''flux-system/external-secrets-config'' is not ready`. Downstream services blocked.
+
+    '
+  steps:
+  - flux get kustomization traefik-config
+  - flux get kustomization traefik
+  - flux get kustomization external-secrets-config
+  - kubectl get helmrelease -A | grep -E 'traefik|external-secrets'
+  - flux reconcile kustomization traefik-config --with-source
+- scenario: Middleware not applied to IngressRoute
+  symptoms: 'Dashboard accessible without authentication. Traefik logs show the route is active
+
+    but middleware chain is empty or errored.
+
+    '
+  steps:
+  - curl -s http://localhost:9000/api/http/routers | jq '.[] | select(.name | contains("dashboard")) |
+    .middlewares'
+  - kubectl get middleware dashboard-auth -n traefik -o jsonpath='{.spec}'
+  - kubectl get secret traefik-dashboard-credentials -n traefik
+  - kubectl logs -n traefik -l app.kubernetes.io/name=traefik --tail=30 | grep -i 'middleware\|error\|dashboard'
+  - kubectl describe ingressroute traefik-dashboard -n traefik

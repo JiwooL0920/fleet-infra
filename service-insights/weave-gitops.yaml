@@ -51,3 +51,72 @@ architecture_diagrams:
     \ EP[\"Entrypoint: web\"]\n    end\n    KAPI[\"Kubernetes API\"]\n\n    EP -->|\"HTTP\"| IR\n    IR\
     \ -->|\":9001\"| SVC\n    SVC -->|\":9001\"| POD\n    POD -->|\"impersonate: admin\"| KAPI\n    HR\
     \ -->|\"pull chart\"| REPO\n    KUST -->|\"substituteFrom\"| CM\n    KUST -->|\"manages\"| HR"
+operations:
+- scenario: HelmRelease stuck in upgrade — chart pull failure
+  symptoms: '`kubectl get helmrelease weave-gitops -n flux-system` shows `upgrade retries exhausted`.
+
+    Events show `failed to pull chart: oci://ghcr.io/weaveworks/charts/weave-gitops` with
+
+    authentication or network errors. Dashboard remains on previous version.
+
+    '
+  steps:
+  - kubectl describe helmrelease weave-gitops -n flux-system | grep -A5 'Status:'
+  - kubectl get helmrepository weave-gitops -n flux-system -o yaml | grep -A10 'status:'
+  - kubectl logs -n flux-system deploy/helm-controller --since=10m | grep weave-gitops
+  - flux reconcile source helm weave-gitops
+  - flux reconcile helmrelease weave-gitops
+- scenario: Dashboard unreachable via IngressRoute
+  symptoms: 'Browser shows 404 or connection refused when accessing `http://weave.local`.
+
+    Other IngressRoutes (e.g. other services) work normally.
+
+    '
+  steps:
+  - kubectl get ingressroute weave-gitops -n weave-gitops -o yaml
+  - kubectl get svc -n weave-gitops
+  - kubectl get endpoints -n weave-gitops
+  - kubectl port-forward -n weave-gitops svc/weave-gitops 9001:9001
+  - curl -s http://localhost:9001 | head -20
+  - kubectl logs -n traefik deploy/traefik --since=5m | grep weave
+- scenario: Pod CrashLoopBackOff — RBAC or permission denied
+  symptoms: '`kubectl get pods -n weave-gitops` shows CrashLoopBackOff. Pod logs contain
+
+    `cannot impersonate resource` or `forbidden: User "system:serviceaccount:weave-gitops:..."
+
+    cannot create resource "subjectaccessreviews"`.
+
+    '
+  steps:
+  - kubectl logs -n weave-gitops deploy/ww-gitops-weave-gitops --previous
+  - kubectl get clusterrolebinding | grep weave
+  - kubectl get clusterrole | grep weave
+  - kubectl auth can-i impersonate users --as=system:serviceaccount:weave-gitops:ww-gitops-weave-gitops
+  - kubectl describe clusterrole ww-gitops-weave-gitops | grep -A5 impersonate
+- scenario: Authentication failure — admin login rejected
+  symptoms: 'Dashboard loads but login with `admin` / expected password returns "Invalid credentials".
+
+    No pod crashes — purely an application-level auth rejection.
+
+    '
+  steps:
+  - kubectl get secret -n flux-system cluster-vars -o yaml | grep WEAVE
+  - kubectl get helmrelease weave-gitops -n flux-system -o jsonpath='{.spec.values.adminUser}'
+  - kubectl exec -n weave-gitops deploy/ww-gitops-weave-gitops -- env | grep -i admin
+  - 'htpasswd -nbBC 5 admin ''your-password'' | cut -d: -f2'
+- scenario: Kustomization health check timeout
+  symptoms: '`flux get kustomizations weave-gitops` shows `Health check failed after 3m0s` despite
+
+    the HelmRelease reporting as ready. The Deployment `ww-gitops-weave-gitops` exists but
+
+    readiness probe is failing.
+
+    '
+  steps:
+  - kubectl get deploy ww-gitops-weave-gitops -n weave-gitops -o yaml | grep -A10 readinessProbe
+  - kubectl describe deploy ww-gitops-weave-gitops -n weave-gitops | grep -A5 Conditions
+  - kubectl get events -n weave-gitops --sort-by=.lastTimestamp | tail -20
+  - kubectl top pod -n weave-gitops
+  - flux reconcile kustomization weave-gitops
+  see_also:
+  - docs/adr/001-fine-grained-service-dependencies.md

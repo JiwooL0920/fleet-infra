@@ -55,3 +55,71 @@ architecture_diagrams:
     \    KS -->|\"deploys\"| HR\n    CM -->|\"postBuild substituteFrom\"| KS\n    HR -->|\"installs into\"\
     | DEP\n    HR -->|\"registers\"| CRD\n    DEP -->|\"serves\"| WH\n    KS -->|\"healthCheck: Ready\"\
     | DEP\n    SC -->|\"dependsOn\"| KS\n    SM -->|\"dependsOn\"| KS\n    CRD -->|\"enables\"| SC"
+operations:
+- scenario: Webhook TLS certificate not provisioned
+  symptoms: 'ScyllaCluster creates/updates rejected with `connection refused` or `x509: certificate signed
+    by unknown authority`. The operator pod is running but webhook calls fail. Alert: `KubeWebhookCertExpirySoon`
+    or Flux `HelmRelease` stuck at `upgrade retries exhausted`.
+
+    '
+  steps:
+  - kubectl get validatingwebhookconfigurations -l app.kubernetes.io/instance=scylla-operator -o yaml
+    | grep -A5 caBundle
+  - kubectl get secrets -n scylla-operator -l app.kubernetes.io/component=webhook --show-labels
+  - kubectl logs -n scylla-operator deploy/scylla-operator --since=10m | grep -i 'webhook\|cert\|tls'
+  - kubectl delete secret -n scylla-operator -l app.kubernetes.io/component=webhook
+  - kubectl rollout restart deployment/scylla-operator -n scylla-operator
+  - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=scylla-operator -n scylla-operator
+    --timeout=120s
+- scenario: CRD installation failure blocking downstream services
+  symptoms: '`scylla-cluster` and `scylla-manager` Kustomizations report `CustomResourceDefinition scyllaclusters.scylla.scylladb.com
+    not found`. The scylla-operator HelmRelease shows `install retries exhausted` or `upgrade retries
+    exhausted` in `kubectl get helmrelease -n flux-system scylla-operator`.
+
+    '
+  steps:
+  - kubectl get helmrelease scylla-operator -n flux-system -o jsonpath='{.status.conditions[*].message}'
+  - kubectl get crds | grep scylla
+  - kubectl get events -n flux-system --field-selector involvedObject.name=scylla-operator --sort-by='.lastTimestamp'
+    | tail -20
+  - flux suspend helmrelease scylla-operator -n flux-system
+  - flux resume helmrelease scylla-operator -n flux-system
+  - kubectl wait --for=condition=Ready helmrelease/scylla-operator -n flux-system --timeout=600s
+- scenario: Leader election lease stuck after pod eviction
+  symptoms: 'Operator pod is Running but no reconciliation occurs. Logs show `failed to acquire lease
+    scylla-operator/scylla-operator-leader-election` or `leader election lost`. ScyllaCluster resources
+    show stale `.status.conditions` timestamps.
+
+    '
+  steps:
+  - kubectl get lease -n scylla-operator -o wide
+  - kubectl get lease scylla-operator-leader-election -n scylla-operator -o jsonpath='{.spec.holderIdentity}'
+  - kubectl get pods -n scylla-operator -o wide
+  - kubectl logs -n scylla-operator deploy/scylla-operator | grep -i 'leader\|lease\|election'
+  - kubectl delete lease scylla-operator-leader-election -n scylla-operator
+  - kubectl rollout restart deployment/scylla-operator -n scylla-operator
+- scenario: HelmRelease reconciliation timeout
+  symptoms: '`flux get helmrelease scylla-operator -n flux-system` shows `reconciliation failed` with
+    timeout. Helm history shows a pending-upgrade or pending-install state. Downstream Kustomizations
+    are blocked.
+
+    '
+  steps:
+  - kubectl get helmrelease scylla-operator -n flux-system -o yaml | grep -A10 'status:'
+  - helm history scylla-operator -n scylla-operator --max 5
+  - helm status scylla-operator -n scylla-operator
+  - kubectl get pods -n scylla-operator -l app.kubernetes.io/name=scylla-operator -o wide
+  - flux suspend helmrelease scylla-operator -n flux-system && helm rollback scylla-operator -n scylla-operator
+  - flux resume helmrelease scylla-operator -n flux-system
+- scenario: Operator OOMKilled under high CRD watch load
+  symptoms: 'Pod restarts with `OOMKilled` reason visible in `kubectl describe pod -n scylla-operator`.
+    Prometheus alert `KubePodCrashLooping` fires. During restarts, ScyllaCluster reconciliation pauses.
+
+    '
+  steps:
+  - kubectl get pods -n scylla-operator -o jsonpath='{.items[*].status.containerStatuses[*].lastState.terminated.reason}'
+  - kubectl top pod -n scylla-operator
+  - kubectl describe pod -n scylla-operator -l app.kubernetes.io/name=scylla-operator | grep -A3 'Last
+    State'
+  - kubectl get configmap cluster-vars -n flux-system -o jsonpath='{.data.SCYLLA_OPERATOR_MEMORY_LIMIT}'
+  - kubectl logs -n scylla-operator deploy/scylla-operator --previous | tail -50
