@@ -44,8 +44,8 @@ CATALOG_FILE = REPO_ROOT / "service-catalog.json"
 INSIGHTS_DIR = REPO_ROOT / "service-insights"
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
-GITHUB_BASE = "https://github.com/JiwooL0920/fleet-infra"
-BLOG_BASE = "https://jiwool0920.github.io/projects/fleet-infra"
+GITHUB_BASE = "https://github.com/JiwooL0920/flux-infra"
+BLOG_BASE = "https://jiwool0920.github.io/projects/flux-infra"
 
 # Canonical layer ordering for display
 LAYER_ORDER = [
@@ -252,22 +252,22 @@ def render_rollup(
 # ---------------------------------------------------------------------------
 
 def generate_nav_yaml(services: dict[str, Any]) -> str:
-    """Generate mkdocs nav block for the fleet-infra section."""
+    """Generate mkdocs nav block for the flux-infra section."""
     layers = ordered_layers(services)
     layer_services = group_by_layer(services, layers)
 
-    lines = ["- Fleet Infra:"]
-    lines.append("  - Overview: projects/fleet-infra/index.md")
-    lines.append("  - Architecture: projects/fleet-infra/architecture.md")
+    lines = ["- Flux Infra:"]
+    lines.append("  - Overview: projects/flux-infra/index.md")
+    lines.append("  - Architecture: projects/flux-infra/architecture.md")
     lines.append("  - Components:")
-    lines.append("    - Index: projects/fleet-infra/components/index.md")
+    lines.append("    - Index: projects/flux-infra/components/index.md")
     for layer in layers:
         svcs = [s for s in layer_services[layer] if s["enabled"]]
         if not svcs:
             continue
         lines.append(f"    - {layer}:")
         for svc in svcs:
-            lines.append(f"      - {svc['name']}: projects/fleet-infra/components/{svc['slug']}.md")
+            lines.append(f"      - {svc['name']}: projects/flux-infra/components/{svc['slug']}.md")
     return "\n".join(lines)
 
 # ---------------------------------------------------------------------------

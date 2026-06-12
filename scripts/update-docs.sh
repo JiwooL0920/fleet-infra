@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# update-docs.sh — Deterministic docs-sync orchestrator for fleet-infra.
+# update-docs.sh — Deterministic docs-sync orchestrator for flux-infra.
 #
 # Runs the Python pipeline (catalog → render → validate) and opens a cross-repo PR
 # in the blog repository with the freshly rendered pages.
@@ -51,8 +51,10 @@ CATALOG_JSON="${FLEET_ROOT}/service-catalog.json"
 BLOG_FLUX_DOCS="${BLOG_REPO_DIR}/docs/projects/flux-infra"
 BLOG_COMPONENTS="${BLOG_FLUX_DOCS}/components"
 DOCS_STATE_FILE="${BLOG_FLUX_DOCS}/.docs-sync-state.json"
+BLOG_MKDOCS="${BLOG_REPO_DIR}/mkdocs.yml"
+INJECT_NAV_PY="${FLEET_ROOT}/scripts/docgen/inject_nav.py"
 
-RENDER_OUTPUT="$(mktemp -d /tmp/fleet-infra-docs-XXXX)"
+RENDER_OUTPUT="$(mktemp -d /tmp/flux-infra-docs-XXXX)"
 cleanup() { rm -rf "$RENDER_OUTPUT"; }
 trap cleanup EXIT
 
@@ -150,7 +152,7 @@ sync_to_blog() {
     git -C "$BLOG_REPO_DIR" reset --hard origin/main --quiet
 
     # Create a clean branch for the PR
-    local branch="docs-sync/fleet-infra-${FLEET_COMMIT}-${TODAY}"
+    local branch="docs-sync/flux-infra-${FLEET_COMMIT}-${TODAY}"
     if git -C "$BLOG_REPO_DIR" show-ref --quiet "refs/heads/$branch"; then
         echo_warn "Branch $branch already exists — deleting and recreating"
         git -C "$BLOG_REPO_DIR" branch -D "$branch" --quiet
@@ -159,6 +161,18 @@ sync_to_blog() {
 
     # Ensure target directories exist
     mkdir -p "$BLOG_COMPONENTS"
+
+    # ── Remove stale files from previous pipeline iterations ──────────────────
+    # Old pipeline generated files like "  - redis.yaml.md" (with spaces + .yaml.md).
+    # These must be deleted before adding clean files to avoid strict-mode warnings.
+    local stale_count=0
+    while IFS= read -r -d '' stale; do
+        rm -f "$stale"
+        stale_count=$((stale_count + 1))
+    done < <(find "$BLOG_COMPONENTS" -maxdepth 1 -name "*.yaml.md" -print0 2>/dev/null)
+    if [[ $stale_count -gt 0 ]]; then
+        echo_warn "Deleted $stale_count stale *.yaml.md files from $BLOG_COMPONENTS"
+    fi
 
     # Copy rendered component pages
     local copied=0
@@ -178,12 +192,22 @@ sync_to_blog() {
         fi
     done
 
+    # Inject updated nav fragment into mkdocs.yml
+    local nav_fragment="${RENDER_OUTPUT}/nav.yml"
+    if [[ -f "$nav_fragment" && -f "$BLOG_MKDOCS" ]]; then
+        echo_step "Injecting flux-infra nav into mkdocs.yml..."
+        "$PYTHON" "$INJECT_NAV_PY" --nav-fragment "$nav_fragment" --mkdocs "$BLOG_MKDOCS"
+    else
+        echo_warn "Skipping nav injection: nav.yml=${nav_fragment} mkdocs=${BLOG_MKDOCS}"
+    fi
+
     # Update watermark
     write_watermark "$FLEET_COMMIT"
     cp "$DOCS_STATE_FILE" "${BLOG_FLUX_DOCS}/.docs-sync-state.json"
 
     # Stage and commit
     git -C "$BLOG_REPO_DIR" add \
+        "${BLOG_MKDOCS}" \
         "${BLOG_FLUX_DOCS}/" \
         "${BLOG_COMPONENTS}/"
 
@@ -194,13 +218,13 @@ sync_to_blog() {
         return 0
     fi
 
-    git -C "$BLOG_REPO_DIR" commit -m "docs(fleet-infra): sync component pages from fleet-infra@${FLEET_COMMIT}
+    git -C "$BLOG_REPO_DIR" commit -m "docs(flux-infra): sync component pages from flux-infra@${FLEET_COMMIT}
 
 - Generated from service-catalog.json (catalog_sha: $(jq -r '._meta.catalog_sha' "$CATALOG_JSON"))
 - ${copied} component pages updated
 - Rendered at: ${TODAY}
 
-Source: https://github.com/JiwooL0920/fleet-infra/commit/${FLEET_COMMIT}" --quiet
+Source: https://github.com/JiwooL0920/flux-infra/commit/${FLEET_COMMIT}" --quiet
 
     echo_info "Committed $copied component page(s) on branch $branch"
     echo "$branch"
@@ -219,12 +243,12 @@ open_pr() {
     pr_body="$(cat <<EOF
 ## Fleet-Infra Docs Sync
 
-Deterministically rendered from [fleet-infra](https://github.com/JiwooL0920/fleet-infra) at commit \`${FLEET_COMMIT}\`.
+Deterministically rendered from [flux-infra](https://github.com/JiwooL0920/flux-infra) at commit \`${FLEET_COMMIT}\`.
 
 | Field | Value |
 |---|---|
 | **catalog_sha** | \`${catalog_sha}\` |
-| **Source commit** | [\`${FLEET_COMMIT}\`](https://github.com/JiwooL0920/fleet-infra/commit/${FLEET_COMMIT}) |
+| **Source commit** | [\`${FLEET_COMMIT}\`](https://github.com/JiwooL0920/flux-infra/commit/${FLEET_COMMIT}) |
 | **Rendered at** | ${TODAY} |
 | **Mode** | ${MODE} |
 
@@ -246,7 +270,7 @@ EOF
         --repo "$BLOG_REPO_GH" \
         --base main \
         --head "$branch" \
-        --title "docs(fleet-infra): sync component pages from @${FLEET_COMMIT}" \
+        --title "docs(flux-infra): sync component pages from @${FLEET_COMMIT}" \
         --body "$pr_body" \
         2>&1)"
 
@@ -255,7 +279,7 @@ EOF
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 main() {
-    echo_info "fleet-infra docs-sync (mode: $MODE, commit: $FLEET_COMMIT)"
+    echo_info "flux-infra docs-sync (mode: $MODE, commit: $FLEET_COMMIT)"
     echo ""
 
     check_prerequisites
