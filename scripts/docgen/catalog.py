@@ -491,7 +491,7 @@ def main() -> None:
     sha = compute_catalog_sha(catalog)
     output = {"_meta": {"catalog_sha": sha}, "services": catalog}
 
-    OUTPUT_FILE.write_text(json.dumps(output, indent=2))
+    OUTPUT_FILE.write_text(json.dumps(output, indent=2) + "\n")
     print(f"Wrote {len(catalog)} services to {OUTPUT_FILE}", file=sys.stderr)
     print(f"catalog_sha: {sha}", file=sys.stderr)
 
