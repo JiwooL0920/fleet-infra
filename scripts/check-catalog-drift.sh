@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook: verify service-catalog.json is not stale.
+# Pre-push hook: auto-regenerate service-catalog.json if stale, then amend the commit.
 set -euo pipefail
 
 VENV="scripts/docgen/.venv/bin/python3"
@@ -12,8 +12,9 @@ fi
 "$VENV" scripts/docgen/catalog.py >/dev/null 2>&1
 
 if ! git diff --exit-code service-catalog.json >/dev/null 2>&1; then
-    echo ""
-    echo "ERROR: service-catalog.json is stale."
-    echo "Run: make catalog && git add service-catalog.json"
+    echo "service-catalog.json was stale — auto-updating and amending last commit..."
+    git add service-catalog.json
+    git commit --amend --no-edit --no-verify
+    echo "Done. Re-run git push."
     exit 1
 fi
