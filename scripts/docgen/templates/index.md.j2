@@ -1,0 +1,54 @@
+{# index.md.j2 — Fleet-Infra project overview / landing page.
+   Context:
+     services (dict)   — full service-catalog.json["services"]
+     catalog_sha (str)
+     fleet_commit (str)
+     generated_at (str)
+     github_base (str)
+     blog_base (str)
+     layers (list[str])      — ordered unique layer names
+     layer_services (dict)   — layer name → list of svc dicts
+#}
+---
+catalog_sha: {{ catalog_sha }}
+fleet_infra_commit: {{ fleet_commit }}
+generated_at: {{ generated_at }}
+---
+
+# Fleet-Infra — Service Overview
+
+GitOps Kubernetes homelab managed with [Flux CD](https://fluxcd.io).
+**{{ services | selectattr("enabled") | list | length }} active services** across {{ layers | length }} dependency layers,
+enabling intelligent parallel deployment with precise `dependsOn` ordering.
+
+## Service Layers
+
+{% for layer in layers %}
+{% set svcs = layer_services[layer] %}
+{% set enabled = svcs | selectattr("enabled") | list %}
+{% set disabled = svcs | rejectattr("enabled") | list %}
+### {{ layer }}
+
+{{ enabled | length }} enabled{% if disabled %}, {{ disabled | length }} disabled{% endif %}
+
+| Service | Namespace | Type | Chart | Dependencies |
+|---|---|---|---|---|
+{% for svc in enabled %}
+| [{{ svc.name }}]({{ blog_base }}/components/{{ svc.slug }}/) | `{{ svc.namespace }}` | {{ svc.type }} | {% if svc.chart %}`{{ svc.chart }}` v{{ svc.chart_version or "?" }}{% else %}—{% endif %} | {% if svc.depends_on %}{{ svc.depends_on | join(", ") | truncate(60) }}{% else %}—{% endif %} |
+{% endfor %}
+{% if disabled %}
+{% for svc in disabled %}
+| ~~{{ svc.name }}~~ (disabled) | `{{ svc.namespace }}` | {{ svc.type }} | {% if svc.chart %}`{{ svc.chart }}`{% else %}—{% endif %} | — |
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+
+## Deployment Parallelism
+
+Services without unresolved `dependsOn` references start concurrently.
+The dependency graph is fully described in each service's Flux Kustomization under
+[`base/services/`]({{ github_base }}/tree/develop/base/services/).
+
+---
+*Generated from [service-catalog.json]({{ github_base }}/blob/develop/service-catalog.json) at commit `{{ fleet_commit }}` · catalog sha `{{ catalog_sha }}`*

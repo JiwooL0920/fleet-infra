@@ -1,0 +1,57 @@
+intro: '[ScyllaDB Operator](https://github.com/scylladb/scylla-operator) is a Kubernetes operator that
+  automates the deployment, scaling, and lifecycle management of ScyllaDB clusters. It extends the Kubernetes
+  API with Custom Resource Definitions (ScyllaCluster, ScyllaDBMonitoring, etc.) and continuously reconciles
+  desired state against actual cluster topology — handling node join/decommission, rolling upgrades, and
+  rack-aware placement without manual intervention.
+
+
+  What distinguishes the Scylla Operator from generic Helm-based database deployments: it encodes ScyllaDB''s
+  operational semantics directly into the controller logic. It understands shard-per-core architecture,
+  DPDK networking requirements, and the specific ordering constraints of ScyllaDB topology changes (e.g.,
+  never decommissioning two nodes from the same rack simultaneously). This domain knowledge eliminates
+  entire classes of operator error that would otherwise require deep ScyllaDB expertise to avoid.
+
+
+  The operator also manages admission webhooks that validate ScyllaCluster specifications before they
+  reach the API server, preventing invalid configurations (undersized instances, impossible rack topologies,
+  incompatible version transitions) from ever being persisted to etcd.
+
+  '
+purpose: 'Scylla Operator is the foundation-layer controller that enables all ScyllaDB workloads in this
+  platform. It installs the CRDs, webhook validators, and reconciliation controllers that downstream services
+  (`scylla-cluster`, `scylla-manager`) depend on. Without this operator running and healthy, no ScyllaDB
+  cluster can be provisioned or managed.
+
+
+  It sits at the base of the Scylla dependency chain with no upstream dependencies of its own — Flux deploys
+  it immediately on reconciliation, and downstream Kustomizations wait for its health check (the operator
+  Deployment reaching Ready) before attempting to create ScyllaCluster resources.
+
+  '
+features:
+- feature: Admission webhooks with self-signed certificates
+  detail: Webhook validation is enabled with operator-managed self-signed TLS certificates, rejecting
+    invalid ScyllaCluster specs before persistence without requiring an external cert-manager dependency.
+- feature: Leader election
+  detail: Multi-replica leader election is enabled, allowing the operator to run with redundancy while
+    ensuring only one instance actively reconciles at a time.
+- feature: Install remediation with retries
+  detail: Both install and upgrade paths are configured with 3 retry attempts and a 10-minute timeout,
+    accommodating CRD registration latency and webhook readiness races.
+- feature: Health-gated downstream rollout
+  detail: The Flux Kustomization declares a healthCheck on the operator Deployment, blocking all downstream
+    ScyllaDB services until the controller is fully available.
+- feature: Variable-substituted resource limits
+  detail: CPU and memory requests/limits are injected via postBuild substitution from cluster-vars ConfigMap,
+    enabling per-environment tuning without manifest duplication.
+architecture_diagrams:
+- title: Scylla Operator Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        HR[HelmRelease: scylla-operator]\n\
+    \        REPO[HelmRepository: scylla]\n        KS[Kustomization: scylla-operator]\n        CM[ConfigMap:\
+    \ cluster-vars]\n    end\n    subgraph scylla-operator-ns[\"scylla-operator namespace\"]\n       \
+    \ DEP[Deployment: scylla-operator]\n        WH[Admission Webhook]\n        SA[ServiceAccount]\n  \
+    \      CRD[CRDs: ScyllaCluster, etc.]\n    end\n    subgraph downstream[\"Downstream Services\"]\n\
+    \        SC[scylla-cluster]\n        SM[scylla-manager]\n    end\n    REPO -->|\"chart source\"| HR\n\
+    \    KS -->|\"deploys\"| HR\n    CM -->|\"postBuild substituteFrom\"| KS\n    HR -->|\"installs into\"\
+    | DEP\n    HR -->|\"registers\"| CRD\n    DEP -->|\"serves\"| WH\n    KS -->|\"healthCheck: Ready\"\
+    | DEP\n    SC -->|\"dependsOn\"| KS\n    SM -->|\"dependsOn\"| KS\n    CRD -->|\"enables\"| SC"

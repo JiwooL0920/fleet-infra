@@ -1,0 +1,98 @@
+intro: '[Promtail](https://grafana.com/docs/loki/latest/send-data/promtail/) ([GitHub](https://github.com/grafana/loki/tree/main/clients/pkg/promtail))
+  is the log collection agent purpose-built for Grafana Loki. Unlike general-purpose log shippers (Fluentd,
+  Filebeat, Vector) that serialize logs into structured formats and speak multiple output protocols, Promtail
+  is laser-focused on one job: tailing log files on a node, attaching Kubernetes metadata labels, and
+  pushing them to Loki''s HTTP ingest API in its native format. This tight coupling to Loki''s label-indexed
+  storage model means Promtail produces exactly the label set Loki expects — no intermediate transformation
+  layer, no schema negotiation.
+
+
+  What distinguishes Promtail from other agents in a Loki-centric stack: it understands the CRI log format
+  natively, can parse the kubelet''s pod log directory structure to extract namespace/pod/container without
+  relying on the Kubernetes API, and maintains a positions file to survive restarts without re-reading
+  entire log files. It operates as a pull-based file tailer rather than requiring applications to push
+  logs — meaning it captures output from any container regardless of whether that container is instrumented.
+
+
+  In stacks that also run OpenTelemetry Collector (as this one does), Promtail and OTel Collector are
+  complementary rather than redundant: OTel Collector receives application-emitted OTLP log signals, while
+  Promtail handles the node-level filesystem scrape of stdout/stderr that the kubelet writes to disk.
+
+  '
+purpose: 'Promtail is the node-level log scraper that ensures every container''s stdout/stderr reaches
+  Loki without requiring application-side instrumentation. It runs as a DaemonSet on all nodes — including
+  control-plane — tailing the kubelet''s pod log directory and enriching each line with namespace, pod,
+  and container labels extracted directly from the filesystem path. This provides baseline log visibility
+  for every workload in the cluster, independent of whether that workload emits structured OTLP telemetry.
+
+  '
+purpose_rationale: '**Why Promtail over Fluent Bit or Vector:** Promtail''s native understanding of Loki''s
+  label model eliminates the impedance mismatch that general-purpose shippers introduce. Fluent Bit or
+  Vector would require explicit output plugin configuration, label mapping rules, and tenant header injection
+  — all of which Promtail handles implicitly. The trade-off is single-backend lock-in (Promtail only speaks
+  Loki), but since this platform already commits to the Grafana observability stack and uses OTel Collector
+  for multi-backend routing of application telemetry, Promtail''s simplicity for the node-scrape use case
+  outweighs flexibility concerns.
+
+
+  **Why not rely solely on OTel Collector for logs:** OTel Collector''s filelog receiver could replace
+  Promtail in theory, but it requires explicit file path configuration, manual label extraction rules,
+  and doesn''t understand Loki''s push API natively (it exports via `otlphttp/loki`). Promtail''s single-purpose
+  design means fewer configuration failure modes for the critical path of "every pod''s logs reach Loki."
+
+  '
+features:
+- feature: DaemonSet on all nodes including control-plane
+  detail: 'Tolerates `node-role.kubernetes.io/control-plane:NoSchedule`, ensuring control-plane component
+    logs (etcd, kube-apiserver, scheduler) are collected alongside workload logs.
+
+    '
+- feature: CRI log parsing with filesystem-based label extraction
+  detail: 'Uses the `cri` pipeline stage to parse containerd''s log format, then applies a regex against
+    the resolved filename path (`/var/log/pods/<namespace>_<pod>_<uid>/<container>/<n>.log`) to extract
+    `namespace`, `pod`, and `container` labels without querying the Kubernetes API.
+
+    '
+- feature: Inotify limit tuning via privileged init container
+  detail: 'An init container runs `sysctl -w fs.inotify.max_user_instances=8192` before Promtail starts,
+    preventing "too many open files" errors on nodes with high pod density where each log file requires
+    an inotify watch.
+
+    '
+- feature: Position tracking for crash-resilient log tailing
+  detail: 'Maintains a positions file at `/run/promtail/positions.yaml` (on an emptyDir volume) to track
+    read offsets per log file, allowing Promtail to resume from where it left off after pod restarts without
+    re-shipping already-ingested lines.
+
+    '
+- feature: Hardened container security context
+  detail: 'Runs with `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`, and drops all
+    Linux capabilities. Log directories are mounted read-only; only the positions emptyDir is writable.
+
+    '
+- feature: ServiceMonitor for self-monitoring
+  detail: 'Exposes metrics on port 3101 with a ServiceMonitor (30s interval, `prometheus: kube-prometheus`
+    label selector), enabling Prometheus to scrape Promtail''s own operational metrics (bytes read, lines
+    processed, push failures).
+
+    '
+- feature: Single-tenant Loki push
+  detail: 'Configured with `tenant_id: fake` for single-tenant mode, pushing to `http://monitoring-loki:3100/loki/api/v1/push`.
+    This matches Loki''s `auth_enabled: false` configuration where all logs share a single tenant namespace.
+
+    '
+architecture_diagrams:
+- title: Promtail DaemonSet Topology
+  mermaid: "graph TD\n    subgraph \"Every Node\"\n        INIT[\"init-inotify<br/>(busybox — sysctl)\"\
+    ]\n        PT[\"Promtail<br/>:3101 metrics\"]\n        LOGS[\"/var/log/pods<br/>(hostPath, readOnly)\"\
+    ]\n        POS[\"/run/promtail<br/>(emptyDir)\"]\n    end\n\n    subgraph \"monitoring namespace\"\
+    \n        LOKI[\"monitoring-loki<br/>:3100\"]\n        PROM[\"Prometheus\"]\n    end\n\n    INIT -->|\"\
+    sysctl fs.inotify.max_user_instances=8192\"| PT\n    LOGS -->|\"read log files\"| PT\n    PT -->|\"\
+    write positions.yaml\"| POS\n    PT -->|\"HTTP POST /loki/api/v1/push :3100\"| LOKI\n    PROM -->|\"\
+    scrape /metrics :3101<br/>every 30s\"| PT\n"
+- title: Log Collection Flow
+  mermaid: "sequenceDiagram\n    participant App as Application Pod\n    participant CRI as containerd\
+    \ (CRI)\n    participant FS as /var/log/pods\n    participant PT as Promtail\n    participant Loki\
+    \ as monitoring-loki:3100\n\n    App->>CRI: stdout/stderr\n    CRI->>FS: Write CRI-format log file\n\
+    \    PT->>FS: Tail log files (inotify)\n    PT->>PT: Parse CRI format\n    PT->>PT: Extract namespace/pod/container\
+    \ from path\n    PT->>Loki: POST /loki/api/v1/push (tenant_id: fake)\n    PT->>PT: Update positions.yaml"

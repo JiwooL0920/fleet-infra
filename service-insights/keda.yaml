@@ -1,0 +1,77 @@
+intro: '[KEDA](https://keda.sh) ([GitHub](https://github.com/kedacore/keda)) is a Kubernetes-native event-driven
+  autoscaler that extends the Horizontal Pod Autoscaler (HPA) with external signal awareness. Unlike vanilla
+  HPA — which is limited to CPU and memory metrics from metrics-server — KEDA registers itself as a Kubernetes
+  custom metrics API server and translates signals from 60+ external sources (message queues, databases,
+  Prometheus, cron schedules) into HPA-compatible metrics. This lets workloads scale based on business-relevant
+  signals rather than proxy indicators.
+
+
+  What distinguishes KEDA from writing custom metrics adapters or deploying Knative: it is purely an autoscaling
+  control plane with no data-plane overhead. It installs two lightweight components — an operator that
+  reconciles `ScaledObject`/`ScaledJob` CRDs into managed HPA resources, and a metrics server that serves
+  the aggregated custom metrics API. Workloads remain standard Deployments or Jobs; KEDA simply adjusts
+  their replica count. This makes it fully GitOps-compatible — scaling policy is declared as YAML alongside
+  the workload it governs.
+
+
+  KEDA is a CNCF Graduated project with broad production adoption. Its "scale to zero" capability — unique
+  among Kubernetes autoscalers — allows idle workloads to consume no resources until an event arrives,
+  making it particularly valuable in development environments and for bursty batch workloads.
+
+  '
+purpose: 'KEDA is the platform''s event-driven scaling layer, enabling workloads to autoscale based on
+  external signals that standard HPA cannot observe. Its primary consumers are queue-driven workers that
+  must scale proportionally to backlog depth rather than CPU utilization.
+
+
+  The concrete use cases in this cluster: scaling Temporal task-queue workers based on pending activity
+  count, scaling n8n workflow executors based on queued executions, and scaling kagent''s stream-dispatcher
+  pods based on Redis Sentinel stream pending entry count (using the `redis-sentinel-streams` scaler against
+  the Sentinel endpoint on port 26379). Without KEDA, these workloads would either run at fixed replica
+  counts (wasting resources when idle, starving when busy) or require bespoke controller code per scaling
+  signal.
+
+  '
+purpose_rationale: '**Why KEDA over custom metrics adapters or Knative:** A custom metrics adapter requires
+  per-source development and ongoing maintenance — each new scaling signal means new adapter code. KEDA
+  provides pre-built, community-maintained scalers for every signal source this platform uses (Prometheus,
+  Redis Streams via Sentinel, cron, PostgreSQL). Knative was rejected because it imposes a full serverless
+  runtime (Knative Serving, networking layer) when the requirement is simply "scale existing Deployments
+  based on external metrics." KEDA adds two pods and a CRD set; Knative adds an entire request-routing
+  and revision-management stack. The operational complexity delta is not justified when workloads are
+  long-running services, not request-scoped functions.
+
+  '
+features:
+- feature: Dual-component architecture
+  detail: Separate operator (CRD reconciliation, HPA lifecycle management) and metrics server (aggregated
+    custom metrics API) deployed as independent pods for fault isolation.
+- feature: Install and upgrade remediation
+  detail: Both install and upgrade phases configured with 3 automatic retries, preventing transient Helm
+    failures from leaving the release in a degraded state.
+- feature: Resource-bounded operator
+  detail: Operator pod runs with explicit CPU and memory requests/limits, preventing unbounded resource
+    consumption during high ScaledObject churn.
+- feature: Namespace isolation
+  detail: KEDA components deploy into a dedicated namespace while the HelmRelease is managed from flux-system,
+    separating workload-facing CRDs from GitOps control plane resources.
+- feature: Scale-to-zero capable
+  detail: Operator supports scaling target deployments to zero replicas when no events are pending, eliminating
+    idle resource consumption for bursty workloads in development.
+architecture_diagrams:
+- title: KEDA Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        HR[HelmRelease: keda]\n\
+    \        REPO[HelmRepository: kedacore]\n    end\n\n    subgraph keda-ns[\"keda namespace\"]\n   \
+    \     OP[keda-operator]\n        MS[keda-metrics-server]\n    end\n\n    subgraph workload-ns[\"workload\
+    \ namespaces\"]\n        SO[ScaledObject CRDs]\n        HPA[Managed HPA]\n        DEPLOY[Target Deployments]\n\
+    \    end\n\n    REPO -->|\"charts from kedacore.github.io/charts\"| HR\n    HR -->|\"deploys to keda\
+    \ namespace\"| OP\n    HR -->|\"deploys to keda namespace\"| MS\n    OP -->|\"watches\"| SO\n    OP\
+    \ -->|\"creates/manages\"| HPA\n    HPA -->|\"scales\"| DEPLOY\n    MS -->|\"registers as custom.metrics.k8s.io\"\
+    | APISERVER[Kubernetes API Server]\n    APISERVER -->|\"queries metrics\"| MS\n"
+- title: Event-Driven Scaling Flow
+  mermaid: "sequenceDiagram\n    participant ES as External Source<br/>(Redis Sentinel :26379)\n    participant\
+    \ MS as keda-metrics-server\n    participant OP as keda-operator\n    participant HPA as Managed HPA\n\
+    \    participant D as Target Deployment\n\n    OP->>OP: Reconcile ScaledObject\n    OP->>HPA: Create/Update\
+    \ HPA with external metric\n    loop Every polling interval\n        MS->>ES: Query metric value (pending\
+    \ entries)\n        ES-->>MS: Current metric value\n        HPA->>MS: Get custom metric\n        MS-->>HPA:\
+    \ Scaled metric value\n        HPA->>D: Adjust replicas\n    end"

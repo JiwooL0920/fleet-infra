@@ -35,3 +35,8 @@ Thumbs.db
 .sisyphus/
 
 .serena/
+
+# Docgen
+docs-output/
+scripts/docgen/.venv/
+scripts/docgen/__pycache__/

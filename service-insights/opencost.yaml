@@ -1,0 +1,58 @@
+intro: '[OpenCost](https://www.opencost.io) ([GitHub](https://github.com/opencost/opencost)) is a CNCF
+  graduated project for real-time Kubernetes cost monitoring and allocation. Unlike cloud-provider billing
+  dashboards that report costs days after the fact with coarse granularity, OpenCost operates at the pod
+  and namespace level by combining live resource consumption metrics from Prometheus with configurable
+  pricing models — producing cost allocation data in near-real-time without requiring any cloud billing
+  API integration.
+
+
+  What distinguishes OpenCost from commercial alternatives (Kubecost Enterprise, CloudHealth, Spot.io):
+  it is fully open-source with no proprietary data lock-in, runs entirely in-cluster with no external
+  SaaS dependency, and exposes its data through a simple HTTP API. The architecture is deliberately minimal
+  — a single exporter binary reads Prometheus metrics, applies pricing, and serves allocation data. The
+  optional UI provides visual exploration, but the primary integration surface is the API (and in newer
+  versions, a built-in MCP server for LLM agent consumption).
+
+  '
+purpose: 'OpenCost serves as the platform''s cost observability layer, providing namespace-level and pod-level
+  cost allocation data derived from Prometheus CPU and memory metrics. Its primary consumer is the kagent
+  `finops-agent`, which queries cost data programmatically through OpenCost''s built-in MCP server to
+  answer cost-related questions, identify expensive workloads, and inform capacity planning decisions
+  within the multi-agent orchestration system.
+
+
+  Secondarily, the UI exposed at `opencost.local` provides human-readable cost dashboards for ad-hoc investigation
+  — useful when validating finops-agent findings or exploring cost trends manually.
+
+  '
+purpose_rationale: '**Why OpenCost over Kubecost or custom Prometheus queries:** Kubecost''s free tier
+  restricts data retention and multi-cluster features, and its enterprise tier adds licensing overhead
+  inappropriate for a homelab. Raw PromQL cost queries are fragile and require maintaining complex recording
+  rules. OpenCost sits in the middle — it handles the pricing model application and allocation math cleanly,
+  exposes a structured API, and critically ships with a built-in MCP server that the kagent finops-agent
+  can consume directly without building a custom tool wrapper. The CNCF graduation status also signals
+  long-term maintenance stability.
+
+  '
+features:
+- feature: Prometheus-backed cost allocation
+  detail: Reads CPU and memory usage from kube-prometheus-stack's Prometheus instance at monitoring-kube-prometheus-prometheus:9090,
+    applying configurable pricing to generate per-pod and per-namespace cost data
+- feature: Built-in MCP server
+  detail: Exposes cost allocation and asset data on port 8081 via MCP protocol, providing get_allocation_costs
+    and get_asset_costs tools consumable by LLM agents without additional middleware
+- feature: Web UI
+  detail: Optional dashboard component served on port 9090 with dedicated resource limits, exposed externally
+    via Traefik IngressRoute at opencost.local
+- feature: Namespace-scoped deployment
+  detail: Runs in dedicated opencost namespace with Flux-managed lifecycle, isolated from monitoring stack
+    while depending on it for metric ingestion
+architecture_diagrams:
+- title: OpenCost Deployment Topology
+  mermaid: "graph TD\n    subgraph monitoring[\"monitoring namespace\"]\n        PROM[\"monitoring-kube-prometheus-prometheus\
+    \ :9090\"]\n    end\n    subgraph opencost-ns[\"opencost namespace\"]\n        EXPORTER[\"opencost\
+    \ exporter\"]\n        UI[\"opencost-ui :9090\"]\n        MCP[\"MCP server :8081\"]\n    end\n   \
+    \ subgraph kagent-ns[\"kagent namespace\"]\n        FINOPS[\"finops-agent\"]\n    end\n    subgraph\
+    \ flux-system[\"flux-system namespace\"]\n        TRAEFIK[\"traefik\"]\n    end\n    EXPORTER -->|\"\
+    reads metrics :9090\"| PROM\n    FINOPS -->|\"MCP protocol :8081\"| MCP\n    TRAEFIK -->|\"Host: opencost.local\
+    \ → :9090\"| UI"

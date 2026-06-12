@@ -1,0 +1,53 @@
+intro: '[Weave GitOps](https://github.com/weaveworks/weave-gitops) is a lightweight web dashboard purpose-built
+  for Flux CD clusters. Unlike general-purpose Kubernetes dashboards (Lens, Rancher, the Kubernetes Dashboard),
+  Weave GitOps understands the Flux resource model natively — it renders HelmReleases, Kustomizations,
+  GitRepositories, and their reconciliation status as first-class objects rather than opaque custom resources.
+
+
+  The UI operates in read-only mode against the cluster, surfacing Flux reconciliation state, dependency
+  graphs, and event timelines without requiring direct `kubectl` access. It authenticates users via a
+  local admin account and uses Kubernetes RBAC impersonation to scope API access, meaning the dashboard
+  itself holds elevated privileges but delegates authorization decisions to the cluster''s native RBAC
+  layer.
+
+  '
+purpose: 'Weave GitOps provides a visual reconciliation monitor for the platform''s 25-service Flux deployment.
+  When a service fails to reconcile — chart pull timeout, variable substitution error, health check deadline
+  exceeded — the dashboard surfaces the failure context (events, conditions, source status) without requiring
+  CLI access to the cluster. This is the primary observability path for GitOps deployment state, complementing
+  Prometheus metrics with human-readable Flux object inspection.
+
+  '
+features:
+- feature: Local admin authentication
+  detail: Bcrypt-hashed admin credential baked into the HelmRelease values, providing immediate access
+    without external identity provider dependencies.
+- feature: RBAC impersonation
+  detail: The service account impersonates the "admin" user for API calls, decoupling dashboard permissions
+    from the service account's own privileges and enabling future multi-tenancy via additional impersonation
+    subjects.
+- feature: Security-hardened pod
+  detail: Read-only root filesystem, all capabilities dropped, non-root execution (UID 1000/GID 2000),
+    and pod-level fsGroup — minimizing attack surface for a network-exposed UI.
+- feature: Traefik IngressRoute exposure
+  detail: Exposed via Traefik IngressRoute on Host(`weave.local`) routing to the ClusterIP service on
+    port 9001, using the `web` entrypoint (HTTP).
+- feature: Prometheus metrics
+  detail: Metrics endpoint enabled, exposing request latency, reconciliation polling stats, and Go runtime
+    metrics for the dashboard process.
+- feature: Flux-aware health checking
+  detail: The parent Kustomization health-checks the `ww-gitops-weave-gitops` Deployment directly, blocking
+    downstream dependents until the dashboard is serving.
+- feature: Install/upgrade remediation
+  detail: Both install and upgrade phases configured with 3 retries, preventing transient Helm failures
+    from leaving the release in a failed state.
+architecture_diagrams:
+- title: Deployment Topology
+  mermaid: "graph TD\n    subgraph \"weave-gitops namespace\"\n        POD[\"ww-gitops-weave-gitops<br/>Pod\
+    \ (UID 1000)\"]\n        SVC[\"weave-gitops<br/>ClusterIP :9001\"]\n    end\n    subgraph \"flux-system\
+    \ namespace\"\n        HR[\"HelmRelease<br/>weave-gitops\"]\n        REPO[\"HelmRepository<br/>OCI\
+    \ ghcr.io/weaveworks/charts\"]\n        KUST[\"Kustomization<br/>weave-gitops\"]\n        CM[\"ConfigMap<br/>cluster-vars\"\
+    ]\n    end\n    subgraph \"Traefik\"\n        IR[\"IngressRoute<br/>Host: weave.local\"]\n       \
+    \ EP[\"Entrypoint: web\"]\n    end\n    KAPI[\"Kubernetes API\"]\n\n    EP -->|\"HTTP\"| IR\n    IR\
+    \ -->|\":9001\"| SVC\n    SVC -->|\":9001\"| POD\n    POD -->|\"impersonate: admin\"| KAPI\n    HR\
+    \ -->|\"pull chart\"| REPO\n    KUST -->|\"substituteFrom\"| CM\n    KUST -->|\"manages\"| HR"

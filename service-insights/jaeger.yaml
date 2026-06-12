@@ -1,0 +1,66 @@
+intro: '[Jaeger](https://www.jaegertracing.io/) ([GitHub](https://github.com/jaegertracing/jaeger)) is
+  a distributed tracing platform originally developed at Uber and donated to the CNCF (graduated project).
+  It implements the OpenTracing standard and natively supports OpenTelemetry''s OTLP protocol for trace
+  ingestion. What distinguishes Jaeger from alternatives (Zipkin, Tempo, X-Ray): it provides a purpose-built
+  query engine for trace search with deep dependency graph analysis, adaptive sampling strategies, and
+  a flexible storage backend architecture that scales from in-memory (development) to Cassandra/Elasticsearch
+  (production).
+
+
+  Jaeger''s all-in-one deployment mode bundles the collector, query frontend, and ingestion pipeline into
+  a single binary — eliminating the operational overhead of running separate components when throughput
+  requirements are modest. This mode is architecturally identical to the distributed deployment; only
+  the process boundary differs.
+
+  '
+purpose: 'Jaeger serves as the trace storage and visualization backend for the platform''s observability
+  stack. It receives distributed traces exclusively through the OpenTelemetry Collector (which normalizes
+  OTLP, legacy Jaeger, and Zipkin formats upstream) and provides the query UI for trace inspection, service
+  dependency mapping, and latency analysis.
+
+
+  Deployed in all-in-one mode with ephemeral in-memory storage, it prioritizes operational simplicity
+  over trace durability — traces exist for debugging active issues, not long-term retention. This is appropriate
+  for a development/homelab environment where the cost of persistent trace storage (Elasticsearch or Cassandra
+  clusters) far exceeds the value of historical trace data.
+
+  '
+purpose_rationale: '**Why Jaeger over Grafana Tempo:** Tempo is append-only with object storage (S3/GCS)
+  and integrates tightly with Grafana''s trace-to-logs workflow, but requires an external object store
+  and has no standalone query UI — all queries route through Grafana. Jaeger provides a self-contained
+  query interface, supports in-memory mode for zero-dependency development deployments, and its all-in-one
+  binary has lower baseline resource consumption than Tempo + MinIO + Grafana.
+
+
+  **Why in-memory over Badger/persistent storage:** The platform treats traces as ephemeral debugging
+  signals, not audit records. In-memory eliminates PVC management, compaction overhead, and storage capacity
+  planning. The trade-off — traces lost on pod restart — is acceptable given the development context and
+  the fact that the OTel Collector''s debug exporter can provide immediate signal visibility independent
+  of Jaeger availability.
+
+  '
+features:
+- feature: All-in-one deployment
+  detail: Single binary runs collector, query, and agent functions — all separate component deployments
+    explicitly disabled to avoid resource duplication
+- feature: In-memory trace storage
+  detail: All persistence backends (Cassandra, Elasticsearch, Kafka) disabled; traces stored in process
+    memory with implicit eviction under memory pressure
+- feature: OTLP ingestion enabled
+  detail: COLLECTOR_OTLP_ENABLED env var activates native OTLP gRPC/HTTP receivers, allowing the OpenTelemetry
+    Collector to export traces without protocol translation
+- feature: External data store provisioning disabled
+  detail: provisionDataStore set to false for all backends — prevents the Helm chart from deploying StatefulSets
+    for Cassandra, Elasticsearch, or Kafka alongside Jaeger
+- feature: Traefik IngressRoute exposure
+  detail: Query UI exposed at jaeger.local via Traefik CRD IngressRoute on the web entrypoint, routing
+    to jaeger-query service on port 16686
+architecture_diagrams:
+- title: Trace ingestion topology
+  mermaid: "graph TD\n    subgraph flux-system\n        HR[HelmRelease: jaeger]\n    end\n    subgraph\
+    \ jaeger-ns[jaeger namespace]\n        AIO[jaeger all-in-one pod]\n        SVC_QUERY[Service: jaeger-query\
+    \ :16686]\n        SVC_COLLECTOR[OTLP receiver :4317/4318]\n    end\n    subgraph traefik-ns[traefik\
+    \ namespace]\n        IR[IngressRoute: jaeger-ui]\n        TRAEFIK[Traefik proxy]\n    end\n    subgraph\
+    \ otel-ns[opentelemetry namespace]\n        OTEL[OpenTelemetry Collector]\n    end\n\n    HR -->|manages|\
+    \ AIO\n    AIO --- SVC_QUERY\n    AIO --- SVC_COLLECTOR\n    OTEL -->|OTLP gRPC :4317| SVC_COLLECTOR\n\
+    \    TRAEFIK -->|\"Host(jaeger.local) :16686\"| SVC_QUERY\n    IR -->|configures route| TRAEFIK"

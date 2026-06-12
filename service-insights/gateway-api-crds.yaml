@@ -1,0 +1,59 @@
+intro: '[Kubernetes Gateway API](https://gateway-api.sigs.k8s.io/) ([GitHub](https://github.com/kubernetes-sigs/gateway-api))
+  is the official successor to the Ingress resource, developed by the SIG-Network community. Unlike the
+  legacy Ingress spec — which flattens routing, TLS termination, and traffic policy into a single resource
+  owned by one persona — Gateway API separates concerns across distinct resource types with explicit role-oriented
+  ownership: infrastructure providers manage GatewayClass, cluster operators manage Gateway, and application
+  developers manage HTTPRoute/GRPCRoute.
+
+
+  What distinguishes Gateway API from Ingress and vendor-specific CRDs (Istio VirtualService, Traefik
+  IngressRoute): it provides a portable, expressive routing model with first-class support for header-based
+  matching, traffic splitting, cross-namespace references, and protocol-specific route types — all under
+  a single upstream specification with a formal conformance test suite. Implementations are interchangeable
+  at the API layer without rewriting route definitions.
+
+
+  The standard channel includes the graduated resource types — GatewayClass, Gateway, HTTPRoute, ReferenceGrant,
+  and GRPCRoute — which have reached GA stability guarantees. Experimental-channel resources (TCPRoute,
+  TLSRoute, BackendTLSPolicy) are excluded from this installation.
+
+  '
+purpose: 'This Kustomization installs the Gateway API CRD definitions into the cluster so that downstream
+  controllers — specifically agentgateway — can register a GatewayClass and instantiate Gateway/HTTPRoute
+  resources. Without these CRDs present in the API server, any HelmRelease attempting to create Gateway
+  API objects would fail at the admission stage with "no matches for kind" errors.
+
+
+  It is deployed as a standalone Flux Kustomization rather than bundled inside the agentgateway chart
+  to decouple CRD lifecycle from application lifecycle — CRDs are cluster-scoped, shared resources that
+  must outlive any single controller installation.
+
+  '
+purpose_rationale: '**Why a dedicated Kustomization over Helm CRD hooks or chart dependencies:** Helm''s
+  `crds/` directory applies CRDs only on initial install and never upgrades or deletes them — leaving
+  version drift unmanaged. Bundling CRDs inside chart templates risks accidental deletion on `helm uninstall`.
+  A standalone Flux Kustomization with `prune: false` provides controlled, auditable CRD upgrades through
+  Git while guaranteeing that uninstalling the consuming chart never removes the shared definitions. This
+  is the pattern recommended by the Flux documentation for any CRD that multiple controllers or tenants
+  may depend on.
+
+  '
+features:
+- feature: Prune-safe CRD lifecycle
+  detail: 'prune: false ensures Flux never garbage-collects these CRDs during reconciliation, even if
+    the Kustomization source is temporarily unreachable or the resource list changes
+
+    '
+- feature: Dependency gate with wait
+  detail: 'wait: true blocks downstream Kustomizations (agentgateway) from reconciling until all CRDs
+    report Established=True, preventing race conditions at cluster bootstrap
+
+    '
+- feature: Standard channel pinning
+  detail: 'Pulls exclusively from the upstream standard-install.yaml release artifact, excluding experimental-channel
+    resources that carry no stability guarantees
+
+    '
+- feature: Remote source reference
+  detail: Resources are fetched directly from the upstream GitHub release tag rather than vendored into
+    the repository, keeping the diff surface minimal during version bumps

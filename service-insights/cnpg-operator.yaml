@@ -1,0 +1,76 @@
+intro: '[CloudNative-PG](https://cloudnative-pg.io) ([GitHub](https://github.com/cloudnative-pg/cloudnative-pg))
+  is a Kubernetes operator purpose-built for managing the full lifecycle of PostgreSQL clusters. Unlike
+  generic database operators (KubeDB, Zalando Postgres Operator, CrunchyData PGO), CNPG was designed from
+  scratch for Kubernetes-native PostgreSQL — no legacy abstractions from pre-container eras. It handles
+  provisioning, high availability via streaming replication, automated failover, continuous backup to
+  object storage, and rolling upgrades without external tooling like Patroni or Stolon.
+
+
+  What distinguishes CNPG from alternatives: it implements the PostgreSQL instance manager as a single
+  binary injected into the database pod (no sidecar orchestrator), supports declarative database/role
+  provisioning via Kubernetes CRDs, and integrates natively with the Kubernetes scheduler for pod disruption
+  budgets, topology spread, and node affinity. The operator itself is stateless — all cluster state lives
+  in the managed PostgreSQL pods and their PVCs.
+
+
+  CNPG follows the Kubernetes operator pattern: a controller loop watches `Cluster`, `Backup`, `ScheduledBackup`,
+  and `Pooler` custom resources, reconciling desired state against actual state. This makes it fully GitOps-compatible
+  — cluster topology changes are just YAML diffs that Flux applies like any other resource.
+
+  '
+purpose: 'CNPG Operator is the foundation-layer controller that manages the platform''s shared PostgreSQL
+  cluster. It watches for `Cluster` CRDs (deployed by the downstream `postgresql-cluster` service) and
+  reconciles the actual database instances — handling pod scheduling, replication topology, automated
+  failover, and backup orchestration.
+
+
+  In this platform, it underpins every stateful workload that needs relational storage: n8n workflows,
+  Temporal execution history and visibility, Grafana dashboards, kagent state, and application databases.
+  The operator runs as a single deployment in `cnpg-system` and is intentionally dependency-free (no `dependsOn`)
+  so it starts immediately on cluster bootstrap, ready to reconcile database clusters as soon as they''re
+  applied.
+
+  '
+features:
+- feature: In-place instance manager updates
+  detail: 'Enabled via `ENABLE_INSTANCE_MANAGER_INPLACE_UPDATES` — allows the operator to hot-patch the
+    instance manager binary inside running PostgreSQL pods without requiring a full pod restart, reducing
+    update disruption for minor operator upgrades.
+
+    '
+- feature: Label and annotation inheritance
+  detail: 'Configured to propagate `environment`, `workload`, and `app` labels plus `categories` annotations
+    from Cluster CRDs down to managed pods, enabling consistent observability grouping and cost attribution
+    across all database instances.
+
+    '
+- feature: PodMonitor metrics exposure
+  detail: 'Operator metrics are scraped via a Prometheus PodMonitor, exposing reconciliation latency,
+    queue depth, and managed cluster health without requiring a separate ServiceMonitor or manual scrape
+    config.
+
+    '
+- feature: Install and upgrade remediation
+  detail: 'HelmRelease configured with 3 retries and 10-minute timeouts for both install and upgrade operations,
+    preventing transient failures (CRD registration races, webhook cert provisioning) from leaving the
+    operator in a degraded state.
+
+    '
+- feature: Flux health gating
+  detail: 'Kustomization includes a healthCheck on the operator Deployment — downstream services (postgresql-cluster,
+    kagent) will not begin reconciliation until the operator pods are fully ready, preventing CRD-not-found
+    errors during initial bootstrap.
+
+    '
+architecture_diagrams:
+- title: Operator Deployment Topology & Downstream Relationship
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        KS[Kustomization<br/>cnpg-operator]\n\
+    \        HR[HelmRelease<br/>cnpg-operator]\n        REPO[HelmRepository<br/>cloudnative-pg]\n    end\n\
+    \n    subgraph cnpg-system[\"cnpg-system namespace\"]\n        DEP[Deployment<br/>cnpg-operator-cloudnative-pg]\n\
+    \        CM[ConfigMap<br/>cnpg-controller-manager-config]\n        SA[ServiceAccount<br/>cnpg-manager]\n\
+    \        PM[PodMonitor]\n    end\n\n    subgraph downstream[\"Downstream Services\"]\n        PGC[postgresql-cluster<br/>Kustomization]\n\
+    \        KAG[kagent<br/>Kustomization]\n    end\n\n    EXTCHART[(\"charts.cloudnative-pg.github.io\"\
+    )]\n\n    KS -->|\"path: ./apps/base/cnpg-operator\"| HR\n    HR -->|\"sourceRef\"| REPO\n    REPO\
+    \ -->|\"interval: 5m\"| EXTCHART\n    HR -->|\"targetNamespace\"| DEP\n    DEP -->|\"mounts\"| CM\n\
+    \    DEP -->|\"uses\"| SA\n    PM -->|\"scrapes /metrics\"| DEP\n    KS -.->|\"healthCheck: ready\"\
+    | DEP\n    PGC -.->|\"dependsOn\"| KS\n    KAG -.->|\"dependsOn\"| KS"

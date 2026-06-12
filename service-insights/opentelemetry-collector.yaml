@@ -1,0 +1,101 @@
+intro: '[OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) ([GitHub](https://github.com/open-telemetry/opentelemetry-collector))
+  is a vendor-agnostic telemetry pipeline that receives, processes, and exports observability signals
+  — traces, metrics, and logs — through a configurable receiver → processor → exporter architecture. Unlike
+  application-embedded exporters that couple services to specific backends, the Collector acts as a protocol-normalizing
+  intermediary: applications emit OTLP once, and the Collector handles fan-out, enrichment, and format
+  translation.
+
+
+  The **contrib distribution** is deployed here, which bundles the full ecosystem of community receivers
+  and exporters (Jaeger, Zipkin, Prometheus, Loki OTLP) in a single binary. This is heavier than a custom-built
+  distribution but eliminates the need to maintain a custom builder pipeline for a homelab where binary
+  size is not a constraint.
+
+
+  What distinguishes the OTel Collector from similar pipeline tools (Grafana Agent/Alloy, Fluentd, Vector):
+  it implements the OTLP standard natively, supports all three signal types in a single process with shared
+  processor chains, and has first-class Kubernetes metadata enrichment via the `k8sattributes` processor
+  — automatically decorating every span, metric, and log line with pod, namespace, and deployment context
+  without application-level instrumentation changes.
+
+  '
+purpose: 'The OpenTelemetry Collector serves as the platform''s single telemetry ingestion point. All
+  application workloads — including the kagent multi-agent system and supporting services — emit telemetry
+  to one endpoint (`opentelemetry-collector:4317`) using OTLP. The Collector then routes traces to Jaeger,
+  metrics to Prometheus (via a scrape-compatible exporter endpoint), and logs to Loki using native OTLP
+  HTTP ingestion.
+
+
+  This decouples every application from backend knowledge: services never import Jaeger or Loki client
+  libraries, never hardcode backend endpoints, and remain unaffected when backends are swapped or reconfigured.
+  The Collector also enriches all signals with Kubernetes metadata (pod name, namespace, deployment, node)
+  through the `k8sattributes` processor, providing consistent correlation dimensions across traces, metrics,
+  and logs without per-service instrumentation effort.
+
+  '
+purpose_rationale: '**Why OTel Collector over direct-to-backend or Grafana Agent:** Direct emission (apps
+  → Jaeger for traces, Promtail → Loki for logs) was the initial approach but created tight coupling —
+  every service needed backend-specific client libraries and endpoint configuration. Migrating a single
+  backend meant touching every service.
+
+
+  Grafana Agent (now Alloy) was considered as a unified pipeline. It integrates well with the Grafana
+  stack already deployed here, but it implements a proprietary configuration language (River) and its
+  OTLP support trails the reference implementation. The OTel Collector uses the OTLP standard natively,
+  has broader community momentum, and avoids deeper lock-in to the Grafana ecosystem — important given
+  that trace and metric backends may change independently of the visualization layer.
+
+  '
+features:
+- feature: Multi-protocol ingestion
+  detail: Accepts OTLP (gRPC :4317, HTTP :4318), Jaeger (gRPC :14250, thrift_http :14268, thrift_compact
+    :6831, thrift_binary :6832), Zipkin (:9411), and Prometheus self-scrape — enabling incremental migration
+    from legacy instrumentation without application changes.
+- feature: Kubernetes metadata enrichment
+  detail: The k8sattributes processor uses serviceAccount auth to extract pod, deployment, statefulset,
+    daemonset, cronjob, job, node, and namespace metadata plus app.kubernetes.io labels, attaching them
+    to all telemetry signals automatically.
+- feature: Memory-bounded processing
+  detail: The memory_limiter processor (80% limit, 25% spike allowance, 5s check interval) prevents OOM
+    under burst load by applying backpressure to receivers before the process exceeds its cgroup memory
+    allocation.
+- feature: Batched export with retry
+  detail: The batch processor (1024 batch size, 2048 max, 10s timeout) amortizes export overhead; the
+    Jaeger exporter adds a 1000-item sending queue with exponential backoff retry (1s→10s, 60s max elapsed)
+    to absorb transient backend unavailability.
+- feature: Three-signal pipeline routing
+  detail: Traces route to Jaeger via OTLP gRPC, metrics expose a Prometheus-scrapable endpoint on :8889
+    with resource-to-telemetry conversion, and logs push to Loki via native OTLP HTTP — each pipeline
+    shares the same processor chain.
+- feature: Kubernetes presets enabled
+  detail: kubernetesAttributes, clusterMetrics, and kubeletMetrics presets are active, providing cluster-level
+    resource metrics and kubelet stats without manual receiver configuration.
+- feature: ServiceMonitor integration
+  detail: A ServiceMonitor resource exposes the Prometheus exporter port (:8889) with 30s scrape interval,
+    enabling kube-prometheus-stack to discover and scrape collector-processed metrics automatically.
+- feature: Diagnostic extensions
+  detail: health_check (:13133), pprof (:1777), and zpages (:55679) extensions are enabled for liveness
+    probing, CPU/memory profiling, and pipeline-level debug visualization respectively.
+architecture_diagrams:
+- title: Telemetry Pipeline Topology
+  mermaid: "graph TD\n    subgraph opentelemetry[\"Namespace: opentelemetry\"]\n        OTEL[\"opentelemetry-collector<br/>(Deployment)\"\
+    ]\n    end\n\n    subgraph jaeger-ns[\"Namespace: jaeger\"]\n        JAEGER[\"jaeger-collector\"]\n\
+    \    end\n\n    subgraph monitoring[\"Namespace: monitoring\"]\n        LOKI[\"monitoring-loki\"]\n\
+    \        PROM[\"kube-prometheus-stack\"]\n    end\n\n    APP[\"Application Workloads<br/>(OTLP clients)\"\
+    ]\n    AGW[\"agentgateway-config<br/>(downstream)\"]\n\n    APP -->|\"OTLP gRPC :4317\"| OTEL\n  \
+    \  APP -->|\"OTLP HTTP :4318\"| OTEL\n    APP -->|\"Jaeger thrift_http :14268\"| OTEL\n    APP -->|\"\
+    Zipkin :9411\"| OTEL\n\n    OTEL -->|\"OTLP gRPC :4317<br/>traces\"| JAEGER\n    OTEL -->|\"OTLP HTTP\
+    \ :3100/otlp<br/>logs\"| LOKI\n    PROM -->|\"scrape :8889<br/>metrics\"| OTEL\n\n    OTEL -.->|\"\
+    config dependency\"| AGW\n"
+- title: Signal Processing Flow
+  mermaid: "graph LR\n    subgraph receivers[\"Receivers\"]\n        R_OTLP[\"otlp<br/>gRPC + HTTP\"]\n\
+    \        R_JAEGER[\"jaeger<br/>gRPC + thrift\"]\n        R_ZIPKIN[\"zipkin\"]\n        R_PROM[\"prometheus<br/>self-scrape\
+    \ :8888\"]\n    end\n\n    subgraph processors[\"Processors (ordered)\"]\n        P_MEM[\"memory_limiter<br/>80%\
+    \ limit\"]\n        P_K8S[\"k8sattributes<br/>pod/ns/deploy metadata\"]\n        P_BATCH[\"batch<br/>1024\
+    \ size, 10s timeout\"]\n    end\n\n    subgraph exporters[\"Exporters\"]\n        E_JAEGER[\"otlp/jaeger<br/>→\
+    \ jaeger-collector:4317\"]\n        E_PROM[\"prometheus<br/>:8889 scrape endpoint\"]\n        E_LOKI[\"\
+    otlphttp/loki<br/>→ loki:3100/otlp\"]\n        E_DEBUG[\"debug<br/>basic verbosity\"]\n    end\n\n\
+    \    R_OTLP --> P_MEM\n    R_JAEGER --> P_MEM\n    R_ZIPKIN --> P_MEM\n    R_PROM --> P_MEM\n\n  \
+    \  P_MEM --> P_K8S\n    P_K8S --> P_BATCH\n\n    P_BATCH -->|\"traces\"| E_JAEGER\n    P_BATCH -->|\"\
+    metrics\"| E_PROM\n    P_BATCH -->|\"metrics\"| E_DEBUG\n    P_BATCH -->|\"logs\"| E_LOKI\n    P_BATCH\
+    \ -->|\"logs\"| E_DEBUG"

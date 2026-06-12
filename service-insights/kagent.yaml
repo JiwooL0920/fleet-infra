@@ -1,0 +1,167 @@
+intro: '[kagent](https://kagent.dev) ([GitHub](https://github.com/kagent-dev/kagent)) is a CNCF Sandbox
+  project that brings AI agent lifecycle management to Kubernetes as a first-class concern. Rather than
+  treating agents as application-layer abstractions managed by Python frameworks (LangGraph, CrewAI, AutoGen),
+  kagent defines agents, model configurations, and tool servers as Custom Resources — reconciled by a
+  controller that handles instantiation, health, context compaction, and inter-agent communication natively
+  within the Kubernetes control plane.
+
+
+  The platform''s core CRDs are `Agent` (declarative agent specification including model, tools, system
+  prompt, and A2A skills), `ModelConfig` (LLM provider settings — model name, context window, temperature,
+  provider endpoint), and `RemoteMCPServer` (tool endpoint registration using the Model Context Protocol).
+  The kagent-controller watches these CRDs and manages agent runtime lifecycle, while the optional kagent-ui
+  provides a conversation interface for human operators.
+
+
+  What distinguishes kagent from general-purpose agent frameworks: agents are Kubernetes-native objects
+  subject to standard GitOps workflows (Flux/ArgoCD), RBAC, network policies, and observability pipelines.
+  There is no out-of-band agent registry or framework-specific state store — the cluster API server *is*
+  the source of truth. This enables infrastructure teams to manage AI agents with the same tooling they
+  use for any other workload: `kubectl`, Helm, Kustomize, and policy engines.
+
+
+  kagent supports the A2A (Agent-to-Agent) protocol for inter-agent delegation and MCP (Model Context
+  Protocol) for tool integration, making it composable with ecosystem tooling like AgentGateway for traffic
+  management, policy enforcement, and observability across agent-to-agent and agent-to-tool boundaries.
+
+  '
+purpose: 'kagent is the platform''s AI operations layer — a multi-agent system that provides natural-language
+  access to cluster state, observability data, cost analysis, and GitOps-driven infrastructure changes.
+  It replaces ad-hoc kubectl/Helm/Grafana context-switching with a single conversational interface backed
+  by specialized agents, each scoped to a narrow operational domain with least-privilege tool access.
+
+
+  Concretely, kagent powers: cluster diagnostics (pod status, events, logs, Flux sync state), fleet-wide
+  observability (cross-cluster Prometheus/Loki aggregation), cost analysis and right-sizing (OpenCost
+  integration), automated incident response (Alertmanager → triage → investigation → diagnosis → reporting
+  pipeline), and GitOps change proposals (draft PRs for infrastructure modifications). All write operations
+  flow through Git — no agent applies changes directly to the cluster.
+
+  '
+purpose_rationale: '**Why kagent over LangGraph/CrewAI/AutoGen:** Those frameworks run agents as application
+  processes with framework-specific state, requiring custom deployment, scaling, and monitoring infrastructure.
+  kagent''s CRD model means agents are reconciled by the same Flux pipeline that manages every other workload
+  — no separate agent orchestration layer to maintain. Agent definitions live in Git alongside the infrastructure
+  they operate on, enabling atomic rollback of both the agent configuration and the infrastructure it
+  manages.
+
+
+  **Why not a single monolithic agent:** A single agent with all tools loaded simultaneously causes context
+  window bloat (30+ tools confuse routing), creates security risk (one prompt injection accesses all tools),
+  and prevents model-size optimization (planning tasks need larger models than simple tool-calling). The
+  orchestrator-worker split allows the coordinator to use a high-quality reasoning model while workers
+  use faster, smaller models optimized for tool execution.
+
+  '
+features:
+- feature: Orchestrator-worker multi-agent architecture
+  detail: 'coordinator-agent routes queries to 5 specialist workers (cluster-agent, observability-agent,
+    git-agent, finops-agent, code-agent) using keyword-deterministic rules — not LLM intent classification.
+    A separate incident-orchestrator sequences a 3-stage pipeline (investigation → diagnosis → reporting)
+    for automated incident response. All agents are declared as `Agent` CRs with explicit tool allowlists
+    and A2A skill advertisements.
+
+    '
+- feature: Go runtime with model warming
+  detail: 'All agents use `runtime: go` for ~2s cold-start (vs ~15s Python default). A CronJob (`ollama-model-warmer`)
+    pings Ollama every 10 minutes with `keep_alive=15m` to keep both qwen2.5:72b and qwen2.5:14b-kagent
+    resident in VRAM, reducing warm-start TTFR from ~90s to ~10-15s for the large model.
+
+    '
+- feature: Tool federation via AgentGateway
+  detail: '`RemoteMCPServer` CRs point at AgentGateway proxy endpoints (`:9090/mcp/k8s`, `:9090/mcp/helm`)
+    which fan out to per-cluster backend MCP servers. Tools are returned with cluster-prefixed names (e.g.
+    `k8s-tools-services-amer_k8s_get_resources`), and each agent''s `toolNames` allowlist filters to only
+    its permitted subset. This enables multi-cluster tool routing without per-agent endpoint configuration.
+
+    '
+- feature: Multi-tier input guardrail chain
+  detail: 'Requests pass through 4 defense layers before reaching agents: (1) Traefik forwardAuth to `input-guardrail`
+    — a stateless Python regex engine matching credential leaks, prompt injection, and jailbreak patterns
+    in <5ms p99; (2) basicAuth identity gate via ExternalSecret-managed htpasswd; (3) coordinator-agent''s
+    prompt-level refusal backstop; (4) AgentGateway A2A policy for inter-agent injection on the A2A path.
+
+    '
+- feature: Event-driven incident response pipeline
+  detail: '`alertmanager-hook` receives Alertmanager webhooks and writes critical alerts to a Redis Sentinel
+    stream (`incident:events`, DB 4). KEDA scales `stream-dispatcher` replicas (1–5) based on pending
+    entry count in consumer group `dispatch-group`. The dispatcher invokes triage-agent via A2A, which
+    classifies/deduplicates alerts and escalates confirmed incidents to `incident-orchestrator` for the
+    full investigation → diagnosis → reporting pipeline.
+
+    '
+- feature: Context compaction with per-agent token budgets
+  detail: 'Each agent declares a `tokenThreshold` (coordinator: 12K, cluster-agent: 24K, fleet agents:
+    16K) that triggers automatic conversation compaction. A summarizer using `fast-model-config` compresses
+    older context while retaining the most recent N events (`eventRetentionSize`). This prevents context
+    window exhaustion during long diagnostic sessions without losing critical state.
+
+    '
+- feature: GitOps-only write enforcement with approval gates
+  detail: 'git-agent is the sole mutation path — it reads current state, creates a feature branch (`agent/*`),
+    commits changes, and opens a draft PR. Write tools (`create_branch`, `create_or_update_file`, `push_files`,
+    `create_pull_request`) require explicit human approval via `requireApproval`. The `merge_pull_request`
+    tool is intentionally excluded from the agent''s toolset — humans always merge.
+
+    '
+- feature: Tiered model configuration
+  detail: 'Two `ModelConfig` CRs provide model-appropriate sizing: `default-model-config` (qwen2.5:72b,
+    16K context, used by coordinator and git-agent for complex reasoning) and `fast-model-config` (qwen2.5:14b-kagent,
+    8K context, used by all tool-calling workers and as the compaction summarizer). Temperature is pinned
+    at 0.1 for deterministic tool-calling behavior.
+
+    '
+- feature: Prometheus operational alerting
+  detail: '`PrometheusRule` kagent-operational defines 5 alerts: `KagentOllamaRequestSurge` (>10 invocations/min
+    sustained 5m), `KagentAgentLoopDetected` (>5 invocations in 60s — critical), `KagentEdgeRejectionSurge`
+    (>5 forwardAuth 403s/min), `KagentAgentToolCountExceeded` (>18 tools per agent — god-agent anti-pattern),
+    and `KagentLLMTokenBudgetExceeded` (>1M tokens/hour through agentgateway).
+
+    '
+- feature: OpenTelemetry distributed tracing
+  detail: 'kagent-controller exports traces via OTLP/gRPC to the cluster''s OpenTelemetry Collector (`opentelemetry-collector.opentelemetry.svc.cluster.local:4317`).
+    Environment variables `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` are set per-component (controller,
+    stream-dispatcher, alertmanager-hook) for service-level trace attribution in Jaeger.
+
+    '
+- feature: NetworkPolicy micro-segmentation
+  detail: 'Seven NetworkPolicy resources enforce least-privilege network access: intra-namespace communication,
+    ingress from agentgateway-system (ports 8083/8084/80), traefik (UI access), and monitoring (Prometheus
+    scraping); egress to agentgateway-system (MCP federation), infrastructure namespaces (cnpg-system,
+    redis-sentinel, monitoring, opentelemetry), and kube-system DNS (UDP/TCP 53).
+
+    '
+architecture_diagrams:
+- title: kagent Namespace Deployment Topology
+  mermaid: "graph TD\n    subgraph traefik-ns[\"traefik namespace\"]\n        traefik[Traefik Ingress]\n\
+    \    end\n\n    subgraph kagent-ns[\"kagent namespace\"]\n        ingressroute[\"IngressRoute<br/>kagent.local:80\"\
+    ]\n        guardrail[\"input-guardrail<br/>:9292 forwardAuth\"]\n        auth[\"kagent-auth<br/>basicAuth\
+    \ middleware\"]\n        ui[\"kagent-ui<br/>:8080\"]\n        controller[\"kagent-controller<br/>:8083\
+    \ A2A / :8084 MCP\"]\n        github-mcp[\"github-mcp-server<br/>:8082 Streamable HTTP\"]\n      \
+    \  hook[\"alertmanager-hook<br/>:8080\"]\n        dispatcher[\"stream-dispatcher<br/>KEDA 1-5 replicas\"\
+    ]\n        warmer[\"ollama-model-warmer<br/>CronJob */10\"]\n    end\n\n    subgraph agentgateway-ns[\"\
+    agentgateway-system namespace\"]\n        agw[\"agentgateway-proxy<br/>:8080 A2A / :9090 MCP\"]\n\
+    \    end\n\n    subgraph ollama-ns[\"ollama namespace\"]\n        ollama[\"Ollama<br/>:11434\"]\n\
+    \    end\n\n    subgraph cnpg-ns[\"cnpg-system namespace\"]\n        pg[\"postgresql-cluster<br/>kagent\
+    \ DB + pgvector\"]\n    end\n\n    subgraph redis-ns[\"redis-sentinel namespace\"]\n        redis[\"\
+    Redis Sentinel<br/>:26379\"]\n    end\n\n    subgraph monitoring-ns[\"monitoring namespace\"]\n  \
+    \      prom[\"Prometheus<br/>PodMonitor scrape\"]\n        otel[\"OTel Collector<br/>:4317 OTLP/gRPC\"\
+    ]\n    end\n\n    traefik -->|\"Host: kagent.local\"| ingressroute\n    ingressroute -->|\"forwardAuth\"\
+    | guardrail\n    ingressroute -->|\"basicAuth\"| auth\n    ingressroute -->|\":8080\"| ui\n    controller\
+    \ -->|\"OTLP/gRPC :4317\"| otel\n    controller -->|\"Ollama API :11434\"| ollama\n    controller\
+    \ -->|\"PostgreSQL :5432\"| pg\n    controller -->|\"appProtocol: kgateway.dev/a2a :8083\"| agw\n\
+    \    agw -->|\"A2A :8083\"| controller\n    agw -->|\"MCP :8082\"| github-mcp\n    dispatcher -->|\"\
+    A2A :8080\"| agw\n    dispatcher -->|\"Sentinel :26379\"| redis\n    hook -->|\"XADD incident:events\"\
+    | redis\n    warmer -->|\"POST /api/generate\"| ollama\n    prom -->|\"scrape /metrics :8083\"| controller\n"
+- title: Multi-Agent Request Flow
+  mermaid: "sequenceDiagram\n    participant User\n    participant Traefik\n    participant Guard as input-guardrail\n\
+    \    participant UI as kagent-ui\n    participant Ctrl as kagent-controller\n    participant AGW as\
+    \ agentgateway-proxy\n    participant Coord as coordinator-agent\n    participant Worker as specialist\
+    \ worker\n\n    User->>Traefik: POST kagent.local\n    Traefik->>Guard: forwardAuth (regex check)\n\
+    \    Guard-->>Traefik: 200 OK (pass)\n    Traefik->>UI: proxy :8080\n    UI->>Ctrl: A2A invoke coordinator-agent\n\
+    \    Ctrl->>AGW: A2A request :8080\n    AGW->>Coord: route to coordinator\n    Note over Coord: Keyword-deterministic\
+    \ routing\n    Coord->>AGW: delegate to worker (A2A)\n    AGW->>Worker: route to specialist\n    Worker->>AGW:\
+    \ MCP tool call :9090\n    AGW-->>Worker: tool response\n    Worker-->>AGW: structured envelope\n\
+    \    AGW-->>Coord: worker response\n    Note over Coord: Render envelope to markdown\n    Coord-->>AGW:\
+    \ final response\n    AGW-->>Ctrl: A2A response\n    Ctrl-->>UI: display to user\n    UI-->>User:\
+    \ rendered answer"

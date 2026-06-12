@@ -1,0 +1,99 @@
+intro: '[Temporal](https://temporal.io) ([GitHub](https://github.com/temporalio/temporal)) is a durable
+  execution platform that guarantees workflow completion regardless of infrastructure failures. Unlike
+  traditional job queues or state machines that lose progress on crash, Temporal persists every workflow
+  state transition to a database — enabling automatic retry, resumption from the exact point of failure,
+  and indefinite workflow lifetimes (minutes to months). What distinguishes it from alternatives like
+  Airflow, Step Functions, or Celery: Temporal workflows are written in general-purpose code (Go, Java,
+  TypeScript, Python) rather than DAGs or JSON state machines, with the runtime transparently handling
+  retries, timeouts, compensation, and distributed transactions.
+
+
+  The architecture separates concerns across four server roles: **Frontend** (API gateway, rate limiting,
+  routing), **History** (workflow state machine execution, event sourcing), **Matching** (task queue dispatch,
+  worker polling), and **Worker** (internal system workflows — archival, replication, batch operations).
+  Each role scales independently and communicates via gRPC. Persistence is pluggable — Cassandra, MySQL,
+  or PostgreSQL for the execution store, with a separate visibility store enabling complex workflow queries.
+
+
+  Temporal''s durability model is built on event sourcing: every workflow decision and activity result
+  is appended to an immutable history log in the persistence layer. On recovery, the server replays this
+  history to reconstruct exact workflow state without re-executing side effects. This makes Temporal suitable
+  for orchestrating multi-service sagas, long-running human-in-the-loop processes, and scheduled batch
+  pipelines where partial progress must never be lost.
+
+  '
+purpose: 'Temporal serves as the platform''s durable workflow orchestration engine — the coordination
+  layer that manages multi-step, failure-prone processes across other services. Rather than building ad-hoc
+  retry logic, state tracking, and failure recovery into each application, services delegate complex orchestration
+  to Temporal and implement only the business logic as stateless activity handlers.
+
+
+  Concrete workloads include: multi-service data pipelines that must complete atomically, scheduled batch
+  processing with checkpoint/resume semantics, and long-running automation workflows that survive pod
+  restarts and node failures. Temporal replaces what would otherwise be fragile cron jobs with state scattered
+  across Redis keys and database flags.
+
+  '
+purpose_rationale: '**Why Temporal over simpler alternatives:** Celery/BullMQ handle task queues well
+  but lack workflow-level state, compensation logic, and cross-service saga support. Airflow is DAG-oriented
+  and Python-only, poorly suited to general-purpose orchestration with dynamic branching. AWS Step Functions
+  are vendor-locked and JSON-defined. Temporal uniquely combines: code-native workflow definitions, automatic
+  retry with exponential backoff at both activity and workflow level, built-in versioning for zero-downtime
+  workflow evolution, and a visibility layer for operational querying of running workflows.
+
+
+  **Why self-hosted over Temporal Cloud:** Local-first development on Colima/Kind requires the full server
+  stack accessible without internet. Self-hosting also enables tight integration with the shared PostgreSQL
+  cluster (ADR-004) and future KEDA-based worker autoscaling (ADR-011) using task queue depth as the scaling
+  signal.
+
+  '
+features:
+- feature: PostgreSQL-backed dual-store persistence
+  detail: Both the execution store (`temporal` database) and visibility store (`temporal_visibility` database)
+    use the `postgres12_pgx` driver against the shared CNPG cluster, with Cassandra and Elasticsearch
+    explicitly disabled.
+- feature: Four-role server topology
+  detail: Frontend, History, Matching, and Worker roles each run as separate replica sets within the same
+    HelmRelease, enabling independent scaling per role.
+- feature: Automatic schema migration
+  detail: Schema `setupDatabase` and `updateDatabase` are enabled while `createDatabase` is disabled —
+    Temporal auto-migrates its schema on upgrade but expects databases to be pre-provisioned by CNPG.
+- feature: ExternalSecret credential injection
+  detail: PostgreSQL credentials are pulled from LocalStack via ClusterSecretStore into a Kubernetes Secret
+    with `cnpg.io/reload` label, enabling automatic credential rotation propagation.
+- feature: Web UI with Traefik ingress
+  detail: Temporal Web UI is exposed at `temporal.local` via Traefik IngressRoute on port 8080, providing
+    workflow visibility, namespace management, and execution inspection.
+- feature: Blob retention policy
+  detail: Server runs with `--blobsRetentionDays=7`, limiting internal blob storage growth for completed
+    workflow data.
+- feature: Default namespace with 3-day retention
+  detail: A `default` Temporal namespace is auto-created with 3-day closed workflow retention, balancing
+    query visibility against storage growth.
+- feature: Monitoring stack disabled
+  detail: All bundled Prometheus, Grafana, and ServiceMonitor resources are disabled in favor of the platform-wide
+    kube-prometheus-stack deployment.
+architecture_diagrams:
+- title: Temporal Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        HR[HelmRelease: temporal-server]\n\
+    \        REPO[HelmRepository: temporal]\n        KS[Kustomization: temporal]\n    end\n\n    subgraph\
+    \ temporal-ns[\"temporal namespace\"]\n        FE[Frontend x2]\n        HI[History x2]\n        MA[Matching\
+    \ x2]\n        WK[Worker x2]\n        WEB[temporal-server-web]\n        ES[ExternalSecret: postgresql-cluster-app]\n\
+    \        SEC[Secret: postgresql-cluster-app]\n    end\n\n    subgraph cnpg[\"cnpg-system namespace\"\
+    ]\n        PG[postgresql-cluster-rw]\n        DB1[(temporal)]\n        DB2[(temporal_visibility)]\n\
+    \    end\n\n    subgraph infra[\"Infrastructure\"]\n        LS[LocalStack SecretStore]\n        TR[Traefik]\n\
+    \    end\n\n    KS -->|\"dependsOn\"| ESC[external-secrets-config]\n    KS -->|\"dependsOn\"| PGC[postgresql-cluster]\n\
+    \    HR -->|\"sourceRef\"| REPO\n\n    ES -->|\"ClusterSecretStore\"| LS\n    ES -->|\"creates\"|\
+    \ SEC\n\n    FE -->|\"sql :5432\"| PG\n    HI -->|\"sql :5432\"| PG\n    MA -->|\"sql :5432\"| PG\n\
+    \    WK -->|\"sql :5432\"| PG\n    PG --- DB1\n    PG --- DB2\n\n    FE -.->|\"credentials\"| SEC\n\
+    \    HI -.->|\"credentials\"| SEC\n    MA -.->|\"credentials\"| SEC\n    WK -.->|\"credentials\"|\
+    \ SEC\n\n    TR -->|\"Host: temporal.local :8080\"| WEB\n"
+- title: Temporal Request Flow
+  mermaid: "sequenceDiagram\n    participant Client as Temporal Client\n    participant FE as Frontend\
+    \ Service\n    participant MA as Matching Service\n    participant HI as History Service\n    participant\
+    \ WK as External Worker\n    participant PG as PostgreSQL\n\n    Client->>FE: StartWorkflowExecution\
+    \ (gRPC)\n    FE->>HI: Create workflow state\n    HI->>PG: Persist workflow event (temporal db)\n\
+    \    HI->>MA: Schedule decision task\n    MA->>WK: Dispatch task (long poll)\n    WK->>FE: RespondDecisionTaskCompleted\n\
+    \    FE->>HI: Record decision\n    HI->>PG: Append history events\n    HI->>PG: Update visibility\
+    \ (temporal_visibility db)"

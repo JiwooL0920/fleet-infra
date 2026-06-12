@@ -1,0 +1,62 @@
+intro: 'The [Grafana Operator](https://grafana.github.io/grafana-operator/) ([GitHub](https://github.com/grafana/grafana-operator))
+  is a Kubernetes operator that manages Grafana instances and their associated resources (dashboards,
+  datasources, folders) declaratively via Custom Resources. Unlike directly configuring Grafana through
+  its HTTP API or provisioning files, the operator reconciles desired state continuously — if a dashboard
+  is deleted manually in the UI, the operator restores it on the next reconciliation cycle.
+
+
+  The `Grafana` CRD is the operator''s entry point: it registers a Grafana instance (either operator-managed
+  or externally deployed) so that other CRDs (`GrafanaDashboard`, `GrafanaDatasource`) can target it.
+  The operator supports two modes — **deployment mode** (it deploys and manages the Grafana pod lifecycle)
+  and **external mode** (it connects to a pre-existing Grafana instance). This service uses external mode,
+  pointing the operator at a Grafana already deployed by kube-prometheus-stack.
+
+  '
+purpose: '`grafana-config` registers the platform''s existing kube-prometheus-stack Grafana instance with
+  the Grafana Operator. This creates the bridge that allows downstream `GrafanaDashboard` custom resources
+  to be reconciled into the running Grafana without touching its Helm values or provisioning ConfigMaps.
+
+
+  Without this CR, the operator has no target instance — dashboard CRDs would have nothing to reconcile
+  against. This service sits between `grafana-operator` (which provides the controller) and `grafana-dashboards`
+  (which provides the dashboard definitions), acting as the instance discovery layer.
+
+  '
+purpose_rationale: '**Why external mode over operator-managed deployment:** kube-prometheus-stack already
+  deploys a fully configured Grafana with authentication, persistence, and datasource wiring baked into
+  its Helm chart. Re-deploying Grafana through the operator would duplicate that work and lose the tight
+  integration with Prometheus/Alertmanager that the stack provides. External mode gives the operator dashboard
+  management capabilities while leaving instance lifecycle to the Helm chart that already handles it well.
+
+  '
+features:
+- feature: External instance registration
+  detail: 'Uses `spec.external.url` to connect to the kube-prometheus-stack Grafana service at `monitoring-kube-prometheus-stack-grafana.monitoring.svc:80`,
+    avoiding a duplicate Grafana deployment.
+
+    '
+- feature: Instance selector label
+  detail: 'The `dashboards: grafana` label on the CR acts as a target selector — downstream `GrafanaDashboard`
+    resources use `instanceSelector.matchLabels` to bind to this specific instance.
+
+    '
+- feature: Secret-based admin authentication
+  detail: 'Admin credentials are sourced from the `grafana-admin-credentials` Secret via `spec.external.adminPassword`
+    and `spec.external.adminUser`, keeping credentials out of the CR spec.
+
+    '
+- feature: PostBuild variable substitution
+  detail: 'The Flux Kustomization injects variables from the `cluster-vars` ConfigMap at deploy time,
+    enabling environment-specific overrides without duplicating manifests per cluster.
+
+    '
+architecture_diagrams:
+- title: Grafana Operator Instance Registration Topology
+  mermaid: "graph TD\n    subgraph flux-system\n        FK[Flux Kustomization<br>grafana-config]\n   \
+    \     CV[ConfigMap<br>cluster-vars]\n    end\n    subgraph monitoring\n        GR[Grafana CR<br>labels:\
+    \ dashboards=grafana]\n        GS[Service<br>monitoring-kube-prometheus-stack-grafana]\n        SEC[Secret<br>grafana-admin-credentials]\n\
+    \    end\n    subgraph grafana-operator-ns[operator namespace]\n        GO[Grafana Operator]\n   \
+    \ end\n    subgraph downstream\n        GD[GrafanaDashboard CRs]\n    end\n\n    FK -->|postBuild\
+    \ substitute| CV\n    FK -->|deploys| GR\n    GO -->|watches/reconciles| GR\n    GR -->|external.url\
+    \ :80| GS\n    GR -->|adminPassword, adminUser| SEC\n    GD -->|instanceSelector<br>dashboards: grafana|\
+    \ GR"

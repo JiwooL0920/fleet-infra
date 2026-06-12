@@ -1,0 +1,86 @@
+intro: 'Grafana exposes a [Service Accounts API](https://grafana.com/docs/grafana/latest/developers/http_api/serviceaccount/)
+  that issues scoped API tokens independent of any human user. Unlike basic auth or personal API keys
+  tied to a user session, service account tokens survive password rotations, can be individually revoked,
+  and carry explicit role bindings (Viewer, Editor, Admin). They are the recommended machine-to-machine
+  authentication path for any automation that needs to query dashboards, manage alerts, or provision data
+  sources programmatically.
+
+
+  However, Grafana''s service account database is internal and ephemeral in default Helm deployments —
+  tokens do not survive a pod restart unless backed by persistent storage. This creates a bootstrap problem:
+  downstream services that depend on a valid Grafana token cannot simply mount a static secret, because
+  the token becomes invalid every time Grafana''s state resets.
+
+
+  `grafana-sa-setup` solves this with a self-healing Kubernetes Job that validates, creates, and externalizes
+  a Grafana SA token into a secrets manager where other services can consume it through the standard ExternalSecrets
+  flow.
+
+  '
+purpose: 'This Job exists to bridge Grafana''s ephemeral service account store with the platform''s secrets
+  distribution layer. Specifically, it ensures that `kagent` always has a valid Grafana API token available
+  — even after cluster restarts wipe Grafana''s internal SA database.
+
+
+  The Job runs after `kube-prometheus-stack` brings Grafana online, creates (or validates) a service account
+  named `kagent` with Admin role, generates a token, and writes it to LocalStack Secrets Manager at `kagent/grafana/api-key`.
+  From there, ExternalSecrets syncs the value into a Kubernetes Secret that kagent mounts at runtime.
+  The entire chain is automatic and requires no manual intervention after initial deployment.
+
+  '
+purpose_rationale: '**Why a Job instead of Grafana''s declarative provisioning (`provisioning/access-control/`):**
+  Grafana''s file-based provisioning supports service accounts since v9.1, but it does not expose the
+  generated token — it only ensures the account exists. There is no declarative way to extract the token
+  value and push it elsewhere. A Job with API calls is the only path that both creates the account and
+  captures the token for external storage.
+
+
+  **Why not a persistent Grafana database:** Persisting Grafana''s SQLite/PostgreSQL state would make
+  tokens survive restarts, but adds operational complexity (PVCs, backup/restore, migration) for a component
+  whose dashboards and data sources are already provisioned declaratively. Treating Grafana as stateless
+  with a token-bootstrap Job is simpler and aligns with the GitOps philosophy of reproducible state.
+
+  '
+features:
+- feature: Idempotent token validation
+  detail: Fetches the current token from LocalStack and validates it against Grafana's API before attempting
+    creation, avoiding unnecessary token churn on routine reconciliations
+- feature: Self-healing via TTL and Flux reconciliation
+  detail: ttlSecondsAfterFinished deletes the completed Job after 300s; Flux recreates it on next interval,
+    guaranteeing the token is refreshed after any cluster restart that invalidates Grafana's SA database
+- feature: Init container / main container handoff
+  detail: Token generation (curl against Grafana API) runs in an initContainer, passing the result to
+    the main container (aws-cli for LocalStack storage) via a shared emptyDir volume at /shared
+- feature: Least-privilege RBAC
+  detail: A dedicated ServiceAccount with a Role scoped to a single verb (get) on a single Secret (grafana-admin-credentials)
+    in the monitoring namespace — no cluster-wide permissions
+- feature: Flux health gating
+  detail: The Flux Kustomization declares a healthCheck on the Job resource, blocking downstream dependents
+    (kagent) from reconciling until the token is confirmed stored
+architecture_diagrams:
+- title: Job Execution Topology
+  mermaid: "graph TD\n    subgraph monitoring namespace\n        SECRET[Secret: grafana-admin-credentials]\n\
+    \        SA[ServiceAccount: grafana-sa-setup]\n        INIT[\"initContainer: create-token<br/>(curlimages/curl)\"\
+    ]\n        MAIN[\"container: store-secret<br/>(amazon/aws-cli)\"]\n        GRAFANA[Grafana API]\n\
+    \        SHARED[emptyDir: /shared]\n    end\n    subgraph localstack namespace\n        LOCALSTACK[LocalStack\
+    \ Secrets Manager]\n    end\n    subgraph flux-system namespace\n        KUST[Kustomization: grafana-sa-setup]\n\
+    \    end\n\n    KUST -->|dependsOn| KPS[Kustomization: kube-prometheus-stack]\n    KUST -->|healthCheck\
+    \ batch/v1 Job| INIT\n    SECRET -->|volumeMount /var/secrets/grafana| INIT\n    SA -->|serviceAccountName|\
+    \ INIT\n    INIT -->|\"GET /api/serviceaccounts/search\"| GRAFANA\n    INIT -->|\"POST /api/serviceaccounts/{id}/tokens\"\
+    | GRAFANA\n    INIT -->|writes grafana-token| SHARED\n    SHARED -->|reads grafana-token| MAIN\n \
+    \   INIT -->|\"POST secretsmanager.GetSecretValue\"| LOCALSTACK\n    MAIN -->|\"put-secret-value kagent/grafana/api-key\"\
+    | LOCALSTACK\n"
+- title: Token Bootstrap Flow
+  mermaid: "sequenceDiagram\n    participant Flux\n    participant Job as create-grafana-sa-token\n  \
+    \  participant LS as LocalStack\n    participant GF as Grafana API\n\n    Flux->>Job: Reconcile (after\
+    \ kube-prometheus-stack ready)\n    Job->>LS: GetSecretValue(kagent/grafana/api-key)\n    alt Token\
+    \ exists and non-placeholder\n        Job->>GF: GET /api/org (Bearer token)\n        alt HTTP 200\n\
+    \            Job->>Job: Write SKIP to /shared/action\n            Job-->>Flux: Job Complete (no-op)\n\
+    \        else HTTP != 200\n            Job->>GF: POST /api/serviceaccounts (name=kagent, role=Admin)\n\
+    \            Job->>GF: POST /api/serviceaccounts/{id}/tokens\n            Job->>Job: Write token to\
+    \ /shared/grafana-token\n            Job->>LS: put-secret-value(kagent/grafana/api-key, token)\n \
+    \           Job-->>Flux: Job Complete (refreshed)\n        end\n    else No token or placeholder\n\
+    \        Job->>GF: POST /api/serviceaccounts (name=kagent, role=Admin)\n        Job->>GF: POST /api/serviceaccounts/{id}/tokens\n\
+    \        Job->>Job: Write token to /shared/grafana-token\n        Job->>LS: put-secret-value(kagent/grafana/api-key,\
+    \ token)\n        Job-->>Flux: Job Complete (created)\n    end\n    Flux->>Flux: Unblock downstream\
+    \ (kagent)"

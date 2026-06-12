@@ -1,0 +1,46 @@
+intro: '[RedisInsight](https://redis.io/insight/) ([GitHub](https://github.com/RedisInsight/RedisInsight))
+  is Redis''s official graphical management tool. It provides a browser-based interface for inspecting
+  data structures, profiling queries, monitoring memory usage, and managing cluster topologies — without
+  requiring direct CLI access to Redis nodes.
+
+
+  Unlike lightweight alternatives (Redis Commander, phpRedisAdmin), RedisInsight is maintained by the
+  Redis team and natively understands Sentinel topologies, cluster sharding, and Redis Streams. It ships
+  as a single container with an embedded database for persisting connection profiles and query history,
+  requiring no external dependencies beyond the Redis instances it manages.
+
+  '
+purpose: 'RedisInsight provides the platform''s operator-facing Redis management interface. It connects
+  to the Redis Sentinel deployment to give engineers visual access to key inspection, slow-log analysis,
+  memory profiling, and stream monitoring — operations that would otherwise require `redis-cli` access
+  into the cluster.
+
+
+  Exposed at `redis.local` via Traefik, it serves as the day-two operations tool for debugging cache behavior,
+  verifying pub/sub channel activity, and inspecting consumer group lag on Redis Streams workloads.
+
+  '
+features:
+- feature: Health-gated startup
+  detail: Flux healthChecks verify both the upstream redis-sentinel StatefulSet and the RedisInsight Deployment
+    are healthy before declaring reconciliation success
+- feature: HTTP health probes
+  detail: Liveness and readiness probes hit the root path on the application port, with staggered initial
+    delays to accommodate cold-start database initialization
+- feature: Traefik ingress routing
+  detail: IngressRoute exposes the UI on a dedicated virtual host via the web entrypoint, keeping it accessible
+    without port-forwarding
+- feature: Service port remapping
+  detail: ClusterIP Service maps the external-facing port to the container's native application port,
+    decoupling internal container layout from service discovery
+- feature: Dedicated namespace isolation
+  detail: Runs in its own namespace with matching labels, enabling per-service network policies and RBAC
+    scoping
+architecture_diagrams:
+- title: Request routing and dependency topology
+  mermaid: "graph TD\n    subgraph traefik-ns[traefik]\n        TR[Traefik Ingress Controller]\n    end\n\
+    \    subgraph redisinsight-ns[redisinsight namespace]\n        IR[IngressRoute<br/>Host: redis.local]\n\
+    \        SVC[Service<br/>:8080]\n        DEP[Deployment: redisinsight<br/>:5540]\n    end\n    subgraph\
+    \ redis-sentinel-ns[redis-sentinel namespace]\n        RS[Redis Sentinel<br/>StatefulSet]\n    end\n\
+    \n    TR -->|entryPoint: web| IR\n    IR -->|port: 8080| SVC\n    SVC -->|targetPort: 5540| DEP\n\
+    \    DEP -->|dependsOn| RS"

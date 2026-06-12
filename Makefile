@@ -1,4 +1,4 @@
-PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-draft blog-setup update-docs
+PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-draft blog-setup update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-draft-all insight-draft-ops
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -26,11 +26,20 @@ help:
 	@echo "                         Override: make pull-ollama OLLAMA_MODEL=llama3.2"
 	@echo ""
 	@echo "Documentation & Blog:"
+	@echo "  docs-setup           - Install Python docgen venv (one-time setup)"
+	@echo "  catalog              - Extract service-catalog.json from manifests + env files"
+	@echo "  validate-insights    - Validate service-insights/*.yaml schema"
+	@echo "  docs-render          - Render all pages to docs-output/"
+	@echo "  docs-validate        - Validate rendered pages (headings, tables, ADR refs)"
+	@echo "  docs-gen             - Full local pipeline: catalog → render → validate"
+	@echo "  insight-draft SVC=X  - AI-draft prose fields for service-insights/<X>.yaml"
+	@echo "  insight-draft-all    - AI-draft all stubs that still have TODO placeholders"
+	@echo "  insight-draft-ops    - AI-draft operations runbooks for all services (review carefully)"
 	@echo "  docs-draft           - AI-draft README/ADR/CLAUDE updates for staged infra changes"
 	@echo "  docs-draft-blog      - AI-draft a blog post for the most recent commit(s)"
 	@echo "  blog-setup           - Show one-time setup instructions for blog-draft CI workflow"
-	@echo "  update-docs          - Sync jiwool0920.github.io component docs (incremental from watermark)"
-	@echo "  update-docs MODE=all - Full reconcile: regenerate all component pages + index/nav"
+	@echo "  update-docs          - Sync docs to jiwool0920.github.io and open a PR (incremental)"
+	@echo "  update-docs MODE=all - Full reconcile: regenerate all component pages + rollups"
 	@echo "  docs-draft-blog      - Preview AI-drafted blog post to stdout (no PR)"
 	@echo "  blog-draft           - Draft blog post + open PR in jiwool0920.github.io"
 	@echo "                         Optional: make blog-draft RANGE=HEAD~3..HEAD"
@@ -191,8 +200,84 @@ setup-ollama:
 	@echo "All kagent models ready. Run 'make serve-ollama' to start serving."
 
 # ==============================================================================
-# Documentation Assist (AI-drafted, human-reviewed)
+# Deterministic Documentation Generation
 # ==============================================================================
+
+# Install Python docgen deps into the venv (one-time per machine)
+docs-setup:
+	@echo "Setting up docs venv..."
+	@python3 -m venv scripts/docgen/.venv
+	@scripts/docgen/.venv/bin/pip install -q -r scripts/docgen/requirements.txt
+	@echo "✓ docs venv ready at scripts/docgen/.venv/"
+
+# Extract service-catalog.json from manifests + env files.
+# Re-run whenever you add/remove services or change chart versions.
+catalog:
+	@scripts/docgen/.venv/bin/python3 scripts/docgen/catalog.py
+
+# Validate all service-insights/*.yaml files against the schema.
+validate-insights:
+	@scripts/docgen/.venv/bin/python3 scripts/docgen/insight_schema.py
+
+# Render all component + rollup pages from catalog + insights into docs-output/.
+docs-render:
+	@scripts/docgen/.venv/bin/python3 scripts/docgen/render.py --output-dir docs-output
+
+# Validate rendered markdown pages (headings, empty tables, ADR refs, mermaid balance).
+docs-validate:
+	@scripts/docgen/.venv/bin/python3 scripts/docgen/validate.py --docs-dir docs-output
+
+# Generate prose fields (intro, purpose, features, architecture_diagrams) for a service insight
+# YAML using opencode. The LLM reasons from manifests + catalog entry + ADRs.
+# Config values (CPU, memory, replicas, chart version) always come from service-catalog.json.
+#
+# Usage:
+#   make insight-draft SVC=traefik                        # initial draft (skips filled fields)
+#   make insight-draft SVC="traefik loki"                 # batch
+#   make insight-draft SVC=loki FORCE=1                   # overwrite all fields (post-refactor)
+#   make insight-draft SVC=loki FIELDS=architecture_diagrams  # re-draft one field only
+#   make insight-draft-all                                # all stubs with TODO placeholders
+#
+# FORCE=1   — overwrite even already-filled fields (use after an architecture refactor)
+# FIELDS=   — comma-separated field names to re-draft (e.g. FIELDS=architecture_diagrams,purpose)
+FORCE ?=
+FIELDS ?=
+insight-draft:
+	@if [ -z "$(SVC)" ]; then echo "Usage: make insight-draft SVC=<slug> [FORCE=1] [FIELDS=field1,field2]"; exit 1; fi
+	@scripts/docgen/.venv/bin/python3 scripts/docgen/insight_draft.py $(SVC) \
+		$(if $(FORCE),--force,) \
+		$(if $(FIELDS),--fields $(FIELDS),)
+	@echo ""
+	@scripts/docgen/.venv/bin/python3 scripts/docgen/insight_schema.py service-insights/$(firstword $(SVC)).yaml
+	@echo ""
+	@for svc in $(SVC); do echo "  insight → $$(pwd)/service-insights/$$svc.yaml"; done
+
+# Draft insights for ALL enabled services that still have TODO placeholders.
+insight-draft-all:
+	@stubs=$$(scripts/docgen/.venv/bin/python3 -c "import json; from pathlib import Path; c=json.load(open('service-catalog.json'))['services']; print(' '.join(s for s,v in c.items() if v['enabled'] and Path(f'service-insights/{s}.yaml').exists() and '<!-- TODO:' in Path(f'service-insights/{s}.yaml').read_text()))"); \
+	echo "Drafting: $$stubs"; \
+	for svc in $$stubs; do \
+		scripts/docgen/.venv/bin/python3 scripts/docgen/insight_draft.py $$svc; \
+	done
+
+# Draft operations runbooks (scenarios, symptoms, steps) for all services.
+# REVIEW CAREFULLY: commands reference real resource names but scenarios are LLM-generated.
+# Use FORCE=1 to overwrite existing operations sections.
+insight-draft-ops:
+	@all_svcs=$$(scripts/docgen/.venv/bin/python3 -c "import json; from pathlib import Path; c=json.load(open('service-catalog.json'))['services']; print(' '.join(s for s,v in c.items() if v['enabled'] and Path(f'service-insights/{s}.yaml').exists()))"); \
+	echo "Drafting operations for: $$all_svcs"; \
+	for svc in $$all_svcs; do \
+		scripts/docgen/.venv/bin/python3 scripts/docgen/insight_draft.py $$svc --fields operations $(if $(FORCE),--force,); \
+	done
+
+# Full local generate + validate pipeline (catalog → render → validate).
+# Outputs go to docs-output/ for inspection before running update-docs.
+docs-gen: catalog validate-insights docs-render docs-validate
+	@echo ""
+	@echo "✓ Docs generated in docs-output/"
+	@echo "  Component pages: $$(pwd)/docs-output/components/"
+	@echo "  Run 'make update-docs' to sync to the blog repo and open a PR."
+
 
 # Draft README/ADR/CLAUDE updates for changed infra services.
 # Run this when the docs-freshness pre-push hook blocks you.

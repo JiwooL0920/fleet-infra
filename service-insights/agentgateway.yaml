@@ -1,0 +1,108 @@
+intro: '[AgentGateway](https://agentgateway.dev) is a Kubernetes-native gateway purpose-built for AI agent
+  communication protocols. It implements the [Gateway API](https://gateway-api.sigs.k8s.io/) specification
+  with extensions for two emerging standards: **A2A** (Agent-to-Agent), Google''s protocol for inter-agent
+  discovery and task delegation, and **MCP** (Model Context Protocol), Anthropic''s protocol for connecting
+  LLMs to external tool servers.
+
+
+  What distinguishes AgentGateway from generic API gateways (Kong, Ambassador, raw Traefik) is protocol
+  awareness. It understands agent card discovery, A2A task lifecycle semantics, and MCP tool/resource
+  negotiation natively — enabling routing decisions based on agent capabilities rather than just URL paths.
+  It ships as a split-architecture deployment: a **controller** that reconciles Gateway API resources
+  (GatewayClass, Gateway, HTTPRoute) and custom AgentGateway CRDs, and a **proxy** data plane that handles
+  actual request routing to backend agent services.
+
+
+  The project uses Gateway API as its configuration surface, meaning agent routing is declared via standard
+  HTTPRoute resources annotated with protocol-specific metadata rather than proprietary CRDs for basic
+  routing. AgentGateway-specific CRDs (AgentgatewayBackend, AgentgatewayPolicy, AgentgatewayParameters)
+  extend this for MCP federation and agent-specific traffic policy.
+
+  '
+purpose: 'AgentGateway is the platform''s unified ingress point for all AI agent traffic. It sits between
+  external clients (IDEs, other agent platforms, CLI tools) and the internal kagent-controller, providing
+  two concrete functions:
+
+
+  1. **A2A routing** — External agents discover and delegate tasks to kagent-managed agents via the A2A
+  protocol. AgentGateway resolves agent cards and routes task requests to the correct kagent-controller
+  Service using cross-namespace HTTPRoute references.
+
+
+  2. **MCP federation** — Multiple MCP tool servers running behind kagent are aggregated into a single
+  `/mcp` endpoint. Clients connect once to AgentGateway and gain access to all federated tools without
+  needing to know individual server locations.
+
+
+  The downstream `agentgateway-config` Kustomization applies the actual Gateway, route, and backend CRD
+  instances that wire these capabilities to specific kagent services.
+
+  '
+purpose_rationale: '**Why a dedicated agent gateway over routing directly through Traefik:** Traefik handles
+  HTTP/TLS termination and basic path routing well, but it has no awareness of A2A agent cards or MCP
+  tool negotiation. Routing agent traffic directly through Traefik would require encoding all agent discovery
+  logic in application code within kagent itself. AgentGateway externalizes this into infrastructure —
+  agents register via standard Gateway API resources and the gateway handles discovery, load balancing,
+  and protocol negotiation at the network layer.
+
+
+  **Why Gateway API over Ingress:** Gateway API''s ReferenceGrant model enables secure cross-namespace
+  routing (agentgateway-system → kagent namespace) without cluster-wide permissions. The experimental
+  features flag enables appProtocol-based routing, which AgentGateway uses to distinguish A2A from standard
+  HTTP traffic on the same port.
+
+  '
+features:
+- feature: Split CRD installation
+  detail: CRDs (AgentgatewayBackend, AgentgatewayPolicy, AgentgatewayParameters) are installed via a separate
+    HelmRelease with CreateReplace upgrade strategy, ensuring CRD availability before the controller starts
+    reconciling
+- feature: Controller + proxy split architecture
+  detail: Controller reconciles Gateway API and AgentGateway CRDs; proxy handles data-plane traffic —
+    each has independent healthChecks in the Flux Kustomization
+- feature: Gateway API experimental features
+  detail: KGW_ENABLE_GATEWAY_API_EXPERIMENTAL_FEATURES=true enables appProtocol-based routing required
+    for A2A protocol discrimination on HTTPRoute backends
+- feature: BasicAuth via ExternalSecret
+  detail: Traefik Middleware pulls htpasswd credentials from LocalStack via ClusterSecretStore; removeHeader=true
+    strips the Authorization header before forwarding to the proxy
+- feature: Default-deny NetworkPolicy
+  detail: All ingress/egress denied by default; explicit policies allow ingress from traefik, kagent,
+    and monitoring namespaces, and egress to kagent, ollama, monitoring, and kube-system DNS (UDP+TCP
+    53)
+- feature: Memory-based HPA for proxy
+  detail: Proxy scales 1–3 replicas on 75% memory utilization with 300s stabilization window; memory-based
+    because LLM relay workloads are I/O-bound, not CPU-bound
+- feature: PodDisruptionBudgets
+  detail: minAvailable=1 on both proxy and controller ensures A2A and MCP routing survive voluntary disruptions
+    during rolling upgrades
+- feature: Cross-namespace ReferenceGrant
+  detail: Grants agentgateway-system permission to reference Services in the kagent namespace, required
+    by Gateway API security model for HTTPRoute backend references
+architecture_diagrams:
+- title: Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system\n        KSTZ[Flux Kustomization<br/>agentgateway]\n  \
+    \      HR_CRD[HelmRelease<br/>agentgateway-crds]\n        HR_MAIN[HelmRelease<br/>agentgateway]\n\
+    \        REPO[HelmRepository<br/>agentgateway-oci]\n    end\n\n    subgraph agentgateway-system\n\
+    \        CTRL[Deployment<br/>agentgateway]\n        PROXY[Deployment<br/>agentgateway-proxy]\n   \
+    \     HPA[HPA<br/>memory 75%]\n        PDB_P[PDB proxy<br/>minAvailable: 1]\n        PDB_C[PDB controller<br/>minAvailable:\
+    \ 1]\n        AUTH_SEC[ExternalSecret<br/>agentgateway-basic-auth]\n        MW[Middleware<br/>agentgateway-auth]\n\
+    \        IR[IngressRoute<br/>agentgateway.local]\n        NP[NetworkPolicy<br/>default-deny-all]\n\
+    \    end\n\n    subgraph traefik[traefik namespace]\n        TRAEFIK[Traefik]\n    end\n\n    subgraph\
+    \ kagent-ns[kagent namespace]\n        KAGENT[kagent-controller<br/>Service]\n    end\n\n    subgraph\
+    \ external\n        OCI[oci://cr.agentgateway.dev/charts]\n        LSTACK[LocalStack<br/>ClusterSecretStore]\n\
+    \    end\n\n    REPO -->|oci pull| OCI\n    HR_CRD -->|chart source| REPO\n    HR_MAIN -->|chart source|\
+    \ REPO\n    HR_MAIN -->|dependsOn| HR_CRD\n    KSTZ -->|deploys| CTRL\n    KSTZ -->|deploys| PROXY\n\
+    \    HPA -->|scales| PROXY\n    PDB_P -->|protects| PROXY\n    PDB_C -->|protects| CTRL\n    AUTH_SEC\
+    \ -->|remoteRef| LSTACK\n    MW -->|secret| AUTH_SEC\n    TRAEFIK -->|Host agentgateway.local :80|\
+    \ IR\n    IR -->|middleware| MW\n    IR -->|backend :80| PROXY\n    PROXY -->|ReferenceGrant| KAGENT\n\
+    \    NP -->|allow ingress| TRAEFIK\n    NP -->|allow ingress| KAGENT\n"
+- title: Request Routing Flow
+  mermaid: "sequenceDiagram\n    participant Client as Client<br/>(IDE / Agent)\n    participant Traefik\
+    \ as Traefik<br/>:80\n    participant MW as Middleware<br/>agentgateway-auth\n    participant Proxy\
+    \ as agentgateway-proxy<br/>:80\n    participant Kagent as kagent-controller<br/>(kagent ns)\n\n \
+    \   Client->>Traefik: Host: agentgateway.local\n    Traefik->>MW: basicAuth check\n    MW-->>Traefik:\
+    \ 401 (if invalid)\n    MW->>Proxy: forward (Authorization stripped)\n    alt A2A request /agents/*\n\
+    \        Proxy->>Kagent: HTTPRoute + appProtocol a2a\n        Kagent-->>Proxy: A2A task response\n\
+    \    else MCP request /mcp\n        Proxy->>Kagent: AgentgatewayBackend federation\n        Kagent-->>Proxy:\
+    \ MCP tool/resource response\n    end\n    Proxy-->>Client: response"

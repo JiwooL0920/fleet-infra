@@ -114,6 +114,13 @@ collect_context() {
 
     # Write prompt + context into a single file for opencode -f attachment
     cat > "$PROMPT_FILE" <<PROMPT
+CRITICAL INSTRUCTION: Output ONLY the raw Markdown blog post. Your very first character must be
+the hyphen of the opening YAML frontmatter (---). Do NOT write any narration, reasoning,
+"I detect...", tool calls, research steps, or explanation. Do NOT use any tools. All context
+needed is provided in this file. Start your response with --- immediately.
+
+---
+
 You are writing a technical blog post for a MkDocs Material site at https://jiwool0920.github.io.
 Author: Jiwoo Lee, platform engineer. Style: direct, practical, no marketing language.
 
@@ -156,6 +163,27 @@ PROMPT
     echo_info "Context written to prompt file ($(wc -c < "$PROMPT_FILE") bytes)"
 }
 
+# ── Fast-fail duplicate-branch guard ──────────────────────────────────────────
+# Called BEFORE generate_draft so we don't waste 90s on opencode if the PR
+# for this commit range was already opened.
+check_branch_guard() {
+    git -C "$BLOG_REPO_DIR" fetch origin --quiet 2>/dev/null || true
+    if git -C "$BLOG_REPO_DIR" rev-parse --verify "origin/${BRANCH_NAME}" &>/dev/null; then
+        local existing_pr
+        existing_pr=$(gh pr list --repo "$BLOG_REPO_GH" \
+            --head "$BRANCH_NAME" --json url --jq '.[0].url' 2>/dev/null || true)
+        echo_warn "Branch '$BRANCH_NAME' already exists — draft was already created."
+        if [[ -n "$existing_pr" ]]; then
+            echo_info "Existing PR: $existing_pr"
+        else
+            echo_warn "Check open PRs: https://github.com/${BLOG_REPO_GH}/pulls"
+        fi
+        echo_warn "To regenerate, delete the remote branch first:"
+        echo_warn "  gh api -X DELETE repos/${BLOG_REPO_GH}/git/refs/heads/${BRANCH_NAME}"
+        exit 0
+    fi
+}
+
 # ── Generate draft with opencode ───────────────────────────────────────────────
 generate_draft() {
     echo_step "Generating blog post draft with opencode..."
@@ -172,7 +200,7 @@ generate_draft() {
     #   > $OUTPUT_FILE     — capture stdout (the generated post)
     #   2>$ERR_FILE        — capture stderr separately so it doesn't pollute the post
     if ! opencode run \
-            "Write the blog post described in the attached file." \
+            "Output ONLY the Markdown blog post from the attached file. Start your response with --- (YAML frontmatter). No narration, no tool calls, no research." \
             -f "$PROMPT_FILE" \
             "${model_flag[@]}" \
             --dangerously-skip-permissions \
@@ -189,9 +217,15 @@ generate_draft() {
     sed -i '' 's/\x1b\[[0-9;]*[mGKHF]//g' "$OUTPUT_FILE" 2>/dev/null || \
         sed -i 's/\x1b\[[0-9;]*[mGKHF]//g' "$OUTPUT_FILE" 2>/dev/null || true
 
-    # Remove any leading blank lines before the frontmatter
-    sed -i '' '/./,$!d' "$OUTPUT_FILE" 2>/dev/null || \
-        sed -i '/./,$!d' "$OUTPUT_FILE" 2>/dev/null || true
+    # Strip any preamble text the model emits before the YAML frontmatter.
+    # opencode's Sisyphus agent narrates tool calls ("I detect writing intent...")
+    # before producing the actual markdown — awk discards everything up to the
+    # first line that starts with "---".
+    local stripped
+    stripped=$(awk '/^---/{found=1} found{print}' "$OUTPUT_FILE")
+    if [[ -n "$stripped" ]]; then
+        echo "$stripped" > "$OUTPUT_FILE"
+    fi
 
     # Validate: must contain YAML frontmatter
     if ! head -1 "$OUTPUT_FILE" | grep -q '^---'; then
@@ -224,15 +258,6 @@ create_pr() {
         echo_error "Blog repo has uncommitted changes in docs/blog/posts/:"
         echo "$dirty_posts"
         echo_error "Commit or stash those first, then re-run."
-        exit 1
-    fi
-
-    # Check branch doesn't already exist (duplicate-draft guard)
-    if git -C "$BLOG_REPO_DIR" rev-parse --verify "origin/${BRANCH_NAME}" &>/dev/null; then
-        echo_warn "Branch '$BRANCH_NAME' already exists on origin."
-        echo_warn "This change may already have a draft PR. Check: https://github.com/${BLOG_REPO_GH}/pulls"
-        echo_warn "To force a new draft, delete the remote branch first:"
-        echo_warn "  gh api -X DELETE repos/${BLOG_REPO_GH}/git/refs/heads/${BRANCH_NAME}"
         exit 1
     fi
 
@@ -300,6 +325,7 @@ main() {
 
     check_prerequisites
     collect_context
+    check_branch_guard   # fast-fail before spending 90s on opencode
     generate_draft
     create_pr
 

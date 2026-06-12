@@ -1,0 +1,82 @@
+intro: '[AgentGateway](https://agentgateway.dev) is a Kubernetes-native proxy purpose-built for AI agent
+  traffic. It implements the Gateway API specification with a custom `gatewayClassName: agentgateway`,
+  providing protocol-aware routing for the three dominant agent communication patterns: [A2A](https://google.github.io/A2A/)
+  (Agent-to-Agent), [MCP](https://modelcontextprotocol.io/) (Model Context Protocol), and direct LLM inference
+  calls. Unlike general-purpose ingress controllers that treat all HTTP traffic identically, AgentGateway
+  understands agent protocol semantics — streaming SSE for A2A task updates, bidirectional JSON-RPC for
+  MCP tool calls, and chunked inference responses from LLM backends.
+
+
+  This `agentgateway-config` Kustomization is the **configuration layer** that sits atop the AgentGateway
+  operator. The operator (deployed separately as a HelmRelease) installs the CRDs; this Kustomization
+  instantiates the actual Gateway, parameters, policies, and route resources that define the proxy''s
+  runtime behavior. The split ensures CRDs exist before any instances are applied — a hard ordering requirement
+  enforced via Flux `dependsOn`.
+
+  '
+purpose: 'This Kustomization defines the data-plane configuration for the AI agent platform''s unified
+  proxy. It creates a single Gateway with three dedicated listeners — one per protocol class — so that
+  A2A delegation chains, MCP tool invocations, and LLM inference requests each get isolated routing and
+  can be independently scaled or policy-gated. The tracing policy instruments every proxied request with
+  distributed traces exported to the platform''s OpenTelemetry Collector, providing full observability
+  across multi-hop agent interactions without requiring individual agent services to implement their own
+  trace propagation.
+
+  '
+purpose_rationale: '**Why a dedicated agent proxy over routing through Traefik directly:** Traefik handles
+  north-south ingress from external clients, but agent-to-agent traffic is east-west within the cluster
+  and requires protocol-specific routing decisions (e.g., routing MCP `tools/call` to the correct backend
+  by tool name, or routing A2A tasks by agent card). AgentGateway''s Gateway API implementation allows
+  defining per-protocol listeners with distinct port assignments, keeping traffic classes isolated at
+  the network level. Traefik remains responsible for TLS termination and external exposure via IngressRoutes
+  that forward to these internal listener ports.
+
+  '
+features:
+- feature: Multi-protocol Gateway listeners
+  detail: Three dedicated listeners on separate ports — A2A (:8080), MCP (:9090), LLM (:9080) — each allowing
+    routes from all namespaces, enabling protocol-isolated routing for agent workloads deployed anywhere
+    in the cluster.
+- feature: ClusterIP service with Traefik front
+  detail: AgentgatewayParameters sets the proxy service to ClusterIP rather than LoadBalancer; external
+    access is handled by Traefik IngressRoutes, keeping the proxy off the public network and consolidating
+    TLS termination at the ingress layer.
+- feature: Full-fidelity OTEL tracing
+  detail: Proxy-level environment variables configure 100% head sampling (`traceidratio` at 1.0) with
+    traces exported via OTLP gRPC to the in-cluster OpenTelemetry Collector — every agent interaction
+    is traced without application-level instrumentation.
+- feature: Policy-based tracing attachment
+  detail: An AgentgatewayPolicy resource attaches frontend tracing to the Gateway via a cross-namespace
+    backendRef to the OTel Collector, using a ReferenceGrant to authorize the cross-namespace service
+    reference.
+- feature: Cross-namespace ReferenceGrant
+  detail: Explicitly grants the agentgateway-system namespace permission to reference Services in the
+    opentelemetry namespace, satisfying Gateway API's security model for cross-namespace backend references.
+- feature: Post-build variable substitution
+  detail: The Flux Kustomization substitutes variables from the cluster-vars ConfigMap at apply time,
+    allowing environment-specific values (domains, endpoints) to be injected without duplicating manifests
+    per stage.
+- feature: Gateway health checking
+  detail: Flux monitors the Gateway resource's status conditions as a health check, blocking dependent
+    Kustomizations from proceeding until the proxy is fully programmed and accepting routes.
+architecture_diagrams:
+- title: AgentGateway Config Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        KS[Kustomization: agentgateway-config]\n\
+    \    end\n\n    subgraph agentgateway-system[\"agentgateway-system namespace\"]\n        GW[Gateway:\
+    \ agentgateway-proxy]\n        PARAMS[AgentgatewayParameters: proxy-params]\n        POLICY[AgentgatewayPolicy:\
+    \ otel-tracing]\n    end\n\n    subgraph opentelemetry[\"opentelemetry namespace\"]\n        OTEL[opentelemetry-collector]\n\
+    \        RG[ReferenceGrant: agentgateway-to-otel]\n    end\n\n    subgraph routes[\"Route sub-kustomizations\"\
+    ]\n        A2A[../a2a routes]\n        MCP[../mcp routes]\n        LLM[../llm routes]\n    end\n\n\
+    \    KS -->|\"dependsOn\"| AGW[Kustomization: agentgateway]\n    KS -->|\"dependsOn\"| OTELKS[Kustomization:\
+    \ opentelemetry-collector]\n    KS -->|\"applies\"| GW\n    KS -->|\"applies\"| PARAMS\n    KS -->|\"\
+    applies\"| POLICY\n\n    GW -->|\"infrastructure.parametersRef\"| PARAMS\n    PARAMS -->|\"OTLP gRPC\
+    \ :4317\"| OTEL\n    POLICY -->|\"targetRef\"| GW\n    POLICY -->|\"backendRef gRPC :4317\"| OTEL\n\
+    \    RG -->|\"authorizes\"| POLICY\n\n    A2A -->|\"parentRef :8080\"| GW\n    MCP -->|\"parentRef\
+    \ :9090\"| GW\n    LLM -->|\"parentRef :9080\"| GW\n"
+- title: Request Tracing Flow
+  mermaid: "sequenceDiagram\n    participant Client as Agent / Client\n    participant GW as agentgateway-proxy\n\
+    \    participant OTEL as OTel Collector :4317\n    participant Backend as Backend Service\n\n    Client->>GW:\
+    \ HTTP request (A2A :8080 / MCP :9090 / LLM :9080)\n    GW->>GW: Match HTTPRoute, inject trace context\n\
+    \    GW->>OTEL: Export span (OTLP gRPC, 100% sampling)\n    GW->>Backend: Proxy request with trace\
+    \ headers\n    Backend-->>GW: Response\n    GW-->>Client: Response\n    GW->>OTEL: Export response\
+    \ span"

@@ -1,0 +1,1573 @@
+{
+  "_meta": {
+    "catalog_sha": "4d088b0b3a67b4c4"
+  },
+  "services": {
+    "cilium": {
+      "name": "Cilium",
+      "slug": "cilium",
+      "namespace": "kube-system",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "cilium",
+      "chart_version": "1.17.2",
+      "repo_url": null,
+      "depends_on": [],
+      "downstream": [],
+      "timeout": "10m",
+      "health_checks": [],
+      "source": "apps/base/cilium/",
+      "enabled": true,
+      "dev": {
+        "CILIUM_CHART_VERSION": "1.17.2"
+      },
+      "prod": {
+        "CILIUM_CHART_VERSION": "1.17.2"
+      }
+    },
+    "traefik": {
+      "name": "Traefik",
+      "slug": "traefik",
+      "namespace": "traefik",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "traefik",
+      "chart_version": "32.1.1",
+      "repo_url": "https://helm.traefik.io/traefik",
+      "depends_on": [],
+      "downstream": [
+        "traefik-config",
+        "kagent",
+        "agentgateway"
+      ],
+      "timeout": "3m  # Reduced from 5m - no dependencies",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "traefik"
+        }
+      ],
+      "source": "apps/base/traefik/",
+      "enabled": true,
+      "dev": {
+        "TRAEFIK_CHART_VERSION": "32.1.1",
+        "TRAEFIK_MEMORY_REQUEST": "256Mi",
+        "TRAEFIK_MEMORY_LIMIT": "256Mi",
+        "TRAEFIK_CPU_REQUEST": "500m",
+        "TRAEFIK_CPU_LIMIT": "500m",
+        "TRAEFIK_REPLICA_COUNT": "1"
+      },
+      "prod": {
+        "TRAEFIK_CHART_VERSION": "32.1.1",
+        "TRAEFIK_MEMORY_REQUEST": "256Mi",
+        "TRAEFIK_MEMORY_LIMIT": "1Gi",
+        "TRAEFIK_CPU_REQUEST": "200m",
+        "TRAEFIK_CPU_LIMIT": "2000m",
+        "TRAEFIK_REPLICA_COUNT": "2"
+      }
+    },
+    "localstack": {
+      "name": "LocalStack",
+      "slug": "localstack",
+      "namespace": "localstack",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "localstack",
+      "chart_version": "0.6.15",
+      "repo_url": "https://localstack.github.io/helm-charts",
+      "depends_on": [],
+      "downstream": [
+        "external-secrets-operator",
+        "external-secrets-config",
+        "crossplane-config"
+      ],
+      "timeout": "5m  # Includes PVC provisioning + init hook execution",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "localstack"
+        }
+      ],
+      "source": "apps/base/localstack/",
+      "enabled": true,
+      "dev": {
+        "LOCALSTACK_CHART_VERSION": "0.6.15",
+        "LOCALSTACK_MEMORY_REQUEST": "512Mi",
+        "LOCALSTACK_MEMORY_LIMIT": "512Mi",
+        "LOCALSTACK_CPU_REQUEST": "500m",
+        "LOCALSTACK_CPU_LIMIT": "500m",
+        "LOCALSTACK_STORAGE_SIZE": "2Gi"
+      },
+      "prod": {
+        "LOCALSTACK_CHART_VERSION": "0.6.15",
+        "LOCALSTACK_MEMORY_REQUEST": "1Gi",
+        "LOCALSTACK_MEMORY_LIMIT": "2Gi",
+        "LOCALSTACK_CPU_REQUEST": "500m",
+        "LOCALSTACK_CPU_LIMIT": "2000m",
+        "LOCALSTACK_STORAGE_SIZE": "10Gi"
+      }
+    },
+    "cnpg-operator": {
+      "name": "CNPG Operator",
+      "slug": "cnpg-operator",
+      "namespace": "cnpg-system",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "cloudnative-pg",
+      "chart_version": "0.24.0",
+      "repo_url": "https://cloudnative-pg.github.io/charts",
+      "depends_on": [],
+      "downstream": [
+        "postgresql-cluster",
+        "kagent"
+      ],
+      "timeout": "3m  # No dependencies, operator startup",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "cnpg-operator-cloudnative-pg"
+        }
+      ],
+      "source": "apps/base/cnpg-operator/",
+      "enabled": true,
+      "dev": {
+        "CNPG_OPERATOR_CHART_VERSION": "0.24.0",
+        "CNPG_OPERATOR_MEMORY_REQUEST": "128Mi",
+        "CNPG_OPERATOR_MEMORY_LIMIT": "128Mi",
+        "CNPG_OPERATOR_CPU_REQUEST": "200m",
+        "CNPG_OPERATOR_CPU_LIMIT": "200m"
+      },
+      "prod": {
+        "CNPG_OPERATOR_CHART_VERSION": "0.24.0",
+        "CNPG_OPERATOR_MEMORY_REQUEST": "256Mi",
+        "CNPG_OPERATOR_MEMORY_LIMIT": "512Mi",
+        "CNPG_OPERATOR_CPU_REQUEST": "200m",
+        "CNPG_OPERATOR_CPU_LIMIT": "1000m"
+      }
+    },
+    "scylla-operator": {
+      "name": "Scylla Operator",
+      "slug": "scylla-operator",
+      "namespace": "scylla-operator",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "scylla-operator",
+      "chart_version": "1.12.0",
+      "repo_url": "https://scylla-operator-charts.storage.googleapis.com/stable",
+      "depends_on": [],
+      "downstream": [
+        "scylla-cluster",
+        "scylla-manager"
+      ],
+      "timeout": "10m  # Operator installation with CRDs",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "scylla-operator"
+        }
+      ],
+      "source": "apps/base/scylla-operator/",
+      "enabled": true,
+      "dev": {
+        "SCYLLA_OPERATOR_CHART_VERSION": "1.12.0",
+        "SCYLLA_OPERATOR_CPU_REQUEST": "100m",
+        "SCYLLA_OPERATOR_CPU_LIMIT": "500m",
+        "SCYLLA_OPERATOR_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_OPERATOR_MEMORY_LIMIT": "512Mi"
+      },
+      "prod": {
+        "SCYLLA_OPERATOR_CHART_VERSION": "1.12.0",
+        "SCYLLA_OPERATOR_CPU_REQUEST": "100m",
+        "SCYLLA_OPERATOR_CPU_LIMIT": "500m",
+        "SCYLLA_OPERATOR_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_OPERATOR_MEMORY_LIMIT": "512Mi"
+      }
+    },
+    "external-secrets-operator": {
+      "name": "External Secrets Operator",
+      "slug": "external-secrets-operator",
+      "namespace": "secrets-manager",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "external-secrets",
+      "chart_version": "0.10.7",
+      "repo_url": "https://charts.external-secrets.io",
+      "depends_on": [
+        "localstack"
+      ],
+      "downstream": [
+        "external-secrets-config",
+        "crossplane-config"
+      ],
+      "timeout": "3m  # Quick operator startup after LocalStack",
+      "health_checks": [
+        {
+          "apiVersion": "helm.toolkit.fluxcd.io/v2",
+          "kind": "HelmRelease",
+          "name": "secrets-manager"
+        }
+      ],
+      "source": "apps/base/external-secrets-operator/",
+      "enabled": true,
+      "dev": {
+        "EXTERNAL_SECRETS_CHART_VERSION": "0.10.7",
+        "EXTERNAL_SECRETS_MEMORY_REQUEST": "128Mi",
+        "EXTERNAL_SECRETS_MEMORY_LIMIT": "128Mi",
+        "EXTERNAL_SECRETS_CPU_REQUEST": "100m",
+        "EXTERNAL_SECRETS_CPU_LIMIT": "100m",
+        "EXTERNAL_SECRETS_WEBHOOK_REPLICA_COUNT": "1"
+      },
+      "prod": {
+        "EXTERNAL_SECRETS_CHART_VERSION": "0.10.7",
+        "EXTERNAL_SECRETS_MEMORY_REQUEST": "256Mi",
+        "EXTERNAL_SECRETS_MEMORY_LIMIT": "512Mi",
+        "EXTERNAL_SECRETS_CPU_REQUEST": "100m",
+        "EXTERNAL_SECRETS_CPU_LIMIT": "500m",
+        "EXTERNAL_SECRETS_WEBHOOK_REPLICA_COUNT": "2"
+      }
+    },
+    "external-secrets-config": {
+      "name": "External Secrets Config",
+      "slug": "external-secrets-config",
+      "namespace": "external-secrets-config",
+      "layer": "Foundation services",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "external-secrets-operator",
+        "localstack"
+      ],
+      "downstream": [
+        "traefik-config",
+        "kube-prometheus-stack",
+        "loki",
+        "redis-sentinel",
+        "n8n",
+        "temporal",
+        "kagent",
+        "agentgateway",
+        "pgadmin4"
+      ],
+      "timeout": "5m0s",
+      "health_checks": [
+        {
+          "apiVersion": "external-secrets.io/v1beta1",
+          "kind": "ClusterSecretStore",
+          "name": "cluster-vars"
+        }
+      ],
+      "source": "apps/base/external-secrets-config/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "traefik-config": {
+      "name": "Traefik Config",
+      "slug": "traefik-config",
+      "namespace": "traefik-config",
+      "layer": "Foundation services",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "traefik",
+        "external-secrets-config"
+      ],
+      "downstream": [
+        "jaeger",
+        "scylla-cluster"
+      ],
+      "timeout": "5m0s",
+      "health_checks": [],
+      "source": "apps/base/traefik-config/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "metrics-server": {
+      "name": "Metrics Server",
+      "slug": "metrics-server",
+      "namespace": "kube-system",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "metrics-server",
+      "chart_version": "3.12.2",
+      "repo_url": "https://kubernetes-sigs.github.io/metrics-server/",
+      "depends_on": [],
+      "downstream": [
+        "kubescape"
+      ],
+      "timeout": "3m  # No dependencies, simple system service",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "metrics-server"
+        }
+      ],
+      "source": "apps/base/metrics-server/",
+      "enabled": true,
+      "dev": {
+        "METRICS_SERVER_CHART_VERSION": "3.12.2",
+        "METRICS_SERVER_MEMORY_REQUEST": "64Mi",
+        "METRICS_SERVER_MEMORY_LIMIT": "64Mi",
+        "METRICS_SERVER_CPU_REQUEST": "100m",
+        "METRICS_SERVER_CPU_LIMIT": "100m"
+      },
+      "prod": {
+        "METRICS_SERVER_CHART_VERSION": "3.12.2",
+        "METRICS_SERVER_MEMORY_REQUEST": "128Mi",
+        "METRICS_SERVER_MEMORY_LIMIT": "256Mi",
+        "METRICS_SERVER_CPU_REQUEST": "100m",
+        "METRICS_SERVER_CPU_LIMIT": "500m"
+      }
+    },
+    "kube-prometheus-stack": {
+      "name": "Kube Prometheus Stack",
+      "slug": "kube-prometheus-stack",
+      "namespace": "monitoring",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "kube-prometheus-stack",
+      "chart_version": "65.8.1",
+      "repo_url": "https://prometheus-community.github.io/helm-charts",
+      "depends_on": [
+        "external-secrets-config"
+      ],
+      "downstream": [
+        "grafana-sa-setup",
+        "loki",
+        "opentelemetry-collector",
+        "grafana-operator",
+        "kubescape",
+        "opencost"
+      ],
+      "timeout": "5m  # Prometheus stack deployment time",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "kube-prometheus-stack-operator"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "kube-prometheus-stack-grafana"
+        }
+      ],
+      "source": "apps/base/kube-prometheus-stack/",
+      "enabled": true,
+      "dev": {
+        "PROMETHEUS_CHART_VERSION": "65.8.1",
+        "PROMETHEUS_MEMORY_REQUEST": "1Gi",
+        "PROMETHEUS_MEMORY_LIMIT": "1Gi",
+        "PROMETHEUS_CPU_REQUEST": "1000m",
+        "PROMETHEUS_CPU_LIMIT": "1000m",
+        "PROMETHEUS_STORAGE_SIZE": "20Gi",
+        "PROMETHEUS_RETENTION_SIZE": "5GiB",
+        "PROMETHEUS_RETENTION_TIME": "7d",
+        "GRAFANA_MEMORY_REQUEST": "256Mi",
+        "GRAFANA_MEMORY_LIMIT": "256Mi",
+        "GRAFANA_CPU_REQUEST": "250m",
+        "GRAFANA_CPU_LIMIT": "250m",
+        "ALERTMANAGER_MEMORY_REQUEST": "128Mi",
+        "ALERTMANAGER_MEMORY_LIMIT": "128Mi"
+      },
+      "prod": {
+        "PROMETHEUS_CHART_VERSION": "65.8.1",
+        "PROMETHEUS_MEMORY_REQUEST": "2Gi",
+        "PROMETHEUS_MEMORY_LIMIT": "4Gi",
+        "PROMETHEUS_CPU_REQUEST": "1000m",
+        "PROMETHEUS_CPU_LIMIT": "4000m",
+        "PROMETHEUS_STORAGE_SIZE": "100Gi",
+        "PROMETHEUS_RETENTION_SIZE": "20GiB",
+        "PROMETHEUS_RETENTION_TIME": "30d",
+        "GRAFANA_MEMORY_REQUEST": "512Mi",
+        "GRAFANA_MEMORY_LIMIT": "1Gi",
+        "GRAFANA_CPU_REQUEST": "200m",
+        "GRAFANA_CPU_LIMIT": "1000m",
+        "ALERTMANAGER_MEMORY_REQUEST": "256Mi",
+        "ALERTMANAGER_MEMORY_LIMIT": "512Mi"
+      }
+    },
+    "weave-gitops": {
+      "name": "Weave GitOps",
+      "slug": "weave-gitops",
+      "namespace": "weave-gitops",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "weave-gitops",
+      "chart_version": "4.0.36",
+      "repo_url": "oci://ghcr.io/weaveworks/charts",
+      "depends_on": [],
+      "downstream": [],
+      "timeout": "3m  # Simple web UI, quick startup",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "ww-gitops-weave-gitops"
+        }
+      ],
+      "source": "apps/base/weave-gitops/",
+      "enabled": true,
+      "dev": {
+        "WEAVE_GITOPS_CHART_VERSION": "4.0.36",
+        "WEAVE_GITOPS_MEMORY_REQUEST": "128Mi",
+        "WEAVE_GITOPS_MEMORY_LIMIT": "128Mi",
+        "WEAVE_GITOPS_CPU_REQUEST": "100m",
+        "WEAVE_GITOPS_CPU_LIMIT": "100m"
+      },
+      "prod": {
+        "WEAVE_GITOPS_CHART_VERSION": "4.0.36",
+        "WEAVE_GITOPS_MEMORY_REQUEST": "256Mi",
+        "WEAVE_GITOPS_MEMORY_LIMIT": "512Mi",
+        "WEAVE_GITOPS_CPU_REQUEST": "100m",
+        "WEAVE_GITOPS_CPU_LIMIT": "500m"
+      }
+    },
+    "grafana-sa-setup": {
+      "name": "Grafana SA Setup",
+      "slug": "grafana-sa-setup",
+      "namespace": "grafana-sa-setup",
+      "layer": "Foundation services",
+      "type": "Job",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "kube-prometheus-stack"
+      ],
+      "downstream": [
+        "kagent"
+      ],
+      "timeout": "5m0s",
+      "health_checks": [
+        {
+          "apiVersion": "batch/v1",
+          "kind": "Job",
+          "name": "create-grafana-sa-token"
+        }
+      ],
+      "source": "apps/base/grafana-sa-setup/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "node-image-gc": {
+      "name": "Node Image GC",
+      "slug": "node-image-gc",
+      "namespace": "node-maintenance",
+      "layer": "Node maintenance",
+      "type": "CronJob",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [],
+      "downstream": [],
+      "timeout": "3m",
+      "health_checks": [
+        {
+          "apiVersion": "batch/v1",
+          "kind": "CronJob",
+          "name": "node-image-gc"
+        }
+      ],
+      "source": "apps/base/node-image-gc/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "keda": {
+      "name": "KEDA",
+      "slug": "keda",
+      "namespace": "keda",
+      "layer": "Event-driven autoscaling",
+      "type": "HelmRelease",
+      "chart": "keda",
+      "chart_version": "2.16.1",
+      "repo_url": null,
+      "depends_on": [],
+      "downstream": [],
+      "timeout": "10m",
+      "health_checks": [],
+      "source": "apps/base/keda/",
+      "enabled": true,
+      "dev": {
+        "KEDA_CHART_VERSION": "2.16.1"
+      },
+      "prod": {
+        "KEDA_CHART_VERSION": "2.16.1"
+      }
+    },
+    "loki": {
+      "name": "Loki",
+      "slug": "loki",
+      "namespace": "monitoring",
+      "layer": "Logging stack services",
+      "type": "HelmRelease",
+      "chart": "loki",
+      "chart_version": "6.37.0",
+      "repo_url": "https://grafana.github.io/helm-charts",
+      "depends_on": [
+        "external-secrets-config",
+        "kube-prometheus-stack"
+      ],
+      "downstream": [
+        "promtail",
+        "opentelemetry-collector"
+      ],
+      "timeout": "10m0s",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "StatefulSet",
+          "name": "cluster-vars"
+        }
+      ],
+      "source": "apps/base/loki/",
+      "enabled": true,
+      "dev": {
+        "LOKI_CHART_VERSION": "6.37.0",
+        "LOKI_REPLICA_COUNT": "1",
+        "LOKI_MEMORY_REQUEST": "512Mi",
+        "LOKI_MEMORY_LIMIT": "512Mi",
+        "LOKI_CPU_REQUEST": "250m",
+        "LOKI_CPU_LIMIT": "250m",
+        "LOKI_STORAGE_SIZE": "5Gi",
+        "LOKI_RETENTION_PERIOD": "168h  # 7 days",
+        "LOKI_CACHE_TIMEOUT": "500ms",
+        "LOKI_CACHE_EXPIRATION": "1h",
+        "LOKI_REDIS_POOL_SIZE": "5",
+        "LOKI_WRITE_POOL_SIZE": "3"
+      },
+      "prod": {
+        "LOKI_CHART_VERSION": "6.37.0",
+        "LOKI_REPLICA_COUNT": "2",
+        "LOKI_MEMORY_REQUEST": "1Gi",
+        "LOKI_MEMORY_LIMIT": "2Gi",
+        "LOKI_CPU_REQUEST": "500m",
+        "LOKI_CPU_LIMIT": "2000m",
+        "LOKI_STORAGE_SIZE": "50Gi",
+        "LOKI_RETENTION_PERIOD": "720h  # 30 days",
+        "LOKI_CACHE_TIMEOUT": "500ms",
+        "LOKI_CACHE_EXPIRATION": "1h",
+        "LOKI_REDIS_POOL_SIZE": "20",
+        "LOKI_WRITE_POOL_SIZE": "10"
+      }
+    },
+    "promtail": {
+      "name": "Promtail",
+      "slug": "promtail",
+      "namespace": "monitoring",
+      "layer": "Logging stack services",
+      "type": "HelmRelease",
+      "chart": "promtail",
+      "chart_version": "6.17.0",
+      "repo_url": null,
+      "depends_on": [
+        "loki"
+      ],
+      "downstream": [],
+      "timeout": "10m0s",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "DaemonSet",
+          "name": "cluster-vars"
+        }
+      ],
+      "source": "apps/base/promtail/",
+      "enabled": true,
+      "dev": {
+        "PROMTAIL_CHART_VERSION": "6.17.0",
+        "PROMTAIL_MEMORY_REQUEST": "128Mi",
+        "PROMTAIL_MEMORY_LIMIT": "128Mi",
+        "PROMTAIL_CPU_REQUEST": "100m",
+        "PROMTAIL_CPU_LIMIT": "100m"
+      },
+      "prod": {
+        "PROMTAIL_CHART_VERSION": "6.17.0",
+        "PROMTAIL_MEMORY_REQUEST": "256Mi",
+        "PROMTAIL_MEMORY_LIMIT": "512Mi",
+        "PROMTAIL_CPU_REQUEST": "100m",
+        "PROMTAIL_CPU_LIMIT": "500m"
+      }
+    },
+    "jaeger": {
+      "name": "Jaeger",
+      "slug": "jaeger",
+      "namespace": "jaeger",
+      "layer": "Distributed tracing services",
+      "type": "HelmRelease",
+      "chart": "jaeger",
+      "chart_version": "3.3.1",
+      "repo_url": "https://jaegertracing.github.io/helm-charts",
+      "depends_on": [
+        "traefik-config"
+      ],
+      "downstream": [
+        "opentelemetry-collector"
+      ],
+      "timeout": "10m",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "jaeger"
+        }
+      ],
+      "source": "apps/base/jaeger/",
+      "enabled": true,
+      "dev": {
+        "JAEGER_CHART_VERSION": "3.3.1",
+        "JAEGER_MEMORY_REQUEST": "256Mi",
+        "JAEGER_MEMORY_LIMIT": "512Mi",
+        "JAEGER_CPU_REQUEST": "100m",
+        "JAEGER_CPU_LIMIT": "500m"
+      },
+      "prod": {
+        "JAEGER_CHART_VERSION": "3.3.1",
+        "JAEGER_MEMORY_REQUEST": "256Mi",
+        "JAEGER_MEMORY_LIMIT": "512Mi",
+        "JAEGER_CPU_REQUEST": "100m",
+        "JAEGER_CPU_LIMIT": "500m"
+      }
+    },
+    "opentelemetry-collector": {
+      "name": "OpenTelemetry Collector",
+      "slug": "opentelemetry-collector",
+      "namespace": "opentelemetry",
+      "layer": "Distributed tracing services",
+      "type": "HelmRelease",
+      "chart": "opentelemetry-collector",
+      "chart_version": "0.108.0",
+      "repo_url": "https://open-telemetry.github.io/opentelemetry-helm-charts",
+      "depends_on": [
+        "jaeger",
+        "loki",
+        "kube-prometheus-stack"
+      ],
+      "downstream": [
+        "agentgateway-config"
+      ],
+      "timeout": "10m",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "opentelemetry-collector"
+        }
+      ],
+      "source": "apps/base/opentelemetry-collector/",
+      "enabled": true,
+      "dev": {
+        "OTEL_COLLECTOR_CHART_VERSION": "0.108.0",
+        "OTEL_COLLECTOR_REPLICAS": "1",
+        "OTEL_COLLECTOR_MEMORY_REQUEST": "256Mi",
+        "OTEL_COLLECTOR_MEMORY_LIMIT": "512Mi",
+        "OTEL_COLLECTOR_CPU_REQUEST": "100m",
+        "OTEL_COLLECTOR_CPU_LIMIT": "500m"
+      },
+      "prod": {
+        "OTEL_COLLECTOR_CHART_VERSION": "0.108.0",
+        "OTEL_COLLECTOR_REPLICAS": "1",
+        "OTEL_COLLECTOR_MEMORY_REQUEST": "256Mi",
+        "OTEL_COLLECTOR_MEMORY_LIMIT": "512Mi",
+        "OTEL_COLLECTOR_CPU_REQUEST": "100m",
+        "OTEL_COLLECTOR_CPU_LIMIT": "500m"
+      }
+    },
+    "grafana-operator": {
+      "name": "Grafana Operator",
+      "slug": "grafana-operator",
+      "namespace": "grafana-operator",
+      "layer": "Grafana Operator",
+      "type": "HelmRelease",
+      "chart": "grafana-operator",
+      "chart_version": "v5.15.1",
+      "repo_url": "oci://ghcr.io/grafana/helm-charts",
+      "depends_on": [
+        "kube-prometheus-stack"
+      ],
+      "downstream": [
+        "grafana-config"
+      ],
+      "timeout": "5m",
+      "health_checks": [],
+      "source": "apps/base/grafana-operator/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "grafana-config": {
+      "name": "Grafana Config",
+      "slug": "grafana-config",
+      "namespace": "grafana-config",
+      "layer": "Grafana Operator",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "grafana-operator"
+      ],
+      "downstream": [
+        "grafana-dashboards"
+      ],
+      "timeout": "5m",
+      "health_checks": [],
+      "source": "apps/base/grafana-config/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "grafana-dashboards": {
+      "name": "Grafana Dashboards",
+      "slug": "grafana-dashboards",
+      "namespace": "grafana-dashboards",
+      "layer": "Grafana Operator",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "grafana-config"
+      ],
+      "downstream": [],
+      "timeout": "2m",
+      "health_checks": [],
+      "source": "infra/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "postgresql-cluster": {
+      "name": "PostgreSQL Cluster",
+      "slug": "postgresql-cluster",
+      "namespace": "postgresql-cluster",
+      "layer": "Database services",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "cnpg-operator"
+      ],
+      "downstream": [
+        "n8n",
+        "temporal",
+        "pgadmin4"
+      ],
+      "timeout": "15m  # Database cluster initialization can take 10-15 minutes (DB creation, init scripts, replica sync)",
+      "health_checks": [
+        {
+          "apiVersion": "postgresql.cnpg.io/v1",
+          "kind": "Cluster",
+          "name": "postgresql-cluster"
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "Secret",
+          "name": "postgresql-cluster-app"
+        }
+      ],
+      "source": "apps/base/cloudnative-pg/",
+      "enabled": true,
+      "dev": {
+        "POSTGRESQL_INSTANCES": "1",
+        "POSTGRESQL_STORAGE_SIZE": "10Gi",
+        "POSTGRESQL_MEMORY_REQUEST": "1Gi",
+        "POSTGRESQL_MEMORY_LIMIT": "1Gi",
+        "POSTGRESQL_CPU_REQUEST": "1000m",
+        "POSTGRESQL_CPU_LIMIT": "1000m",
+        "POSTGRESQL_MAX_CONNECTIONS": "100",
+        "POSTGRESQL_SHARED_BUFFERS": "128MB",
+        "POSTGRESQL_EFFECTIVE_CACHE_SIZE": "512MB",
+        "POSTGRESQL_BACKUP_RETENTION": "7"
+      },
+      "prod": {
+        "POSTGRESQL_INSTANCES": "3",
+        "POSTGRESQL_STORAGE_SIZE": "100Gi",
+        "POSTGRESQL_MEMORY_REQUEST": "2Gi",
+        "POSTGRESQL_MEMORY_LIMIT": "4Gi",
+        "POSTGRESQL_CPU_REQUEST": "1000m",
+        "POSTGRESQL_CPU_LIMIT": "4000m",
+        "POSTGRESQL_MAX_CONNECTIONS": "500",
+        "POSTGRESQL_SHARED_BUFFERS": "1GB",
+        "POSTGRESQL_EFFECTIVE_CACHE_SIZE": "3GB",
+        "POSTGRESQL_BACKUP_RETENTION": "30"
+      }
+    },
+    "redis-sentinel": {
+      "name": "Redis Sentinel",
+      "slug": "redis-sentinel",
+      "namespace": "redis-sentinel",
+      "layer": "Database services",
+      "type": "HelmRelease",
+      "chart": "redis",
+      "chart_version": "20.7.0",
+      "repo_url": "oci://registry-1.docker.io/bitnamicharts",
+      "depends_on": [
+        "external-secrets-config"
+      ],
+      "downstream": [
+        "redisinsight"
+      ],
+      "timeout": "5m  # Redis Sentinel needs time for initial setup",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "StatefulSet",
+          "name": "redis-sentinel-master"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "StatefulSet",
+          "name": "redis-sentinel-replicas"
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "Secret",
+          "name": "redis-password"
+        }
+      ],
+      "source": "apps/base/redis-sentinel/",
+      "enabled": true,
+      "dev": {
+        "REDIS_CHART_VERSION": "20.7.0",
+        "REDIS_REPLICA_COUNT": "1",
+        "REDIS_MASTER_MEMORY_REQUEST": "2Gi",
+        "REDIS_MASTER_MEMORY_LIMIT": "2Gi",
+        "REDIS_MASTER_CPU_REQUEST": "250m",
+        "REDIS_MASTER_CPU_LIMIT": "250m",
+        "REDIS_REPLICA_MEMORY_REQUEST": "2Gi",
+        "REDIS_REPLICA_MEMORY_LIMIT": "2Gi",
+        "REDIS_REPLICA_CPU_REQUEST": "250m",
+        "REDIS_REPLICA_CPU_LIMIT": "250m",
+        "REDIS_STORAGE_SIZE": "8Gi",
+        "REDIS_MAXMEMORY": "1800mb",
+        "REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS": "30000",
+        "REDIS_SENTINEL_FAILOVER_TIMEOUT": "180000",
+        "REDIS_SENTINEL_PARALLEL_SYNCS": "1",
+        "REDIS_SENTINEL_MEM_REQ": "64Mi",
+        "REDIS_SENTINEL_MEM_LIM": "128Mi",
+        "REDIS_SENTINEL_CPU_REQ": "50m",
+        "REDIS_SENTINEL_CPU_LIM": "200m",
+        "REDIS_METRICS_ENABLED": "false"
+      },
+      "prod": {
+        "REDIS_CHART_VERSION": "20.7.0",
+        "REDIS_REPLICA_COUNT": "2",
+        "REDIS_MASTER_MEMORY_REQUEST": "512Mi",
+        "REDIS_MASTER_MEMORY_LIMIT": "1Gi",
+        "REDIS_MASTER_CPU_REQUEST": "200m",
+        "REDIS_MASTER_CPU_LIMIT": "1000m",
+        "REDIS_REPLICA_MEMORY_REQUEST": "512Mi",
+        "REDIS_REPLICA_MEMORY_LIMIT": "1Gi",
+        "REDIS_REPLICA_CPU_REQUEST": "200m",
+        "REDIS_REPLICA_CPU_LIMIT": "1000m",
+        "REDIS_STORAGE_SIZE": "16Gi",
+        "REDIS_MAXMEMORY": "900mb",
+        "REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS": "30000",
+        "REDIS_SENTINEL_FAILOVER_TIMEOUT": "180000",
+        "REDIS_SENTINEL_PARALLEL_SYNCS": "1",
+        "REDIS_SENTINEL_MEM_REQ": "128Mi",
+        "REDIS_SENTINEL_MEM_LIM": "256Mi",
+        "REDIS_SENTINEL_CPU_REQ": "100m",
+        "REDIS_SENTINEL_CPU_LIM": "500m",
+        "REDIS_METRICS_ENABLED": "true"
+      }
+    },
+    "scylla-cluster": {
+      "name": "ScyllaDB Cluster",
+      "slug": "scylla-cluster",
+      "namespace": "scylla",
+      "layer": "Database services",
+      "type": "HelmRelease",
+      "chart": "scylla",
+      "chart_version": "1.12.0",
+      "repo_url": null,
+      "depends_on": [
+        "scylla-operator",
+        "traefik-config"
+      ],
+      "downstream": [],
+      "timeout": "15m  # ScyllaDB cluster initialization can take time",
+      "health_checks": [
+        {
+          "apiVersion": "v1",
+          "kind": "Service",
+          "name": "scylla-client"
+        }
+      ],
+      "source": "apps/base/scylla/",
+      "enabled": true,
+      "dev": {
+        "SCYLLA_OPERATOR_CHART_VERSION": "1.12.0",
+        "SCYLLA_OPERATOR_CPU_REQUEST": "100m",
+        "SCYLLA_OPERATOR_CPU_LIMIT": "500m",
+        "SCYLLA_OPERATOR_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_OPERATOR_MEMORY_LIMIT": "512Mi",
+        "SCYLLA_MANAGER_CHART_VERSION": "1.12.0",
+        "SCYLLA_MANAGER_CPU_REQUEST": "100m",
+        "SCYLLA_MANAGER_CPU_LIMIT": "500m",
+        "SCYLLA_MANAGER_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_MANAGER_MEMORY_LIMIT": "512Mi",
+        "SCYLLA_CHART_VERSION": "1.12.0",
+        "SCYLLA_IMAGE_TAG": "5.4.0",
+        "SCYLLA_AGENT_TAG": "3.2.6",
+        "SCYLLA_CPU_REQUEST": "500m",
+        "SCYLLA_CPU_LIMIT": "1000m",
+        "SCYLLA_MEMORY_REQUEST": "1Gi",
+        "SCYLLA_MEMORY_LIMIT": "2Gi",
+        "SCYLLA_STORAGE_SIZE": "10Gi",
+        "SCYLLA_DEVELOPER_MODE": "true",
+        "SCYLLA_RACK_MEMBERS": "1"
+      },
+      "prod": {
+        "SCYLLA_OPERATOR_CHART_VERSION": "1.12.0",
+        "SCYLLA_OPERATOR_CPU_REQUEST": "100m",
+        "SCYLLA_OPERATOR_CPU_LIMIT": "500m",
+        "SCYLLA_OPERATOR_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_OPERATOR_MEMORY_LIMIT": "512Mi",
+        "SCYLLA_MANAGER_CHART_VERSION": "1.12.0",
+        "SCYLLA_MANAGER_CPU_REQUEST": "100m",
+        "SCYLLA_MANAGER_CPU_LIMIT": "500m",
+        "SCYLLA_MANAGER_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_MANAGER_MEMORY_LIMIT": "512Mi",
+        "SCYLLA_CHART_VERSION": "1.12.0",
+        "SCYLLA_IMAGE_TAG": "5.4.0",
+        "SCYLLA_AGENT_TAG": "3.2.6",
+        "SCYLLA_CPU_REQUEST": "500m",
+        "SCYLLA_CPU_LIMIT": "1000m",
+        "SCYLLA_MEMORY_REQUEST": "1Gi",
+        "SCYLLA_MEMORY_LIMIT": "2Gi",
+        "SCYLLA_STORAGE_SIZE": "10Gi",
+        "SCYLLA_DEVELOPER_MODE": "true",
+        "SCYLLA_RACK_MEMBERS": "1"
+      }
+    },
+    "n8n": {
+      "name": "N8N",
+      "slug": "n8n",
+      "namespace": "n8n",
+      "layer": "Application services",
+      "type": "HelmRelease",
+      "chart": "./charts/n8n",
+      "chart_version": "2.31.0",
+      "repo_url": null,
+      "depends_on": [
+        "external-secrets-config",
+        "postgresql-cluster"
+      ],
+      "downstream": [],
+      "timeout": "5m0s",
+      "health_checks": [],
+      "source": "apps/base/n8n/",
+      "enabled": true,
+      "dev": {
+        "N8N_CHART_VERSION": "2.31.0",
+        "N8N_MEMORY_REQUEST": "512Mi",
+        "N8N_MEMORY_LIMIT": "512Mi",
+        "N8N_CPU_REQUEST": "500m",
+        "N8N_CPU_LIMIT": "500m",
+        "N8N_STORAGE_SIZE": "2Gi",
+        "N8N_DB_NAME": "n8n",
+        "N8N_REPLICA_COUNT": "1"
+      },
+      "prod": {
+        "N8N_CHART_VERSION": "2.31.0",
+        "N8N_MEMORY_REQUEST": "1Gi",
+        "N8N_MEMORY_LIMIT": "2Gi",
+        "N8N_CPU_REQUEST": "500m",
+        "N8N_CPU_LIMIT": "2000m",
+        "N8N_STORAGE_SIZE": "10Gi",
+        "N8N_DB_NAME": "n8n",
+        "N8N_REPLICA_COUNT": "2"
+      }
+    },
+    "temporal": {
+      "name": "Temporal",
+      "slug": "temporal",
+      "namespace": "temporal",
+      "layer": "Application services",
+      "type": "HelmRelease",
+      "chart": "temporal",
+      "chart_version": "0.51.0",
+      "repo_url": "https://go.temporal.io/helm-charts",
+      "depends_on": [
+        "external-secrets-config",
+        "postgresql-cluster"
+      ],
+      "downstream": [],
+      "timeout": "10m0s",
+      "health_checks": [],
+      "source": "apps/base/temporal/",
+      "enabled": true,
+      "dev": {
+        "TEMPORAL_CHART_VERSION": "0.51.0",
+        "TEMPORAL_SERVER_MEMORY_REQUEST": "1Gi",
+        "TEMPORAL_SERVER_MEMORY_LIMIT": "1Gi",
+        "TEMPORAL_SERVER_CPU_REQUEST": "1000m",
+        "TEMPORAL_SERVER_CPU_LIMIT": "1000m",
+        "TEMPORAL_WEB_MEMORY_REQUEST": "256Mi",
+        "TEMPORAL_WEB_MEMORY_LIMIT": "256Mi",
+        "TEMPORAL_WEB_CPU_REQUEST": "250m",
+        "TEMPORAL_WEB_CPU_LIMIT": "250m",
+        "TEMPORAL_STORAGE_SIZE": "5Gi",
+        "TEMPORAL_DB_NAME": "temporal",
+        "TEMPORAL_VISIBILITY_DB_NAME": "temporal_visibility"
+      },
+      "prod": {
+        "TEMPORAL_CHART_VERSION": "0.51.0",
+        "TEMPORAL_SERVER_MEMORY_REQUEST": "2Gi",
+        "TEMPORAL_SERVER_MEMORY_LIMIT": "4Gi",
+        "TEMPORAL_SERVER_CPU_REQUEST": "1000m",
+        "TEMPORAL_SERVER_CPU_LIMIT": "4000m",
+        "TEMPORAL_WEB_MEMORY_REQUEST": "512Mi",
+        "TEMPORAL_WEB_MEMORY_LIMIT": "1Gi",
+        "TEMPORAL_WEB_CPU_REQUEST": "200m",
+        "TEMPORAL_WEB_CPU_LIMIT": "1000m",
+        "TEMPORAL_STORAGE_SIZE": "20Gi",
+        "TEMPORAL_DB_NAME": "temporal",
+        "TEMPORAL_VISIBILITY_DB_NAME": "temporal_visibility"
+      }
+    },
+    "ollama": {
+      "name": "Ollama",
+      "slug": "ollama",
+      "namespace": "ollama",
+      "layer": "AI agent platform",
+      "type": "HelmRelease",
+      "chart": "ollama",
+      "chart_version": "1.53.0",
+      "repo_url": "https://helm.otwld.com/",
+      "depends_on": [],
+      "downstream": [
+        "kagent"
+      ],
+      "timeout": "15m0s",
+      "health_checks": [],
+      "source": "apps/base/ollama/",
+      "enabled": true,
+      "dev": {
+        "OLLAMA_CHART_VERSION": "1.53.0",
+        "OLLAMA_MEMORY_REQUEST": "2Gi",
+        "OLLAMA_MEMORY_LIMIT": "3Gi",
+        "OLLAMA_CPU_REQUEST": "500m",
+        "OLLAMA_CPU_LIMIT": "1000m",
+        "OLLAMA_STORAGE_SIZE": "5Gi",
+        "OLLAMA_MODEL": "qwen2.5:72b",
+        "OLLAMA_HOST": "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080"
+      },
+      "prod": {
+        "OLLAMA_CHART_VERSION": "1.53.0",
+        "OLLAMA_MEMORY_REQUEST": "2Gi",
+        "OLLAMA_MEMORY_LIMIT": "4Gi",
+        "OLLAMA_CPU_REQUEST": "500m",
+        "OLLAMA_CPU_LIMIT": "2000m",
+        "OLLAMA_STORAGE_SIZE": "10Gi",
+        "OLLAMA_MODEL": "qwen2.5:72b",
+        "OLLAMA_HOST": "http://agentgateway-proxy.agentgateway-system.svc.cluster.local:9080"
+      }
+    },
+    "code-tools": {
+      "name": "Code Tools",
+      "slug": "code-tools",
+      "namespace": "code-tools",
+      "layer": "AI agent platform",
+      "type": "Deployment",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [],
+      "downstream": [],
+      "timeout": "15m0s",
+      "health_checks": [],
+      "source": "apps/base/code-tools/",
+      "enabled": true,
+      "dev": {
+        "CODE_TOOLS_CPU_REQUEST": "100m",
+        "CODE_TOOLS_CPU_LIMIT": "1000m",
+        "CODE_TOOLS_MEMORY_REQUEST": "256Mi",
+        "CODE_TOOLS_MEMORY_LIMIT": "1Gi",
+        "CODE_TOOLS_DATA_STORAGE_SIZE": "2Gi",
+        "CODE_TOOLS_OLLAMA_MODEL": "qwen2.5:14b-kagent",
+        "CODE_TOOLS_EMBED_MODEL": "nomic-embed-text"
+      },
+      "prod": {
+        "CODE_TOOLS_CPU_REQUEST": "100m",
+        "CODE_TOOLS_CPU_LIMIT": "1000m",
+        "CODE_TOOLS_MEMORY_REQUEST": "256Mi",
+        "CODE_TOOLS_MEMORY_LIMIT": "1Gi",
+        "CODE_TOOLS_DATA_STORAGE_SIZE": "2Gi",
+        "CODE_TOOLS_OLLAMA_MODEL": "qwen2.5:14b-kagent",
+        "CODE_TOOLS_EMBED_MODEL": "nomic-embed-text"
+      }
+    },
+    "kagent": {
+      "name": "kagent",
+      "slug": "kagent",
+      "namespace": "kagent",
+      "layer": "AI agent platform",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "ollama",
+        "cnpg-operator",
+        "external-secrets-config",
+        "traefik",
+        "grafana-sa-setup"
+      ],
+      "downstream": [
+        "agentgateway"
+      ],
+      "timeout": "15m0s",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "kagent-controller"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "kagent-ui"
+        }
+      ],
+      "source": "apps/base/kagent/",
+      "enabled": true,
+      "dev": {
+        "KAGENT_CHART_VERSION": "0.9.5",
+        "KAGENT_CONTROLLER_REPLICAS": "1",
+        "KAGENT_CONTROLLER_MEMORY_REQUEST": "256Mi",
+        "KAGENT_CONTROLLER_MEMORY_LIMIT": "2Gi",
+        "KAGENT_CONTROLLER_CPU_REQUEST": "100m",
+        "KAGENT_CONTROLLER_CPU_LIMIT": "500m",
+        "KAGENT_UI_REPLICAS": "1",
+        "KAGENT_UI_MEMORY_REQUEST": "256Mi",
+        "KAGENT_UI_MEMORY_LIMIT": "512Mi",
+        "KAGENT_UI_CPU_REQUEST": "100m",
+        "KAGENT_UI_CPU_LIMIT": "250m"
+      },
+      "prod": {
+        "KAGENT_CHART_VERSION": "0.9.5",
+        "KAGENT_CONTROLLER_REPLICAS": "1",
+        "KAGENT_CONTROLLER_MEMORY_REQUEST": "128Mi",
+        "KAGENT_CONTROLLER_MEMORY_LIMIT": "512Mi",
+        "KAGENT_CONTROLLER_CPU_REQUEST": "100m",
+        "KAGENT_CONTROLLER_CPU_LIMIT": "1000m",
+        "KAGENT_UI_REPLICAS": "1",
+        "KAGENT_UI_MEMORY_REQUEST": "256Mi",
+        "KAGENT_UI_MEMORY_LIMIT": "1Gi",
+        "KAGENT_UI_CPU_REQUEST": "100m",
+        "KAGENT_UI_CPU_LIMIT": "500m"
+      }
+    },
+    "gateway-api-crds": {
+      "name": "Gateway API CRDs",
+      "slug": "gateway-api-crds",
+      "namespace": "gateway-api-crds",
+      "layer": "AI agent platform",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [],
+      "downstream": [
+        "agentgateway"
+      ],
+      "timeout": "5m0s",
+      "health_checks": [],
+      "source": "apps/base/agentgateway/gateway-api-crds/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "agentgateway": {
+      "name": "AgentGateway",
+      "slug": "agentgateway",
+      "namespace": "agentgateway-system",
+      "layer": "AI agent platform",
+      "type": "HelmRelease",
+      "chart": "agentgateway",
+      "chart_version": "v1.3.0-alpha.1",
+      "repo_url": null,
+      "depends_on": [
+        "gateway-api-crds",
+        "kagent",
+        "traefik",
+        "external-secrets-config"
+      ],
+      "downstream": [
+        "agentgateway-config"
+      ],
+      "timeout": "10m0s",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "agentgateway"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "agentgateway-proxy"
+        }
+      ],
+      "source": "apps/base/agentgateway/base/",
+      "enabled": true,
+      "dev": {
+        "AGENTGATEWAY_CHART_VERSION": "v1.3.0-alpha.1",
+        "AGENTGATEWAY_REPLICAS": "1",
+        "AGENTGATEWAY_CPU_REQUEST": "100m",
+        "AGENTGATEWAY_MEMORY_REQUEST": "256Mi",
+        "AGENTGATEWAY_CPU_LIMIT": "500m",
+        "AGENTGATEWAY_MEMORY_LIMIT": "512Mi"
+      },
+      "prod": {
+        "AGENTGATEWAY_CHART_VERSION": "v1.3.0-alpha.1",
+        "AGENTGATEWAY_REPLICAS": "1",
+        "AGENTGATEWAY_CPU_REQUEST": "100m",
+        "AGENTGATEWAY_MEMORY_REQUEST": "256Mi",
+        "AGENTGATEWAY_CPU_LIMIT": "500m",
+        "AGENTGATEWAY_MEMORY_LIMIT": "512Mi"
+      }
+    },
+    "agentgateway-config": {
+      "name": "AgentGateway Config",
+      "slug": "agentgateway-config",
+      "namespace": "agentgateway-config",
+      "layer": "AI agent platform",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "agentgateway",
+        "opentelemetry-collector"
+      ],
+      "downstream": [],
+      "timeout": "5m0s",
+      "health_checks": [
+        {
+          "apiVersion": "gateway.networking.k8s.io/v1",
+          "kind": "Gateway",
+          "name": "agentgateway-proxy"
+        }
+      ],
+      "source": "apps/base/agentgateway/config/",
+      "enabled": true,
+      "dev": {},
+      "prod": {}
+    },
+    "kubescape": {
+      "name": "Kubescape",
+      "slug": "kubescape",
+      "namespace": "kubescape",
+      "layer": "Security and cost observability",
+      "type": "HelmRelease",
+      "chart": "kubescape-operator",
+      "chart_version": "1.30.4",
+      "repo_url": "https://kubescape.github.io/helm-charts/",
+      "depends_on": [
+        "metrics-server",
+        "kube-prometheus-stack"
+      ],
+      "downstream": [],
+      "timeout": "10m0s",
+      "health_checks": [],
+      "source": "apps/base/kubescape/",
+      "enabled": true,
+      "dev": {
+        "KUBESCAPE_CHART_VERSION": "1.30.4",
+        "KUBESCAPE_MEMORY_REQUEST": "128Mi",
+        "KUBESCAPE_MEMORY_LIMIT": "512Mi",
+        "KUBESCAPE_CPU_REQUEST": "100m",
+        "KUBESCAPE_CPU_LIMIT": "500m",
+        "KUBEVULN_MEMORY_LIMIT": "1Gi"
+      },
+      "prod": {
+        "KUBESCAPE_CHART_VERSION": "1.30.4",
+        "KUBESCAPE_MEMORY_REQUEST": "128Mi",
+        "KUBESCAPE_MEMORY_LIMIT": "512Mi",
+        "KUBESCAPE_CPU_REQUEST": "100m",
+        "KUBESCAPE_CPU_LIMIT": "500m",
+        "KUBEVULN_MEMORY_LIMIT": "1Gi"
+      }
+    },
+    "opencost": {
+      "name": "OpenCost",
+      "slug": "opencost",
+      "namespace": "opencost",
+      "layer": "Security and cost observability",
+      "type": "HelmRelease",
+      "chart": "opencost",
+      "chart_version": "2.5.12",
+      "repo_url": "https://opencost.github.io/opencost-helm-chart",
+      "depends_on": [
+        "kube-prometheus-stack"
+      ],
+      "downstream": [],
+      "timeout": "10m0s",
+      "health_checks": [],
+      "source": "apps/base/opencost/",
+      "enabled": true,
+      "dev": {
+        "OPENCOST_CHART_VERSION": "2.5.12",
+        "OPENCOST_MEMORY_REQUEST": "55Mi",
+        "OPENCOST_MEMORY_LIMIT": "256Mi",
+        "OPENCOST_CPU_REQUEST": "10m",
+        "OPENCOST_CPU_LIMIT": "200m"
+      },
+      "prod": {
+        "OPENCOST_CHART_VERSION": "2.5.12",
+        "OPENCOST_MEMORY_REQUEST": "55Mi",
+        "OPENCOST_MEMORY_LIMIT": "256Mi",
+        "OPENCOST_CPU_REQUEST": "10m",
+        "OPENCOST_CPU_LIMIT": "200m"
+      }
+    },
+    "pgadmin4": {
+      "name": "pgAdmin4",
+      "slug": "pgadmin4",
+      "namespace": "pgadmin4",
+      "layer": "Database UI services",
+      "type": "HelmRelease",
+      "chart": "pgadmin4",
+      "chart_version": "1.30.0",
+      "repo_url": "https://helm.runix.net",
+      "depends_on": [
+        "external-secrets-config",
+        "postgresql-cluster"
+      ],
+      "downstream": [],
+      "timeout": "3m  # Simple web UI for database management",
+      "health_checks": [
+        {
+          "apiVersion": "postgresql.cnpg.io/v1",
+          "kind": "Cluster",
+          "name": "postgresql-cluster"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "pgadmin4"
+        }
+      ],
+      "source": "apps/base/pgadmin4/",
+      "enabled": true,
+      "dev": {
+        "PGADMIN4_CHART_VERSION": "1.30.0",
+        "PGADMIN4_MEMORY_REQUEST": "256Mi",
+        "PGADMIN4_MEMORY_LIMIT": "256Mi",
+        "PGADMIN4_CPU_REQUEST": "200m",
+        "PGADMIN4_CPU_LIMIT": "200m",
+        "PGADMIN4_STORAGE_SIZE": "1Gi"
+      },
+      "prod": {
+        "PGADMIN4_CHART_VERSION": "1.30.0",
+        "PGADMIN4_MEMORY_REQUEST": "512Mi",
+        "PGADMIN4_MEMORY_LIMIT": "1Gi",
+        "PGADMIN4_CPU_REQUEST": "200m",
+        "PGADMIN4_CPU_LIMIT": "1000m",
+        "PGADMIN4_STORAGE_SIZE": "5Gi"
+      }
+    },
+    "redisinsight": {
+      "name": "RedisInsight",
+      "slug": "redisinsight",
+      "namespace": "redisinsight",
+      "layer": "Database UI services",
+      "type": "Deployment",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "redis-sentinel"
+      ],
+      "downstream": [],
+      "timeout": "2m  # Simple web UI for Redis management",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "StatefulSet",
+          "name": "redis-sentinel-node"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "redisinsight"
+        }
+      ],
+      "source": "apps/base/redisinsight/",
+      "enabled": true,
+      "dev": {
+        "REDISINSIGHT_MEMORY_REQUEST": "128Mi",
+        "REDISINSIGHT_MEMORY_LIMIT": "128Mi",
+        "REDISINSIGHT_CPU_REQUEST": "100m",
+        "REDISINSIGHT_CPU_LIMIT": "100m",
+        "REDISINSIGHT_STORAGE_SIZE": "500Mi"
+      },
+      "prod": {
+        "REDISINSIGHT_MEMORY_REQUEST": "256Mi",
+        "REDISINSIGHT_MEMORY_LIMIT": "512Mi",
+        "REDISINSIGHT_CPU_REQUEST": "100m",
+        "REDISINSIGHT_CPU_LIMIT": "500m",
+        "REDISINSIGHT_STORAGE_SIZE": "2Gi"
+      }
+    },
+    "crossplane": {
+      "name": "Crossplane",
+      "slug": "crossplane",
+      "namespace": "crossplane-system",
+      "layer": "Infrastructure as Code services",
+      "type": "HelmRelease",
+      "chart": "crossplane",
+      "chart_version": "1.19.0",
+      "repo_url": "https://charts.crossplane.io/stable",
+      "depends_on": [],
+      "downstream": [
+        "crossplane-providers"
+      ],
+      "timeout": "10m0s",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "crossplane"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "cluster-vars"
+        }
+      ],
+      "source": "apps/base/crossplane/crossplane-base/",
+      "enabled": false,
+      "dev": {
+        "CROSSPLANE_CHART_VERSION": "1.19.0",
+        "CROSSPLANE_MEMORY_REQUEST": "256Mi",
+        "CROSSPLANE_MEMORY_LIMIT": "256Mi",
+        "CROSSPLANE_CPU_REQUEST": "250m",
+        "CROSSPLANE_CPU_LIMIT": "250m",
+        "CROSSPLANE_AWS_PROVIDER_VERSION": "v1.19.0"
+      },
+      "prod": {
+        "CROSSPLANE_CHART_VERSION": "1.19.0",
+        "CROSSPLANE_MEMORY_REQUEST": "512Mi",
+        "CROSSPLANE_MEMORY_LIMIT": "1Gi",
+        "CROSSPLANE_CPU_REQUEST": "200m",
+        "CROSSPLANE_CPU_LIMIT": "1000m",
+        "CROSSPLANE_AWS_PROVIDER_VERSION": "v1.19.0"
+      }
+    },
+    "crossplane-providers": {
+      "name": "Crossplane Providers",
+      "slug": "crossplane-providers",
+      "namespace": "crossplane-providers",
+      "layer": "Infrastructure as Code services",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "crossplane"
+      ],
+      "downstream": [
+        "crossplane-config"
+      ],
+      "timeout": "10m0s",
+      "health_checks": [
+        {
+          "apiVersion": "pkg.crossplane.io/v1",
+          "kind": "Provider",
+          "name": "cluster-vars"
+        }
+      ],
+      "source": "apps/base/crossplane-providers/",
+      "enabled": false,
+      "dev": {
+        "CROSSPLANE_AWS_PROVIDER_VERSION": "v1.19.0"
+      },
+      "prod": {
+        "CROSSPLANE_AWS_PROVIDER_VERSION": "v1.19.0"
+      }
+    },
+    "crossplane-config": {
+      "name": "Crossplane Config",
+      "slug": "crossplane-config",
+      "namespace": "crossplane-config",
+      "layer": "Infrastructure as Code services",
+      "type": "Kustomization",
+      "chart": null,
+      "chart_version": null,
+      "repo_url": null,
+      "depends_on": [
+        "crossplane-providers",
+        "external-secrets-operator",
+        "localstack"
+      ],
+      "downstream": [],
+      "timeout": "10m0s",
+      "health_checks": [],
+      "source": "apps/base/crossplane-config/",
+      "enabled": false,
+      "dev": {},
+      "prod": {}
+    },
+    "scylla-manager": {
+      "name": "Scylla Manager",
+      "slug": "scylla-manager",
+      "namespace": "scylla-manager",
+      "layer": "Database management services",
+      "type": "HelmRelease",
+      "chart": "scylla-manager",
+      "chart_version": "1.12.0",
+      "repo_url": null,
+      "depends_on": [
+        "scylla-operator"
+      ],
+      "downstream": [],
+      "timeout": "15m  # Manager includes internal Scylla cluster",
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "scylla-manager"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "scylla-manager-controller"
+        }
+      ],
+      "source": "apps/base/scylla-manager/",
+      "enabled": false,
+      "dev": {
+        "SCYLLA_MANAGER_CHART_VERSION": "1.12.0",
+        "SCYLLA_MANAGER_CPU_REQUEST": "100m",
+        "SCYLLA_MANAGER_CPU_LIMIT": "500m",
+        "SCYLLA_MANAGER_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_MANAGER_MEMORY_LIMIT": "512Mi"
+      },
+      "prod": {
+        "SCYLLA_MANAGER_CHART_VERSION": "1.12.0",
+        "SCYLLA_MANAGER_CPU_REQUEST": "100m",
+        "SCYLLA_MANAGER_CPU_LIMIT": "500m",
+        "SCYLLA_MANAGER_MEMORY_REQUEST": "256Mi",
+        "SCYLLA_MANAGER_MEMORY_LIMIT": "512Mi"
+      }
+    }
+  }
+}

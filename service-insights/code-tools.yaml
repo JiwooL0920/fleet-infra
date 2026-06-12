@@ -1,0 +1,95 @@
+intro: '[FastMCP](https://github.com/jlowin/fastmcp) is a Python framework for building Model Context
+  Protocol (MCP) servers — the emerging standard for exposing tools to LLM agents. MCP defines a typed
+  RPC layer where an agent discovers available tools, calls them with structured arguments, and receives
+  structured results. FastMCP simplifies this by letting you decorate plain Python functions as tools
+  and handling transport negotiation, schema generation, and error propagation automatically.
+
+
+  What distinguishes MCP from ad-hoc function-calling integrations: it is transport-agnostic (stdio, SSE,
+  Streamable HTTP), supports tool discovery at runtime, and provides a standardized protocol that any
+  compliant agent can consume without custom client code. This means a single MCP server can serve multiple
+  agent frameworks simultaneously.
+
+
+  code-tools is a custom FastMCP server deployed as a single-replica Deployment. Its server script is
+  maintained inline as a ConfigMap — the entire application logic lives in the Kubernetes manifests, making
+  it trivially auditable and versionable through GitOps without a separate container image build pipeline.
+
+  '
+purpose: 'code-tools is the shared tool backend for kagent agents in this platform. It exposes six tools
+  over Streamable HTTP that give agents runtime capabilities they cannot perform inline: executing arbitrary
+  Python in a sandboxed subprocess, making outbound HTTP requests to arbitrary URLs, retrieving wall-clock
+  time, and persisting/retrieving semantic memories across agent sessions.
+
+
+  The memory subsystem uses mem0 with a FAISS vector store backed by a PVC, with embeddings generated
+  by Ollama''s nomic-embed-text model running on the host. This gives agents persistent, semantically-searchable
+  memory that survives pod restarts and agent session boundaries — enabling multi-session context continuity
+  without relying on ever-growing prompt histories.
+
+  '
+purpose_rationale: '**Why a dedicated MCP server over embedding tools directly in each agent:** kagent
+  agents are stateless by design — they receive a task, execute it, and terminate. Giving every agent
+  its own code execution environment and memory store would mean duplicated state, no cross-agent memory
+  sharing, and no central audit point. A shared MCP server centralizes tool execution, persists memory
+  in one place, and lets any agent (regardless of model or prompt) access the same capabilities through
+  a standard protocol.
+
+
+  **Why ConfigMap-inline code over a built container image:** The server is ~340 lines of Python with
+  four pip dependencies. Building and pushing a container image for every tool change adds CI latency
+  and registry maintenance for negligible benefit. The ConfigMap approach means a `git push` to the manifests
+  is the entire deployment pipeline — Flux reconciles the ConfigMap, the Deployment rolls, and the new
+  tools are live. The trade-off is that the initContainer must install packages on first boot (~2-3 min
+  cold start), but subsequent restarts use the PVC-cached `/data/lib`.
+
+
+  **Why FAISS over a dedicated vector database (Qdrant, Milvus, Weaviate):** The memory workload is small-scale
+  — a single user''s agent memories, not millions of documents. FAISS provides zero-dependency vector
+  search that persists to a flat file on the PVC. No additional StatefulSet, no cluster coordination,
+  no backup complexity. If memory scale grows beyond what a single FAISS index handles efficiently, migration
+  to a dedicated vector store is straightforward since mem0 abstracts the backend.
+
+  '
+features:
+- feature: Subprocess-sandboxed code execution
+  detail: Python code runs in a forked subprocess with configurable timeout (max 120s) and on-demand pip
+    package installation, isolating agent-generated code from the MCP server process itself.
+- feature: Dynamic package installation with PVC caching
+  detail: The initContainer pre-installs core dependencies (fastmcp, httpx, mem0ai) to /data/lib on a
+    persistent volume; runtime pip installs from execute_python are also cached there, eliminating repeated
+    downloads across pod restarts.
+- feature: Persistent semantic memory via mem0 + FAISS
+  detail: Memories are vectorized using Ollama nomic-embed-text (768-dim), stored in a FAISS index on
+    the PVC at /data/mem0, and queryable via semantic search — giving agents cross-session recall without
+    external database infrastructure.
+- feature: Streamable HTTP MCP transport
+  detail: The server exposes tools at /mcp on port 8765 using the Streamable HTTP transport, compatible
+    with kagent's RemoteMCPServer protocol for bidirectional tool invocation over a single HTTP connection.
+- feature: Lazy memory initialization
+  detail: The mem0/FAISS backend initializes only on first memory tool invocation, not at server startup
+    — keeping cold-start latency low for agents that only need code execution or HTTP tools.
+- feature: ConfigMap-as-code deployment
+  detail: The entire server application is a single Python file stored in a ConfigMap and mounted at /app/server.py,
+    enabling tool modifications through GitOps manifest changes without container image rebuilds.
+architecture_diagrams:
+- title: code-tools Pod Topology
+  mermaid: "graph TD\n    subgraph ns_code_tools[\"namespace: code-tools\"]\n        subgraph pod[\"Pod:\
+    \ code-tools\"]\n            init[\"initContainer: pip-install<br/>installs packages to /data/lib\"\
+    ]\n            main[\"container: code-tools<br/>python3 /app/server.py\"]\n        end\n        svc[\"\
+    Service: code-tools<br/>:8765\"]\n        pvc[\"PVC: code-tools-data<br/>/data\"]\n        cm[\"ConfigMap:\
+    \ code-tools-server<br/>server.py\"]\n    end\n    ollama[\"Ollama (host-native)<br/>host.docker.internal\"\
+    ]\n    kagent[\"kagent agents\"]\n\n    init -->|\"writes to /data/lib\"| pvc\n    main -->|\"reads\
+    \ /data/lib + /data/mem0\"| pvc\n    cm -->|\"mounted at /app/server.py\"| main\n    svc -->|\"TCP\
+    \ :8765\"| main\n    kagent -->|\"Streamable HTTP /mcp\"| svc\n    main -->|\"OLLAMA_HOST<br/>embeddings\
+    \ + LLM\"| ollama\n"
+- title: Memory Tool Flow
+  mermaid: "sequenceDiagram\n    participant Agent as kagent Agent\n    participant MCP as code-tools\
+    \ MCP\n    participant Mem0 as mem0 (lazy init)\n    participant FAISS as FAISS Index<br/>/data/mem0\n\
+    \    participant Ollama as Ollama<br/>nomic-embed-text\n\n    Agent->>MCP: add_memory(content, user_id)\n\
+    \    MCP->>Mem0: .add(content, user_id)\n    Mem0->>Ollama: embed(content)\n    Ollama-->>Mem0: vector\
+    \ [768-dim]\n    Mem0->>FAISS: store(vector, metadata)\n    FAISS-->>Mem0: memory_id\n    Mem0-->>MCP:\
+    \ {id, metadata}\n    MCP-->>Agent: JSON result\n\n    Agent->>MCP: search_memories(query, user_id)\n\
+    \    MCP->>Mem0: .search(query, user_id)\n    Mem0->>Ollama: embed(query)\n    Ollama-->>Mem0: query\
+    \ vector\n    Mem0->>FAISS: similarity_search(vector, limit)\n    FAISS-->>Mem0: ranked results\n\
+    \    Mem0-->>MCP: [{memory, score}]\n    MCP-->>Agent: JSON array"

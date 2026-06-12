@@ -1,0 +1,76 @@
+intro: '[LocalStack](https://localstack.cloud) ([GitHub](https://github.com/localstack/localstack)) is
+  a fully functional local cloud stack that emulates AWS services on a single container. Unlike mocking
+  libraries that stub individual SDK calls, LocalStack implements the actual AWS API surface — including
+  request validation, state management, and inter-service interactions — allowing infrastructure code
+  to run unmodified against a local endpoint. This means the same Terraform, CDK, or raw API calls that
+  target real AWS work identically against `localhost:4566`.
+
+
+  What distinguishes LocalStack from alternatives like [moto](https://github.com/getmoto/moto) or custom
+  mocks: it runs as a standalone service with persistent state, supports cross-service interactions (e.g.,
+  S3 event notifications triggering Lambda), and exposes the same endpoint topology as AWS — a single
+  gateway port that routes to the correct service based on request headers. The community edition covers
+  the core services (S3, Secrets Manager, DynamoDB, SQS, SNS, Lambda) without requiring a Pro license.
+
+  '
+purpose: 'LocalStack is the platform''s **secrets origin** — the foundational data store that seeds all
+  application credentials at cluster startup. It emulates AWS Secrets Manager so that `ExternalSecret`
+  manifests written for production AWS work identically in the local development cluster by simply swapping
+  the `ClusterSecretStore` endpoint.
+
+
+  On pod startup, an init script idempotently generates random credentials for every downstream service
+  (Redis, pgAdmin4, Grafana, Traefik, Crossplane AWS keys, kagent tokens) and writes them to LocalStack''s
+  Secrets Manager. The External Secrets Operator then continuously syncs these into native Kubernetes
+  Secrets. This eliminates manual secret creation, keeps plaintext out of Git, and ensures a fresh cluster
+  reaches a fully-configured state without human intervention.
+
+  '
+purpose_rationale: '**Why LocalStack over SOPS-encrypted secrets or Sealed Secrets:** The goal is production
+  portability — the same `ExternalSecret` CRs ship to production unchanged, with only the `ClusterSecretStore`
+  target swapped from LocalStack''s endpoint to real AWS Secrets Manager. SOPS and Sealed Secrets are
+  Git-native but require per-environment decryption keys and don''t exercise the External Secrets Operator
+  code path that runs in production. LocalStack also provides additional utility beyond secrets: it backs
+  Crossplane''s AWS provider for local resource provisioning and offers S3-compatible storage for backups.
+
+  '
+features:
+- feature: AWS service emulation
+  detail: Runs s3, secretsmanager, dynamodb, sqs, sns, and lambda behind a single gateway on port 4566
+    using the community edition image pinned to v3.8.1.
+- feature: Persistent state across restarts
+  detail: Combines LocalStack's runtime persistence mode (PERSISTENCE=1) with a PVC-backed volume, so
+    secrets and S3 objects survive pod rescheduling without re-initialization.
+- feature: Idempotent secret seeding
+  detail: A startup script runs on every pod boot, creating secrets only if they don't already exist —
+    safe to re-run after restarts, upgrades, or cluster rebuilds.
+- feature: Optional GitHub PAT injection
+  detail: Reads GITHUB_PAT from an optional Kubernetes Secret (github-pat-bootstrap) and stores it in
+    Secrets Manager for the gitops-agent's GitHub MCP server; gracefully skips when unset.
+- feature: Liveness and readiness probes
+  detail: Both probes configured with 30s initial delay, 10s period, and 3 failure threshold — giving
+    LocalStack time to load services while still detecting genuine hangs.
+- feature: IngressRoute for debugging
+  detail: Exposes the LocalStack API externally via Traefik at Host(`localstack.local`) on the web entrypoint
+    for ad-hoc awscli debugging without port-forwarding.
+architecture_diagrams:
+- title: Deployment Topology
+  mermaid: "graph TD\n    subgraph localstack-ns[\"Namespace: localstack\"]\n        LS[\"LocalStack Deployment\"\
+    ]\n        SVC[\"Service: localstack<br/>ClusterIP :4566\"]\n        PVC[\"PVC: 1Gi persistence\"\
+    ]\n        IR[\"IngressRoute<br/>Host: localstack.local\"]\n        BOOT[\"Secret: github-pat-bootstrap<br/>(optional)\"\
+    ]\n    end\n\n    subgraph flux-system-ns[\"Namespace: flux-system\"]\n        HR[\"HelmRelease: localstack\"\
+    ]\n        REPO[\"HelmRepository<br/>localstack.github.io/helm-charts\"]\n        CM[\"ConfigMap:\
+    \ cluster-vars\"]\n    end\n\n    subgraph downstream[\"Downstream Consumers\"]\n        ESO[\"external-secrets-operator\"\
+    ]\n        ESC[\"external-secrets-config\"]\n        XPC[\"crossplane-config\"]\n    end\n\n    HR\
+    \ -->|\"chart source\"| REPO\n    CM -->|\"postBuild substituteFrom\"| HR\n    HR -->|\"deploys\"\
+    | LS\n    LS -->|\"mounts\"| PVC\n    LS -->|\"GITHUB_PAT env\"| BOOT\n    SVC -->|\":4566\"| LS\n\
+    \    IR -->|\"routes to :4566\"| SVC\n    ESO -->|\"dependsOn\"| LS\n    ESC -->|\"dependsOn\"| LS\n\
+    \    XPC -->|\"dependsOn\"| LS\n"
+- title: Secret Initialization Flow
+  mermaid: "sequenceDiagram\n    participant Pod as LocalStack Pod\n    participant SM as Secrets Manager\
+    \ API\n    participant ESO as External Secrets Operator\n    participant K8s as Kubernetes Secrets\n\
+    \n    Pod->>Pod: Startup script executes (ready.d/)\n    Pod->>SM: get-secret-value (check exists)\n\
+    \    alt Secret missing\n        Pod->>SM: create-secret (random credential)\n    else Secret exists\n\
+    \        Pod->>Pod: SKIP (idempotent)\n    end\n    Note over Pod,SM: Repeats for each service credential\n\
+    \    ESO->>SM: Poll secrets (ClusterSecretStore → :4566)\n    SM-->>ESO: Secret values\n    ESO->>K8s:\
+    \ Create/update Kubernetes Secrets"

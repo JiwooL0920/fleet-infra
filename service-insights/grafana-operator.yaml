@@ -1,0 +1,58 @@
+intro: '[Grafana Operator](https://grafana.github.io/grafana-operator/) ([GitHub](https://github.com/grafana/grafana-operator))
+  is a Kubernetes operator that manages Grafana instances, dashboards, datasources, and folders through
+  Custom Resource Definitions. Unlike file-based provisioning or API-driven CI/CD pipelines, the operator
+  introduces a reconciliation loop that continuously ensures the declared state in Git matches the live
+  state in Grafana — correcting drift from manual UI edits without requiring pod restarts.
+
+
+  The operator defines CRDs (`GrafanaDashboard`, `GrafanaDatasource`, `GrafanaFolder`) that are standard
+  Kubernetes resources, meaning they participate in the same GitOps lifecycle as every other manifest
+  in the cluster. Flux deploys them, `kubectl` inspects them, and RBAC controls who can create them —
+  no separate Grafana API tokens or provisioning sidecars required.
+
+  '
+purpose: 'Grafana Operator is the bridge between this platform''s Git-managed observability definitions
+  and the Grafana instance running inside kube-prometheus-stack. It watches for dashboard and datasource
+  CRDs committed to the repository (delivered via the downstream `grafana-config` service), reconciles
+  them into the running Grafana, and reverts any manual drift — completing the GitOps loop for the entire
+  observability layer.
+
+  '
+features:
+- feature: Cluster-wide CRD watching
+  detail: 'Configured with `namespaceScope: false`, allowing GrafanaDashboard and GrafanaDatasource resources
+    to be placed in any namespace alongside the services they monitor, rather than requiring all definitions
+    to live in the operator''s namespace.
+
+    '
+- feature: Install and upgrade remediation
+  detail: 'Both install and upgrade phases are configured with 3 automatic retries, providing resilience
+    against transient failures during Helm chart deployment without requiring manual intervention.
+
+    '
+- feature: Bounded resource allocation
+  detail: 'Explicit resource requests and limits are set to prevent the operator from consuming unbounded
+    memory during large reconciliation sweeps across many namespaces.
+
+    '
+- feature: OCI-based chart distribution
+  detail: 'The Helm chart is sourced from an OCI registry rather than a traditional HTTP Helm repository,
+    leveraging container registry infrastructure for chart storage and distribution.
+
+    '
+architecture_diagrams:
+- title: Grafana Operator Reconciliation Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        FK[\"Flux Kustomization<br/>grafana-operator\"\
+    ]\n        HR[\"HelmRelease<br/>grafana-operator\"]\n        REPO[\"HelmRepository OCI<br/>ghcr.io/grafana/helm-charts\"\
+    ]\n    end\n\n    subgraph grafana-operator-ns[\"grafana-operator namespace\"]\n        OP[\"Grafana\
+    \ Operator Pod\"]\n    end\n\n    subgraph kube-prometheus[\"kube-prometheus-stack\"]\n        GRAFANA[\"\
+    Grafana Instance\"]\n    end\n\n    subgraph any-namespace[\"any namespace\"]\n        CRDs[\"GrafanaDashboard<br/>GrafanaDatasource<br/>GrafanaFolder\
+    \ CRDs\"]\n    end\n\n    FK -->|\"deploys\"| HR\n    HR -->|\"pulls chart\"| REPO\n    HR -->|\"\
+    installs into\"| OP\n    FK -.->|\"dependsOn\"| kube-prometheus\n    CRDs -->|\"watched by\"| OP\n\
+    \    OP -->|\"provisions via API\"| GRAFANA\n"
+- title: Dashboard-as-Code GitOps Flow
+  mermaid: "sequenceDiagram\n    participant Git as Git Repository\n    participant Flux as Flux CD\n\
+    \    participant GC as grafana-config Kustomization\n    participant OP as Grafana Operator\n    participant\
+    \ G as Grafana\n\n    Git->>Flux: Push dashboard CRD manifest\n    Flux->>GC: Reconcile grafana-config\
+    \ path\n    GC->>OP: CRD appears in cluster (any namespace)\n    OP->>G: Provision dashboard via internal\
+    \ API\n    Note over OP,G: Continuous reconciliation reverts UI drift"

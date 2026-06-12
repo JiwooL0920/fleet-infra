@@ -1,0 +1,34 @@
+{# architecture.md.j2 — Full dependency graph page.
+   Context: same as index.md.j2, plus:
+     mermaid_graph (str)  — pre-rendered mermaid flowchart string
+#}
+---
+catalog_sha: {{ catalog_sha }}
+fleet_infra_commit: {{ fleet_commit }}
+generated_at: {{ generated_at }}
+---
+
+# Architecture — Dependency Graph
+
+All **{{ services.values() | selectattr("enabled") | list | length }} enabled services** and their Flux `dependsOn` wiring.
+Services with no dependencies start immediately; dependent services wait for their parents to become healthy.
+
+## Full Dependency Graph
+
+```mermaid
+{{ mermaid_graph | trim }}
+```
+
+## Layer Summary
+
+| Layer | Services | Enabled | Disabled |
+|---|---|---|---|
+{% for layer in layers %}
+{% set svcs = layer_services[layer] %}
+{% set e = svcs | selectattr("enabled") | list | length %}
+{% set d = svcs | rejectattr("enabled") | list | length %}
+| {{ layer }} | {{ svcs | length }} | {{ e }} | {% if d %}{{ d }}{% else %}—{% endif %} |
+{% endfor %}
+
+---
+*Generated from [service-catalog.json]({{ github_base }}/blob/develop/service-catalog.json) at commit `{{ fleet_commit }}` · catalog sha `{{ catalog_sha }}`*

@@ -1,0 +1,226 @@
+{# component-page.md.j2 — Deterministic component page renderer.
+   Context vars:
+     svc (dict)         — single entry from service-catalog.json["services"][slug]
+     insight (dict|None)— loaded service-insights/<slug>.yaml, or None if missing
+     catalog_sha (str)  — service-catalog.json _meta.catalog_sha
+     fleet_commit (str) — current fleet-infra HEAD commit SHA (short)
+     generated_at (str) — ISO date string
+     github_base (str)  — e.g. "https://github.com/JiwooL0920/fleet-infra"
+     blog_base (str)    — e.g. "https://jiwool0920.github.io/projects/fleet-infra"
+#}
+---
+catalog_sha: {{ catalog_sha }}
+fleet_infra_commit: {{ fleet_commit }}
+generated_at: {{ generated_at }}
+---
+
+# {{ svc.name }}
+
+{% if insight and insight.intro -%}
+{{ insight.intro | trim }}
+{% else -%}
+<!-- TODO: Add intro in service-insights/{{ svc.slug }}.yaml → intro field -->
+{% endif %}
+
+## Overview
+
+| Property | Value |
+|---|---|
+| **Namespace** | `{{ svc.namespace }}` |
+| **Type** | {{ svc.type }}{% if svc.chart %} (chart: `{{ svc.chart }}`{% if svc.chart_version %} v{{ svc.chart_version }}{% endif %}){% endif %} |
+| **Layer** | {{ svc.layer }} |
+{% if svc.chart and svc.repo_url -%}
+| **Chart** | [`{{ svc.chart }}`]({{ svc.repo_url }}) v{{ svc.chart_version or "?" }} |
+{% endif -%}
+| **Status** | {{ "Enabled" if svc.enabled else "**Disabled** (commented out in base/services/kustomization.yaml)" }} |
+| **Source** | [`{{ svc.source }}`]({{ github_base }}/tree/develop/{{ svc.source }}) |
+
+## Dependencies
+
+### Upstream — required before {{ svc.name }} starts
+
+{% set upstream_notes = {} %}
+{% if insight and insight.dependency_notes and insight.dependency_notes.upstream %}
+{% for note in insight.dependency_notes.upstream %}
+{% if note.service %}{% set _ = upstream_notes.update({note.service: note}) %}{% endif %}
+{% endfor %}
+{% endif %}
+{% if svc.depends_on %}
+| Service | Reason | Status |
+|---|---|---|
+{% for dep in svc.depends_on %}
+{% set note = upstream_notes.get(dep, {}) %}
+| `{{ dep }}` | {% if note.reason %}{{ note.reason | replace("\n", " ") | trim }}{% else %}Flux `dependsOn`{% endif %} | {% if note.status %}{{ note.status | replace("\n", " ") | trim }}{% else %}Active{% endif %} |
+{% endfor %}
+{% else %}
+_No upstream Flux dependencies — starts immediately._
+{% endif %}
+{% if insight and insight.dependency_notes and insight.dependency_notes.upstream_note %}
+
+> {{ insight.dependency_notes.upstream_note }}
+{% endif %}
+
+### Downstream — services that depend on {{ svc.name }}
+
+{% set downstream_notes = {} %}
+{% if insight and insight.dependency_notes and insight.dependency_notes.downstream %}
+{% for note in insight.dependency_notes.downstream %}
+{% if note.service %}{% set _ = downstream_notes.update({note.service: note}) %}{% endif %}
+{% endfor %}
+{% endif %}
+{% if svc.downstream %}
+| Service | Dependency type | Reason |
+|---|---|---|
+{% for dep in svc.downstream %}
+{% set note = downstream_notes.get(dep, {}) %}
+| `{{ dep }}` | {% if note.type %}{{ note.type | replace("\n", " ") | trim }}{% else %}Flux `dependsOn`{% endif %} | {% if note.reason %}{{ note.reason | replace("\n", " ") | trim }}{% else %}Requires {{ svc.name }}{% endif %} |
+{% endfor %}
+{% else %}
+_No known downstream Flux dependencies._
+{% endif %}
+{% if insight and insight.dependency_notes and insight.dependency_notes.downstream_note %}
+
+> {{ insight.dependency_notes.downstream_note }}
+{% endif %}
+
+## Purpose
+
+{% if insight and insight.purpose -%}
+{{ insight.purpose | trim }}
+{% if insight.purpose_rationale %}
+
+{{ insight.purpose_rationale | trim }}
+{% endif %}
+{% else -%}
+<!-- TODO: Add purpose in service-insights/{{ svc.slug }}.yaml → purpose field -->
+{% endif %}
+
+{% if insight and insight.consumers %}
+### Consumers
+
+Each service uses a dedicated database index to avoid key collisions. New consumers should claim the next unused index.
+
+{% set has_db = insight.consumers | map(attribute="db") | select | list | length > 0 %}
+| Service | {% if has_db %}DB | {% endif %}Usage pattern | Connection method | Notes |
+|---|{% if has_db %}---|{% endif %}---|---|---|
+{% for c in insight.consumers %}
+| **{{ c.name }}** | {% if has_db %}{{ c.db if c.db else "—" }} | {% endif %}{{ c.usage | trim | replace("\n", " ") }} | {{ c.connection or "—" }} | {{ c.notes | trim | replace("\n", " ") if c.notes else "—" }} |
+{% endfor %}
+{% endif %}
+
+## Features
+
+{% if insight and insight.features %}
+| Feature | Detail |
+|---|---|
+{% for f in insight.features %}
+| **{{ f.feature }}** | {{ f.detail | trim | replace("\n", " ") }} |
+{% endfor %}
+{% else %}
+<!-- TODO: Add features in service-insights/{{ svc.slug }}.yaml → features field -->
+{% endif %}
+
+{% if insight and insight.architecture_diagrams %}
+## Architecture
+
+{% for diag in insight.architecture_diagrams %}
+### {{ diag.title }}
+
+```mermaid
+{{ diag.mermaid | trim }}
+```
+
+{% endfor %}
+{% endif %}
+
+## Configuration
+
+All values sourced from [`base/services/environment.env`]({{ github_base }}/blob/develop/base/services/environment.env)
+(base); per-environment overrides in [`clusters/stages/dev/.../environment.env`]({{ github_base }}/blob/develop/clusters/stages/dev/clusters/services-amer/environment.env).
+
+{% set dev = svc.dev %}
+{% set prod = svc.prod %}
+{% if dev or prod %}
+{% set all_keys = (dev.keys() | list + prod.keys() | list) | unique | sort %}
+| Parameter | Dev | Prod |
+|---|---|---|
+{% for k in all_keys %}
+| `{{ k }}` | `{{ dev.get(k, "—") }}` | `{{ prod.get(k, "—") }}` |
+{% endfor %}
+{% else %}
+_No environment-specific configuration variables for this service._
+{% endif %}
+
+{% if insight and insight.access %}
+## Access
+
+{{ insight.access | trim }}
+{% endif %}
+
+## Operations
+
+{% if insight and insight.operations %}
+{% set ops = insight.operations %}
+{% if ops.verification %}
+### Verification
+
+{{ ops.verification | trim }}
+{% endif %}
+
+{% if ops.cli %}
+### {{ ops.cli.title }}
+
+{{ ops.cli.body | trim }}
+{% endif %}
+
+{% if ops.common_operations %}
+### Common Operations
+
+{% for op in ops.common_operations %}
+**{{ op.title }}**
+
+{{ op.body | trim }}
+
+{% endfor %}
+{% endif %}
+
+{% if ops.troubleshooting %}
+### Troubleshooting
+
+{% for ts in ops.troubleshooting %}
+#### {{ ts.symptom }}
+
+{% if ts.cause %}
+**Cause:** {{ ts.cause | trim }}
+
+{% endif %}
+**Resolution:**
+
+{{ ts.resolution | trim }}
+
+{% if ts.adr_refs %}
+**See also:** {% for ref in ts.adr_refs %}[{{ ref }}]({{ github_base }}/blob/develop/docs/adr/){% if not loop.last %}, {% endif %}{% endfor %}
+
+{% endif %}
+---
+
+{% endfor %}
+{% endif %}
+{% else %}
+<!-- TODO: Add operations in service-insights/{{ svc.slug }}.yaml → operations field -->
+{% endif %}
+
+## Related
+
+{% if insight and insight.related %}
+{% for r in insight.related %}
+- [{{ r.text }}]({{ r.url }})
+{% endfor %}
+{% endif %}
+
+- [`{{ svc.source }}`]({{ github_base }}/tree/develop/{{ svc.source }}) — Kubernetes manifests
+- [`base/services/{{ svc.slug }}.yaml`]({{ github_base }}/blob/develop/base/services/{{ svc.slug }}.yaml) — Flux Kustomization
+- [`base/services/environment.env`]({{ github_base }}/blob/develop/base/services/environment.env) — environment variables
+
+---
+*Generated from [service-catalog.json]({{ github_base }}/blob/develop/service-catalog.json) at commit `{{ fleet_commit }}` · catalog sha `{{ catalog_sha }}`*

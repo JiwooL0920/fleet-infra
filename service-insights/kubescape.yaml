@@ -1,0 +1,81 @@
+intro: '[Kubescape](https://kubescape.io) ([GitHub](https://github.com/kubescape/kubescape)) is a CNCF
+  Sandbox Kubernetes security platform that performs continuous posture assessment across configuration,
+  vulnerabilities, and runtime behavior. Unlike one-shot CLI scanners (Trivy, kube-bench) that produce
+  ephemeral reports, Kubescape operates as an in-cluster operator that writes findings back as Kubernetes
+  Custom Resources — `VulnerabilityManifest` and `WorkloadConfigurationScan` CRDs — making security posture
+  queryable through the standard Kubernetes API.
+
+
+  The operator architecture deploys four cooperating components: the **kubescape** engine (configuration
+  scanning against NSA/MITRE frameworks), **kubevuln** (container image vulnerability analysis), a central
+  **operator** (orchestrates scan scheduling and reacts to resource changes), and a **storage** backend
+  (persists scan results as CRDs). This separation allows each component to scale and fail independently
+  while sharing a common CRD-based data plane.
+
+
+  What distinguishes Kubescape from purely external scanning tools (Snyk Container, Prisma Cloud) is that
+  it runs entirely in-cluster with no external SaaS dependency, publishes machine-readable CRDs rather
+  than proprietary dashboards, and supports event-driven continuous scanning — rescanning workloads as
+  they change rather than on a fixed schedule.
+
+  '
+purpose: 'Kubescape is the platform''s security data producer. It continuously scans all workloads for
+  configuration drift (against NSA and MITRE ATT&CK frameworks) and known CVEs, publishing structured
+  findings as CRDs in the `kubescape` namespace. The **security-agent** in the `kagent` namespace queries
+  these CRDs via Kubernetes API tools to answer questions about cluster security posture, surface critical
+  vulnerabilities, and recommend remediations — without needing direct access to container registries
+  or scan engines.
+
+
+  The continuous scanning mode means findings are always current: when a new Deployment is created or
+  an image tag changes, Kubescape rescans automatically rather than waiting for a scheduled interval.
+  This keeps the security-agent''s responses accurate to the live cluster state.
+
+  '
+purpose_rationale: '**Why Kubescape over Trivy Operator or external SaaS scanners:** The primary selection
+  criterion was CRD-based output that the kagent security-agent can query through standard `kubectl`-style
+  tools. Trivy Operator also publishes CRDs (`VulnerabilityReport`), but Kubescape adds configuration
+  scanning (NSA/MITRE frameworks) alongside vulnerability scanning in a single operator — reducing operational
+  surface area. External SaaS scanners (Snyk, Prisma) would require API credentials, egress network policies,
+  and introduce a dependency on external availability for what should be a cluster-internal capability.
+  Kubescape''s CNCF Sandbox status and active community governance reduce vendor lock-in risk.
+
+  '
+features:
+- feature: Continuous scanning
+  detail: Operator watches for resource changes (create/update/delete) and triggers immediate rescan rather
+    than relying solely on periodic intervals
+- feature: Vulnerability scanning (kubevuln)
+  detail: Dedicated kubevuln component analyzes container images for known CVEs and publishes VulnerabilityManifest
+    CRDs queryable by downstream agents
+- feature: Configuration scanning
+  detail: Evaluates workload configurations against NSA and MITRE ATT&CK frameworks, producing WorkloadConfigurationScan
+    CRDs with per-control pass/fail results
+- feature: Node scanning
+  detail: Assesses node-level security posture using resource metrics from the metrics-server dependency
+- feature: CRD-based data plane
+  detail: All findings persisted as native Kubernetes Custom Resources, enabling standard RBAC-gated access
+    from any in-cluster consumer without proprietary APIs
+- feature: Install/upgrade remediation
+  detail: Helm release configured with 3 retries on both install and upgrade failures, with 10-minute
+    timeout per attempt to handle CRD registration delays
+architecture_diagrams:
+- title: Kubescape Operator Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        HR[HelmRelease: kubescape]\n\
+    \        REPO[HelmRepository: kubescape]\n    end\n\n    subgraph kubescape-ns[\"kubescape namespace\"\
+    ]\n        OP[operator]\n        KS[kubescape engine]\n        KV[kubevuln]\n        ST[storage]\n\
+    \        CRD_VM[CRD: VulnerabilityManifest]\n        CRD_WCS[CRD: WorkloadConfigurationScan]\n   \
+    \ end\n\n    subgraph kagent-ns[\"kagent namespace\"]\n        SA[security-agent]\n    end\n\n   \
+    \ subgraph deps[\"Dependencies\"]\n        MS[metrics-server]\n        PROM[kube-prometheus-stack]\n\
+    \    end\n\n    HR -->|\"chart: kubescape-operator\"| REPO\n    HR -->|\"deploys to\"| kubescape-ns\n\
+    \    OP -->|\"triggers scans\"| KS\n    OP -->|\"triggers scans\"| KV\n    KS -->|\"writes\"| CRD_WCS\n\
+    \    KV -->|\"writes\"| CRD_VM\n    KS -->|\"persists results\"| ST\n    KV -->|\"persists results\"\
+    | ST\n    SA -->|\"queries CRDs via K8s API\"| CRD_VM\n    SA -->|\"queries CRDs via K8s API\"| CRD_WCS\n\
+    \    KS -->|\"resource metrics\"| MS\n    PROM -->|\"scrapes metrics\"| kubescape-ns\n"
+- title: Continuous Scan Flow
+  mermaid: "sequenceDiagram\n    participant K8s as Kubernetes API\n    participant Op as operator\n \
+    \   participant KS as kubescape engine\n    participant KV as kubevuln\n    participant ST as storage\n\
+    \    participant SA as security-agent (kagent)\n\n    K8s->>Op: Resource change event (watch)\n  \
+    \  Op->>KS: Trigger configuration scan\n    Op->>KV: Trigger vulnerability scan\n    KS->>ST: Persist\
+    \ WorkloadConfigurationScan CRD\n    KV->>ST: Persist VulnerabilityManifest CRD\n    SA->>K8s: Query\
+    \ VulnerabilityManifest CRDs\n    K8s-->>SA: Return scan findings"

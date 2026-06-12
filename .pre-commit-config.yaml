@@ -111,6 +111,24 @@ repos:
         args: [--severity=error]  # Only fail on errors, not warnings
         exclude: '^scripts/(fix-control-plane-ip|port-forward|setup-local-dns)\.sh$'
 
+  # Catalog drift: regenerate service-catalog.json and fail if it changed
+  - repo: local
+    hooks:
+      - id: catalog-drift
+        name: Service catalog freshness
+        entry: scripts/check-catalog-drift.sh
+        language: script
+        files: '^(apps/base/|base/services/|clusters/stages/.*/environment\.env|service-insights/).*'
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: insight-schema
+        name: Service insight YAML schema
+        entry: scripts/check-insight-schema.sh
+        language: script
+        files: '^service-insights/.*\.yaml$'
+        pass_filenames: false
+
 # Global settings
 default_install_hook_types: [pre-commit, commit-msg, pre-push]
 default_stages: [pre-commit]

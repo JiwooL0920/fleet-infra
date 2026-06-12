@@ -1,0 +1,115 @@
+intro: '[CloudNative-PG](https://cloudnative-pg.io) ([GitHub](https://github.com/cloudnative-pg/cloudnative-pg))
+  is a Kubernetes operator that manages the full lifecycle of PostgreSQL clusters — provisioning, high
+  availability, automated failover, backup/restore, and rolling updates — using declarative Custom Resources.
+  Unlike Helm-based PostgreSQL deployments (Bitnami, Zalando Postgres Operator), CNPG was designed Kubernetes-native
+  from inception: it uses the operator pattern to reconcile cluster state, handles primary election via
+  Kubernetes leader leases rather than external consensus systems, and integrates directly with the PodMonitor/ServiceMonitor
+  APIs for observability.
+
+
+  PostgreSQL itself needs no introduction — it is the dominant open-source relational database. What matters
+  here is the specific version (PostgreSQL 16) and the extension ecosystem: this cluster provisions `pgvector`
+  on select databases, enabling vector similarity search for RAG and embedding workloads without requiring
+  a separate vector database.
+
+
+  The cluster runs in `cnpg-system` namespace, managed entirely through Kubernetes CRDs. Database provisioning
+  is declarative — each logical database is a `Database` custom resource that the operator reconciles,
+  eliminating manual `CREATE DATABASE` commands and ensuring drift-free state.
+
+  '
+purpose: 'This is the platform''s single shared relational data store. It hosts logical databases for
+  six services: n8n (workflow state), Temporal (durable execution + visibility), Grafana (dashboard/user
+  state), kagent (agent memory with vector embeddings), agentic-ai (RAG platform embeddings), and youtube-automation
+  (pipeline state).
+
+
+  The cluster serves as the persistence layer that all stateful application services depend on. By consolidating
+  into one CNPG-managed cluster, the platform gets a single backup domain, a single failover topology,
+  and a single set of credentials to distribute — while each service gets logical isolation through separate
+  databases with independent schemas.
+
+  '
+purpose_rationale: '**Why a single shared CNPG cluster over per-service instances:** This is a solo-developer
+  platform where operational simplicity dominates. Six independent PostgreSQL clusters would mean six
+  backup schedules, six failover domains, six resource reservations — all for workloads that individually
+  consume single-digit megabytes of WAL per hour. The shared cluster trades blast-radius isolation for
+  a dramatically simpler operational surface. If any single service later needs independent scaling or
+  isolation, CNPG makes it trivial to spin up a dedicated cluster without disrupting the shared one.
+
+
+  **Why CNPG over Zalando Postgres Operator or Helm charts:** CNPG''s `Database` CRD enables declarative
+  database provisioning as Kubernetes resources — adding a database is a one-file manifest, not a Helm
+  values change or init script. Its integration with Flux health checks (the `Cluster` resource reports
+  ready/not-ready status that Flux can gate on) makes it naturally composable in a GitOps dependency graph.
+
+  '
+features:
+- feature: Declarative database provisioning
+  detail: 'Each logical database is a `Database` custom resource in `apps/base/cloudnative-pg/databases/`.
+    The CNPG operator reconciles these into actual PostgreSQL databases with specified owners and extensions
+    — no imperative SQL or init containers required.
+
+    '
+- feature: pgvector extension management
+  detail: 'The `agentic-ai` and `kagent` databases declare `extensions: [{name: vector, ensure: present}]`,
+    causing the operator to install and maintain the pgvector extension automatically. This enables vector
+    similarity search for RAG and embedding workloads without a separate vector database.
+
+    '
+- feature: Credential distribution via PushSecret
+  detail: 'A PushSecret resource watches the CNPG-generated `postgresql-cluster-app` secret and pushes
+    individual fields (username, password, host, port, dbname, uri, jdbc-uri) to LocalStack''s secret
+    store under `cnpg/postgresql-cluster-app/*`. Downstream services pull credentials via ExternalSecrets
+    without direct namespace coupling.
+
+    '
+- feature: Simplified service topology
+  detail: 'Read-only (`ro`) and read (`r`) services are explicitly disabled via `managed.services.disabledDefaultServices`.
+    Only the read-write (`rw`) service is exposed, reducing DNS entries and eliminating read/write split
+    complexity that is unnecessary at this scale.
+
+    '
+- feature: Streaming replication with WAL archiving
+  detail: 'WAL level is set to `replica` with 10 replication slots and 10 WAL senders configured, enabling
+    synchronous streaming replication between primary and replicas. This provides the foundation for automatic
+    failover managed by the CNPG operator.
+
+    '
+- feature: Prometheus PodMonitor integration
+  detail: 'The cluster has `monitoring.enablePodMonitor: true`, which causes the operator to create PodMonitor
+    resources that kube-prometheus-stack scrapes for PostgreSQL-specific metrics (connections, transactions,
+    replication lag, buffer cache hit ratio).
+
+    '
+- feature: Flux health-gated deployment
+  detail: 'The Flux Kustomization declares health checks on both the `Cluster` resource and the `postgresql-cluster-app`
+    Secret. Downstream services (n8n, temporal, pgadmin4) cannot begin reconciliation until the cluster
+    reports healthy AND credentials are available — preventing connection failures during initial bootstrap.
+
+    '
+architecture_diagrams:
+- title: Cluster Topology & Credential Flow
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        FLUX[Flux Kustomization<br/>postgresql-cluster]\n\
+    \    end\n\n    subgraph cnpg-system[\"cnpg-system namespace\"]\n        OPERATOR[CNPG Operator]\n\
+    \        PRIMARY[PostgreSQL Primary<br/>:5432]\n        REPLICA[PostgreSQL Replica<br/>:5432]\n  \
+    \      SVC_RW[Service: postgresql-cluster-rw<br/>:5432]\n        SECRET[Secret: postgresql-cluster-app]\n\
+    \        PUSH[PushSecret: push-cnpg-app-secret]\n\n        subgraph databases[\"Logical Databases\"\
+    ]\n            DB_N8N[n8n]\n            DB_TEMPORAL[temporal + temporal_visibility]\n            DB_GRAFANA[grafana]\n\
+    \            DB_KAGENT[kagent + pgvector]\n            DB_AGENTIC[agentic + pgvector]\n          \
+    \  DB_YT[youtube-automation]\n        end\n    end\n\n    subgraph localstack[\"localstack namespace\"\
+    ]\n        SECRETS_STORE[LocalStack Secrets Manager<br/>cnpg/postgresql-cluster-app/*]\n    end\n\n\
+    \    FLUX -->|\"healthCheck\"| PRIMARY\n    FLUX -->|\"healthCheck\"| SECRET\n    OPERATOR -->|\"\
+    reconciles\"| PRIMARY\n    OPERATOR -->|\"reconciles\"| REPLICA\n    OPERATOR -->|\"provisions\"|\
+    \ databases\n    PRIMARY -->|\"streaming replication\"| REPLICA\n    SVC_RW -->|\":5432\"| PRIMARY\n\
+    \    OPERATOR -->|\"generates\"| SECRET\n    PUSH -->|\"pushes credentials\"| SECRETS_STORE\n    SECRET\
+    \ -->|\"source\"| PUSH\n"
+- title: Dependency Chain & Downstream Access
+  mermaid: "graph TD\n    CNPG_OP[cnpg-operator] -->|\"dependsOn\"| PG[postgresql-cluster]\n    PG -->|\"\
+    dependsOn\"| N8N[n8n]\n    PG -->|\"dependsOn\"| TEMPORAL[temporal]\n    PG -->|\"dependsOn\"| PGADMIN[pgadmin4]\n\
+    \n    subgraph credential-flow[\"Credential Distribution\"]\n        PG_SECRET[postgresql-cluster-app\
+    \ Secret]\n        PUSH_SECRET[PushSecret]\n        LOCALSTACK[LocalStack SecretsManager]\n      \
+    \  EXT_SECRET[ExternalSecrets per-service]\n    end\n\n    PG_SECRET -->|\"watched by\"| PUSH_SECRET\n\
+    \    PUSH_SECRET -->|\"pushes to\"| LOCALSTACK\n    LOCALSTACK -->|\"pulled by\"| EXT_SECRET\n   \
+    \ EXT_SECRET -->|\"injects into\"| N8N\n    EXT_SECRET -->|\"injects into\"| TEMPORAL\n    EXT_SECRET\
+    \ -->|\"injects into\"| PGADMIN"

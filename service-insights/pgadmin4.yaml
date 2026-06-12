@@ -1,0 +1,55 @@
+intro: '[pgAdmin](https://www.pgadmin.org/) ([GitHub](https://github.com/pgadmin-org/pgadmin4)) is the
+  open-source administration and development platform for PostgreSQL. Written in Python (Flask backend)
+  with a JavaScript frontend, it provides a full-featured web interface for database management — query
+  execution, schema visualization, server monitoring, backup/restore orchestration, and user/role administration.
+  What distinguishes it from lighter alternatives (Adminer, phpPgAdmin): pgAdmin4 is the official PostgreSQL
+  community tool, supporting every PostgreSQL feature including advanced types, extensions, logical replication
+  configuration, and explain-plan visualization.
+
+
+  pgAdmin4 operates as a stateful web application. It maintains its own SQLite metadata database and session
+  state on a persistent volume, storing saved server connections, query history, and user preferences.
+  The application runs as a non-root process (UID 5050) and exposes a standard HTTP interface suitable
+  for reverse-proxy deployment.
+
+  '
+purpose: 'pgAdmin4 serves as the visual administration interface for the platform''s CNPG-managed PostgreSQL
+  cluster. It provides operators with direct SQL access, schema inspection, and monitoring without requiring
+  `kubectl exec` or port-forwarding — accessible via browser at `pgadmin.local` through the Traefik ingress
+  layer.
+
+
+  In this deployment, pgAdmin4 is pre-configured with admin credentials sourced from the external secrets
+  pipeline. Operators connect to the CNPG PostgreSQL cluster post-deployment through pgAdmin''s server
+  registration UI, which persists connection details across pod restarts via the attached persistent volume.
+
+  '
+features:
+- feature: External secret integration for admin credentials
+  detail: Admin password is injected from LocalStack via ClusterSecretStore, avoiding plaintext credentials
+    in Git; email is set statically in Helm values as the chart only supports password extraction from
+    secrets.
+- feature: Traefik IngressRoute with dual ingress
+  detail: Exposed via both a standard Kubernetes Ingress resource (pgadmin4.local) and a Traefik-native
+    IngressRoute CRD (pgadmin.local) on the web entrypoint.
+- feature: Persistent session and configuration storage
+  detail: A ReadWriteOnce PVC stores pgAdmin's internal SQLite database, saved server connections, query
+    history, and user preferences — surviving pod restarts without re-configuration.
+- feature: Non-root security context
+  detail: Container runs as UID/GID 5050 with runAsNonRoot enforced, matching the upstream pgAdmin4 container's
+    expected filesystem ownership.
+- feature: Flux health gating on PostgreSQL readiness
+  detail: Flux healthChecks verify the CNPG PostgreSQL Cluster resource is healthy before marking pgAdmin4
+    as successfully reconciled, preventing a running UI with no available database backend.
+architecture_diagrams:
+- title: pgAdmin4 Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        HR[HelmRelease: pgadmin4]\n\
+    \        REPO[HelmRepository: runix]\n        HR -->|chart source| REPO\n    end\n\n    subgraph pgadmin4-ns[\"\
+    pgadmin4 namespace\"]\n        DEP[Deployment: pgadmin4]\n        SVC[Service: pgadmin4<br/>ClusterIP\
+    \ :80]\n        PVC[PVC<br/>ReadWriteOnce]\n        SEC[Secret: pgadmin4-credentials]\n        ES[ExternalSecret:\
+    \ pgadmin4-credentials]\n        IR[IngressRoute: pgadmin4]\n\n        DEP -->|mounts| PVC\n     \
+    \   DEP -->|reads password| SEC\n        ES -->|creates| SEC\n        SVC -->|targetPort 80| DEP\n\
+    \        IR -->|routes to :80| SVC\n    end\n\n    subgraph traefik-ns[\"traefik namespace\"]\n  \
+    \      TFK[Traefik Ingress Controller]\n    end\n\n    subgraph ext-secrets[\"External Secrets\"]\n\
+    \        CSS[ClusterSecretStore:<br/>localstack-secretstore]\n    end\n\n    TFK -->|\"Host(pgadmin.local)\"\
+    | IR\n    ES -->|\"refreshInterval: 1h\"| CSS\n    HR -->|deploys into| pgadmin4-ns"

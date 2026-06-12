@@ -1,0 +1,90 @@
+intro: '[kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
+  is an opinionated Helm chart that deploys the full Prometheus monitoring pipeline in a single release:
+  Prometheus server, Alertmanager, Grafana, node-exporter, kube-state-metrics, and — critically — the
+  **Prometheus Operator**. The Operator is what distinguishes this from a raw Prometheus install: it introduces
+  Custom Resource Definitions (ServiceMonitor, PodMonitor, PrometheusRule, AlertmanagerConfig) that let
+  monitoring configuration live alongside application manifests in Git, making the entire observability
+  stack declaratively managed through GitOps.
+
+
+  What sets this chart apart from assembling the components individually is the pre-wired integration:
+  Grafana ships with datasource auto-discovery, Alertmanager routes are configured via CRDs rather than
+  hand-edited ConfigMaps, and Prometheus scrape targets are declared per-service without touching a central
+  `prometheus.yml`. For a platform running dozens of services with independent release cycles, this CRD-driven
+  model eliminates the central bottleneck of a shared monitoring config file.
+
+
+  The chart also bundles recording rules and alerts for Kubernetes internals (kubelet, apiserver, etcd,
+  scheduler), providing cluster health observability out of the box without any additional configuration
+  beyond the Helm values.
+
+  '
+purpose: 'kube-prometheus-stack is the platform''s foundational observability layer. It collects metrics
+  from every instrumented service, stores time-series data with configurable retention, and provides Grafana
+  as the unified visualization frontend. In this cluster, it is specifically configured to monitor the
+  **kagent multi-agent AI platform** — tracking agent invocation rates, per-agent latency distributions,
+  token consumption against budgets, A2A delegation counts, and tool usage patterns that detect God-Agent
+  drift.
+
+
+  Alertmanager is wired to route critical severity alerts directly to the kagent incident webhook (`alertmanager-hook.kagent.svc.cluster.local:8080`),
+  enabling the AI agent platform to self-heal or escalate based on cluster state. Grafana uses a PostgreSQL
+  backend for session and dashboard storage persistence, with credentials managed entirely through ExternalSecrets
+  pulling from LocalStack — no secrets in Git.
+
+  '
+purpose_rationale: '**Why kube-prometheus-stack over individual Prometheus + Grafana deploys or managed
+  alternatives (e.g., Grafana Cloud, AWS Managed Prometheus):** The CRD-driven configuration model is
+  essential for this GitOps platform. Each service can declare its own ServiceMonitors and AlertmanagerConfigs
+  in its own directory, reviewed and merged through the normal PR workflow. Managed services would require
+  a separate Terraform/API layer for configuration, breaking the single-pane-of-glass Git model. The trade-off
+  is self-managed storage, retention tuning, and capacity planning — accepted because this platform needs
+  full control over scrape intervals, relabeling rules, and alert routing topology that managed services
+  often constrain.
+
+  '
+features:
+- feature: CRD-driven alert routing
+  detail: AlertmanagerConfig CRD routes critical-severity alerts to the kagent incident webhook without
+    editing a global Alertmanager config file.
+- feature: ExternalSecrets-managed credentials
+  detail: Both Grafana admin credentials and database passwords are synced from LocalStack via ClusterSecretStore
+    — no secrets committed to Git.
+- feature: PostgreSQL-backed Grafana
+  detail: Grafana uses an external PostgreSQL database for dashboard and session storage, with credentials
+    delivered via the grafana-db-credentials ExternalSecret.
+- feature: Sidecar dashboard provisioning
+  detail: Grafana's sidecar container watches for ConfigMaps labeled `grafana_dashboard=1` and auto-imports
+    dashboards without restart or manual upload.
+- feature: Multi-datasource dashboards
+  detail: The kagent telemetry dashboard queries Prometheus for metrics, Loki for log-based refusal/rejection
+    events, and links to Jaeger for distributed trace exploration.
+- feature: PostBuild variable substitution
+  detail: Resource limits, retention settings, and storage sizes are injected at reconcile time from the
+    cluster-vars ConfigMap, enabling per-environment tuning without manifest duplication.
+- feature: Deployment health gating
+  detail: Flux healthChecks block downstream dependents until both the Prometheus Operator and Grafana
+    deployments report ready in the monitoring namespace.
+architecture_diagrams:
+- title: Deployment Topology and Credential Flow
+  mermaid: "graph TD\n    subgraph flux-system\n        KS[Kustomization<br/>kube-prometheus-stack]\n\
+    \        CV[ConfigMap<br/>cluster-vars]\n    end\n\n    subgraph monitoring\n        OP[Prometheus\
+    \ Operator<br/>Deployment]\n        PROM[Prometheus Server]\n        AM[Alertmanager]\n        GRAF[Grafana<br/>Deployment]\n\
+    \        SIDE[Grafana Sidecar]\n        AMCFG[AlertmanagerConfig<br/>kagent-incident-webhook]\n  \
+    \      DASH[ConfigMap<br/>grafana-dashboard-kagent]\n        SEC_ADMIN[Secret<br/>grafana-admin-credentials]\n\
+    \        SEC_DB[Secret<br/>grafana-db-credentials]\n    end\n\n    subgraph external-secrets\n   \
+    \     ESO[ExternalSecrets Operator]\n        CSS[ClusterSecretStore<br/>localstack-secretstore]\n\
+    \    end\n\n    subgraph localstack\n        LS_ADMIN[grafana/admin/credentials/*]\n        LS_DB[grafana/database/password]\n\
+    \    end\n\n    subgraph kagent\n        HOOK[alertmanager-hook<br/>:8080]\n    end\n\n    KS -->|dependsOn|\
+    \ ESO\n    KS -->|substituteFrom| CV\n    KS -->|healthCheck| OP\n    KS -->|healthCheck| GRAF\n\n\
+    \    CSS -->|remoteRef| LS_ADMIN\n    CSS -->|remoteRef| LS_DB\n    ESO -->|syncs| SEC_ADMIN\n   \
+    \ ESO -->|syncs| SEC_DB\n\n    SEC_ADMIN -->|admin-user, admin-password| GRAF\n    SEC_DB -->|password|\
+    \ GRAF\n\n    AMCFG -->|configures| AM\n    AM -->|webhook :8080| HOOK\n    SIDE -->|watches label\
+    \ grafana_dashboard=1| DASH\n    DASH -->|auto-imports| GRAF\n\n    OP -->|manages| PROM\n    OP -->|manages|\
+    \ AM\n"
+- title: Alert-to-Incident Flow
+  mermaid: "sequenceDiagram\n    participant P as Prometheus\n    participant AM as Alertmanager\n   \
+    \ participant AMCFG as AlertmanagerConfig CRD\n    participant HOOK as kagent alertmanager-hook\n\n\
+    \    P->>AM: fires alert (severity=critical)\n    AM->>AMCFG: matches route (severity = critical)\n\
+    \    AMCFG-->>AM: receiver: kagent-hook\n    AM->>HOOK: POST /webhook/alertmanager (port 8080)\n \
+    \   Note over HOOK: Writes incident:events stream<br/>to Redis DB 4"

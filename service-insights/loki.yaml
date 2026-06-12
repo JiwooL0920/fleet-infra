@@ -1,0 +1,183 @@
+intro: '[Loki](https://grafana.io/oss/loki/) ([GitHub](https://github.com/grafana/loki)) is Grafana''s
+  horizontally-scalable, multi-tenant log aggregation system. Unlike Elasticsearch-based stacks that index
+  the full content of every log line, Loki indexes only metadata labels (pod, namespace, container, stream)
+  and stores compressed log chunks — making it dramatically cheaper to operate at scale while maintaining
+  fast grep-style queries through its LogQL query language.
+
+
+  What distinguishes Loki from traditional log systems (ELK, Splunk, Graylog): it was designed from the
+  ground up to share the same label model as Prometheus. Logs and metrics share identical `{namespace="X",
+  pod="Y"}` selectors, enabling seamless correlation in Grafana dashboards without maintaining separate
+  taxonomies. The TSDB index format (v13) replaces the older BoltDB-shipper with a more efficient time-series-native
+  index that reduces compaction overhead and improves query latency on high-cardinality label sets.
+
+
+  Loki supports multiple deployment modes — from a single-binary suitable for development clusters to
+  a fully disaggregated microservices architecture with independent scaling of ingesters, queriers, compactors,
+  and distributors. The storage backend is pluggable: filesystem for single-node, S3/GCS/Azure for production-scale
+  object storage with infinite retention.
+
+  '
+purpose: 'Loki is the platform''s centralized log aggregation backend. All container logs flow into it
+  via two ingestion paths: Promtail (DaemonSet scraping node-level container logs) and the OpenTelemetry
+  Collector (application-emitted OTLP log signals). Grafana queries Loki directly using LogQL, providing
+  unified log exploration alongside Prometheus metrics and Jaeger traces in the same dashboards.
+
+
+  In this cluster, Loki runs in SingleBinary mode with filesystem-backed storage — appropriate for a development/homelab
+  environment where operational simplicity outweighs the scaling benefits of disaggregated mode. Retention
+  is policy-driven via `limits_config.retention_period`, and the TSDB index with 24-hour periods keeps
+  compaction lightweight.
+
+  '
+purpose_rationale: '**Why Loki over ELK (Elasticsearch + Logstash + Kibana):** ELK full-text indexes every
+  log line, consuming 10-50× more storage and requiring significant heap memory for Elasticsearch JVM.
+  For a homelab running 25+ services, the resource overhead is prohibitive. Loki''s label-only indexing
+  means storage costs scale with log volume, not log content complexity — and the Grafana integration
+  is native rather than bolted on.
+
+
+  **Why SingleBinary over microservices mode:** The cluster runs a single node with bounded log volume.
+  Disaggregated mode (separate ingester, querier, compactor, distributor pods) adds 6+ additional deployments
+  with no benefit at this scale. SingleBinary collapses all components into one StatefulSet with a single
+  PVC, reducing memory footprint from ~2-4Gi (distributed) to ~512Mi-2Gi (single binary).
+
+  '
+features:
+- feature: SingleBinary deployment mode
+  detail: All Loki components (ingester, querier, compactor, distributor) run in a single StatefulSet
+    process, eliminating inter-component networking and simplifying operations at low-to-moderate log
+    volumes.
+- feature: TSDB index with v13 schema
+  detail: Uses the time-series database index format with 24-hour index periods, replacing the older BoltDB-shipper
+    with more efficient range queries and reduced compaction overhead.
+- feature: Filesystem storage backend
+  detail: Chunks and index stored on a persistent volume (`/var/loki/chunks`, `/var/loki/rules`) — no
+    object store dependency, suitable for single-node deployments with bounded retention.
+- feature: Policy-driven retention
+  detail: Configurable retention period with `reject_old_samples` enforcement (168h max age for incoming
+    data), preventing backfill of stale logs that would inflate storage.
+- feature: Generous ingestion limits
+  detail: Per-stream rate limit set to 512MB/s with 1024MB burst, ingestion rate at 512MB/s, and 10000
+    max streams per user — tuned to avoid dropping logs from bursty workloads rather than protecting a
+    multi-tenant boundary.
+- feature: Gateway reverse proxy
+  detail: Nginx-based gateway fronts the Loki API, providing a stable service endpoint for consumers regardless
+    of backend pod restarts or scaling changes.
+- feature: ServiceMonitor integration
+  detail: Prometheus scrapes Loki's internal metrics endpoint at 30-second intervals, enabling alerting
+    on ingestion lag, query latency, and storage utilization via kube-prometheus-stack.
+- feature: ExternalSecret for Redis credentials
+  detail: Redis password provisioned from LocalStack via ExternalSecrets Operator — pre-positioned for
+    enabling multi-layer caching (results, chunks, index, write deduplication) when workload demands it.
+- feature: Disabled distributed components
+  detail: All scalable-mode components (write, read, backend, ingester, querier, queryFrontend, queryScheduler,
+    distributor, compactor, indexGateway, bloom*) explicitly set to 0 replicas, preventing Helm chart
+    defaults from spawning unnecessary pods.
+architecture_diagrams:
+- title: Loki SingleBinary Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        HR[HelmRelease: loki]\n\
+    \        REPO[HelmRepository: grafana]\n        HR -->|chart source| REPO\n    end\n\n    subgraph\
+    \ monitoring[\"monitoring namespace\"]\n        GW[Gateway<br/>nginx reverse proxy]\n        SB[StatefulSet:\
+    \ loki<br/>SingleBinary mode]\n        PVC[PVC<br/>filesystem storage]\n        SM[ServiceMonitor]\n\
+    \        ES[ExternalSecret: redis-password]\n\n        GW -->|\"HTTP :3100\"| SB\n        SB -->|\"\
+    /var/loki/chunks\"| PVC\n        SM -->|\"scrape :3100/metrics\"| SB\n    end\n\n    subgraph external[\"\
+    External Sources\"]\n        LSS[LocalStack SecretStore]\n    end\n\n    ES -->|\"redis/credentials/password\"\
+    | LSS\n    HR -->|\"deploys to\"| monitoring\n"
+- title: Log Ingestion Flow
+  mermaid: "graph TD\n    subgraph sources[\"Log Producers\"]\n        PT[Promtail<br/>DaemonSet]\n  \
+    \      OTEL[OpenTelemetry Collector]\n    end\n\n    subgraph monitoring[\"monitoring namespace\"\
+    ]\n        GW[Loki Gateway]\n        SB[Loki SingleBinary]\n        PVC[(Filesystem PVC<br/>chunks\
+    \ + index)]\n    end\n\n    subgraph consumers[\"Query Consumers\"]\n        GF[Grafana]\n    end\n\
+    \n    PT -->|\"HTTP push<br/>/loki/api/v1/push\"| GW\n    OTEL -->|\"OTLP HTTP<br/>/otlp/v1/logs\"\
+    | GW\n    GW -->|proxy| SB\n    SB -->|write chunks + TSDB index| PVC\n    GF -->|\"LogQL queries<br/>/loki/api/v1/query_range\"\
+    | GW"
+operations:
+- scenario: StatefulSet stuck in Pending — PVC not binding
+  symptoms: '`kubectl get pods -n monitoring -l app.kubernetes.io/name=loki` shows pod in Pending state.
+
+    Events show `FailedScheduling` or `waiting for a volume to be created`. Flux health check
+
+    on StatefulSet times out after 10m.
+
+    '
+  steps:
+  - kubectl get pvc -n monitoring -l app.kubernetes.io/name=loki
+  - kubectl describe pvc -n monitoring -l app.kubernetes.io/name=loki | grep -A5 Events
+  - kubectl get storageclass standard -o yaml
+  - kubectl get events -n monitoring --sort-by=.lastTimestamp | grep -i pvc
+  - '# If StorageClass missing or misconfigured, verify Kind provisioner is running:'
+  - kubectl get pods -n local-path-storage
+- scenario: Log ingestion rejected — rate limit exceeded
+  symptoms: 'Promtail or OTel Collector logs show HTTP 429 responses from Loki. Grafana Explore returns
+
+    gaps in log streams. Loki metrics show `loki_discarded_samples_total` increasing.
+
+    Alert: `LokiRequestErrors` or `LokiIngestionRateLimitHit`.
+
+    '
+  steps:
+  - kubectl logs -n monitoring statefulset/loki --tail=100 | grep -i 'rate limit\|429\|discard'
+  - kubectl exec -n monitoring statefulset/loki -- wget -qO- http://localhost:3100/metrics | grep loki_discarded_samples_total
+  - kubectl exec -n monitoring statefulset/loki -- wget -qO- http://localhost:3100/metrics | grep loki_ingester_streams_created_total
+  - '# Check if a single stream is flooding — identify high-cardinality labels:'
+  - kubectl exec -n monitoring statefulset/loki -- wget -qO- 'http://localhost:3100/loki/api/v1/label'
+    | python3 -m json.tool
+- scenario: Loki OOMKilled — query or compaction memory spike
+  symptoms: 'Pod restarts with reason `OOMKilled` in `kubectl describe pod`. Loki logs show incomplete
+
+    compaction cycles or large query responses before termination. `loki_panic_total` may increment.
+
+    '
+  steps:
+  - kubectl get pods -n monitoring -l app.kubernetes.io/name=loki -o jsonpath='{.items[*].status.containerStatuses[*].lastState.terminated.reason}'
+  - kubectl describe pod -n monitoring -l app.kubernetes.io/name=loki | grep -A3 'Last State'
+  - kubectl top pod -n monitoring -l app.kubernetes.io/name=loki
+  - '# Check if compaction is processing oversized index files:'
+  - kubectl exec -n monitoring statefulset/loki -- ls -lhS /var/loki/tsdb-shipper-active/
+  - kubectl exec -n monitoring statefulset/loki -- wget -qO- http://localhost:3100/metrics | grep loki_compactor
+- scenario: Gateway returning 502 — backend SingleBinary not ready
+  symptoms: 'Promtail logs show `502 Bad Gateway` from Loki push endpoint. Grafana Explore queries fail
+
+    with connection errors. Gateway pod is Running but Loki SingleBinary pod is in CrashLoopBackOff
+
+    or not yet ready.
+
+    '
+  steps:
+  - kubectl get pods -n monitoring -l app.kubernetes.io/component=gateway
+  - kubectl get pods -n monitoring -l app.kubernetes.io/component=single-binary
+  - kubectl logs -n monitoring -l app.kubernetes.io/component=gateway --tail=50
+  - kubectl logs -n monitoring statefulset/loki --tail=100 --previous
+  - '# Check if loki binary is failing on startup config validation:'
+  - kubectl exec -n monitoring statefulset/loki -- cat /etc/loki/config/config.yaml | head -50
+- scenario: ExternalSecret not syncing Redis password
+  symptoms: '`kubectl get externalsecret redis-password -n monitoring` shows `SecretSyncedError` or
+
+    `Ready=False`. If Redis cache is later enabled, Loki will fail to authenticate to Redis master.
+
+    '
+  steps:
+  - kubectl get externalsecret redis-password -n monitoring -o yaml | grep -A10 status
+  - kubectl get clustersecretstore localstack-secretstore -o yaml | grep -A5 status
+  - kubectl get secret redis-password -n monitoring -o jsonpath='{.data.password}' | base64 -d
+  - '# Verify LocalStack has the secret path:'
+  - kubectl exec -n localstack deploy/localstack -- awslocal secretsmanager get-secret-value --secret-id
+    redis/credentials/password
+  see_also:
+  - docs/adr/002-loki-redis-direct-connection.md
+- scenario: Filesystem storage full — ingestion halted
+  symptoms: 'Loki logs show `no space left on device` or `write: disk quota exceeded`. New log pushes
+
+    return 500 errors. PVC usage at 100%. Alert: `KubePersistentVolumeFillingUp`.
+
+    '
+  steps:
+  - kubectl exec -n monitoring statefulset/loki -- df -h /var/loki
+  - kubectl exec -n monitoring statefulset/loki -- du -sh /var/loki/chunks /var/loki/tsdb-shipper-active
+  - '# Check retention is actually deleting old data:'
+  - kubectl exec -n monitoring statefulset/loki -- wget -qO- http://localhost:3100/metrics | grep loki_compactor_deleted
+  - '# If retention is not reclaiming space, trigger manual compaction:'
+  - kubectl exec -n monitoring statefulset/loki -- wget -qO- -post-data '' http://localhost:3100/compactor/ring
+  - '# As last resort, expand PVC if StorageClass supports it:'
+  - kubectl patch pvc -n monitoring -l app.kubernetes.io/name=loki -p '{"spec":{"resources":{"requests":{"storage":"10Gi"}}}}'

@@ -1,0 +1,77 @@
+intro: '[ScyllaDB](https://www.scylladb.com/) ([GitHub](https://github.com/scylladb/scylladb)) is a high-performance
+  NoSQL database written in C++ as a drop-in replacement for Apache Cassandra. It achieves significantly
+  lower tail latencies by implementing a shard-per-core architecture atop the Seastar framework — each
+  CPU core owns its memory, network connections, and disk I/O independently, eliminating cross-core coordination
+  and garbage collection pauses that plague JVM-based databases.
+
+
+  What distinguishes ScyllaDB from other wide-column stores (Cassandra, HBase, DynamoDB): it provides
+  wire-compatible APIs for both CQL (Cassandra Query Language) and **Alternator** (Amazon DynamoDB), allowing
+  applications to use battle-tested client SDKs without vendor lock-in. The shard-per-core design delivers
+  predictable P99 latencies under load — a property that JVM-based alternatives struggle with due to stop-the-world
+  GC events.
+
+
+  The ScyllaDB Operator manages the full lifecycle of ScyllaCluster custom resources on Kubernetes — handling
+  rack-aware placement, rolling upgrades, scaling, and repair scheduling — while the Manager Agent sidecar
+  on each node coordinates backup and repair operations.
+
+  '
+purpose: 'ScyllaDB serves as the platform''s persistent storage layer for chat history and conversational
+  state, exposed exclusively through its Alternator (DynamoDB-compatible) API on port 8000. Applications
+  interact with it using standard AWS DynamoDB SDKs pointed at the in-cluster endpoint, gaining DynamoDB''s
+  data model (partition keys, sort keys, conditional writes) without external cloud dependency or per-request
+  billing.
+
+
+  The cluster runs in developer mode with relaxed resource requirements suitable for a Kind-based homelab,
+  trading production-grade performance guarantees for reduced memory and CPU footprint.
+
+  '
+purpose_rationale: '**Why ScyllaDB Alternator over actual DynamoDB or a simpler KV store:** The workload
+  requires DynamoDB''s table model (partition + sort key access patterns, conditional expressions) for
+  chat history queries — but running against AWS DynamoDB from a local cluster adds latency, cost, and
+  external dependency. ScyllaDB''s Alternator provides the same wire protocol locally. Compared to running
+  Cassandra for CQL access, ScyllaDB delivers lower tail latencies with less memory overhead — relevant
+  even in a single-node dev topology where resource budgets are tight.
+
+
+  **Why not PostgreSQL (already in-cluster):** Chat message streams are append-heavy, partition-scoped
+  reads with no cross-partition joins — a textbook wide-column workload. Modeling this in PostgreSQL would
+  require explicit partitioning and sacrifice the natural time-series ordering that sort keys provide
+  for free.
+
+  '
+features:
+- feature: Alternator (DynamoDB-compatible API)
+  detail: Enabled with `only_rmw_uses_lwt` write isolation — read-modify-write operations use Paxos lightweight
+    transactions while simple writes bypass consensus for throughput
+- feature: Developer mode
+  detail: Relaxes production safeguards (memory locking, CPU pinning, I/O scheduler requirements) to run
+    on non-dedicated Kind nodes without XFS or dedicated disks
+- feature: Manager Agent sidecar
+  detail: Co-located agent container on each ScyllaDB node enables centralized repair scheduling and backup
+    coordination through the Scylla Manager control plane
+- feature: Traefik ingress routing
+  detail: IngressRoute exposes Alternator API externally at `scylla.local` on the web entrypoint, routing
+    to the `scylla-client` headless service on port 8000
+- feature: Flux health gating
+  detail: Kustomization declares a healthCheck on the `scylla-client` Service — downstream dependents
+    will not reconcile until the ScyllaDB client endpoint is serving
+architecture_diagrams:
+- title: ScyllaDB Cluster Deployment Topology
+  mermaid: "graph TD\n    subgraph flux-system[\"flux-system namespace\"]\n        KS[Kustomization: scylla-cluster]\n\
+    \        HR[HelmRelease: scylla]\n        REPO[HelmRepository: scylla]\n    end\n\n    subgraph scylla-ns[\"\
+    scylla namespace\"]\n        SC[ScyllaCluster CR]\n        subgraph rack1[\"rack1\"]\n           \
+    \ POD[ScyllaDB Pod]\n            AGENT[Manager Agent Sidecar]\n        end\n        SVC[Service: scylla-client]\n\
+    \        IR[IngressRoute: scylla-alternator]\n        NS[Namespace: scylla]\n    end\n\n    subgraph\
+    \ deps[\"Dependencies\"]\n        OP[scylla-operator]\n        TC[traefik-config]\n    end\n\n   \
+    \ KS -->|dependsOn| OP\n    KS -->|dependsOn| TC\n    KS -->|deploys| HR\n    HR -->|chart ref| REPO\n\
+    \    HR -->|creates| SC\n    SC -->|manages| POD\n    POD --- AGENT\n    POD -->|serves :8000| SVC\n\
+    \    IR -->|routes scylla.local| SVC\n    KS -->|healthCheck| SVC\n"
+- title: Alternator Request Flow
+  mermaid: "sequenceDiagram\n    participant Client as DynamoDB SDK Client\n    participant Traefik as\
+    \ Traefik Proxy\n    participant IR as IngressRoute\n    participant SVC as scylla-client:8000\n \
+    \   participant Scylla as ScyllaDB Alternator\n\n    Client->>Traefik: HTTP request to scylla.local\n\
+    \    Traefik->>IR: Match Host(`scylla.local`)\n    IR->>SVC: Forward to port 8000\n    SVC->>Scylla:\
+    \ Route to ScyllaDB pod\n    Scylla-->>Client: DynamoDB-compatible response"

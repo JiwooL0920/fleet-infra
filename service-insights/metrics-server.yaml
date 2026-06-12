@@ -1,0 +1,67 @@
+intro: '[Metrics Server](https://github.com/kubernetes-sigs/metrics-server) is the canonical implementation
+  of the Kubernetes [Resource Metrics API](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)
+  (`metrics.k8s.io/v1beta1`). It collects CPU and memory utilization from every kubelet''s Summary API,
+  stores the latest data point in memory, and exposes it through the aggregated API server — enabling
+  `kubectl top`, Horizontal Pod Autoscaler decisions, and any tooling that queries pod/node resource consumption.
+
+
+  What distinguishes metrics-server from full observability stacks (Prometheus, Datadog, etc.) is its
+  narrow scope: it holds only the most recent metric sample per resource, uses no persistent storage,
+  and is designed to be lightweight enough to run as a system-critical service with minimal resource footprint.
+  It is not a monitoring solution — it is the metrics *plumbing* that other components build upon.
+
+
+  Metrics Server is a CNCF-maintained project originally extracted from Heapster, and is the only supported
+  implementation of the Resource Metrics API for production Kubernetes clusters.
+
+  '
+purpose: 'Metrics Server provides the foundational resource metrics layer for the platform. It enables
+  `kubectl top pods/nodes` during development, feeds resource data to kubescape for security and compliance
+  posture scoring, and exposes the `metrics.k8s.io` API that HPA and KEDA reference for resource-based
+  scaling decisions.
+
+
+  As a foundation-tier service with no dependencies, it starts immediately at cluster bootstrap (T+0:00)
+  alongside other infrastructure components, ensuring the Metrics API is available before any downstream
+  workload attempts autoscaling or resource analysis.
+
+  '
+features:
+- feature: Local-cluster kubelet TLS bypass
+  detail: 'Configured with `--kubelet-insecure-tls` and `insecureSkipTLSVerify` on the apiService to operate
+    in kind/colima environments where kubelet serving certificates are self-signed.
+
+    '
+- feature: system-cluster-critical priority
+  detail: 'Runs at `system-cluster-critical` priority class, ensuring it is never preempted by application
+    workloads — HPA and VPA depend on continuous metric availability.
+
+    '
+- feature: Hardened security context
+  detail: 'Non-root execution (UID 1000), read-only root filesystem, all Linux capabilities dropped, and
+    RuntimeDefault seccomp profile applied at both pod and container level.
+
+    '
+- feature: Zero-downtime rolling updates
+  detail: 'RollingUpdate strategy with `maxUnavailable: 0` ensures at least one replica serves the Metrics
+    API throughout upgrades.
+
+    '
+- feature: 15-second metric resolution
+  detail: 'Scrapes kubelet Summary API every 15 seconds (`--metric-resolution=15s`), balancing freshness
+    against kubelet load in a single-node local cluster.
+
+    '
+- feature: InternalIP-preferred kubelet addressing
+  detail: 'Uses `--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname` to reliably reach kubelets
+    in environments where DNS-based node names may not resolve.
+
+    '
+architecture_diagrams:
+- title: Metrics Server Deployment Topology
+  mermaid: "graph TD\n    subgraph kube-system\n        MS[metrics-server Pod<br/>:10250 secure-port]\n\
+    \        SVC[metrics-server Service<br/>:443]\n    end\n\n    subgraph Node\n        KL[kubelet<br/>Summary\
+    \ API]\n    end\n\n    APISVC[apiService registration<br/>metrics.k8s.io]\n    APISERVER[kube-apiserver]\n\
+    \    KS[kubescape]\n\n    SVC -->|\"ClusterIP :443 → :10250\"| MS\n    MS -->|\"--kubelet-insecure-tls\"\
+    | KL\n    APISVC -->|\"insecureSkipTLSVerify: true\"| SVC\n    APISERVER -->|\"API aggregation\"|\
+    \ APISVC\n    KS -->|\"metrics.k8s.io/v1beta1\"| APISERVER"
