@@ -120,7 +120,6 @@ repos:
         language: script
         files: '^(apps/base/|base/services/|clusters/stages/.*/environment\.env|service-insights/).*'
         pass_filenames: false
-        stages: [pre-push]
 
       - id: insight-schema
         name: Service insight YAML schema
