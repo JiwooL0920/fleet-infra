@@ -238,7 +238,7 @@ def validate_all(files: list[Path], strict_warnings: bool = False) -> int:
 
 def main() -> None:
     import argparse
-    parser = argparse.ArgumentParser(description="Validate rendered fleet-infra documentation pages")
+    parser = argparse.ArgumentParser(description="Validate rendered flux-infra documentation pages")
     parser.add_argument("files", nargs="*", help="Markdown files to validate (default: docs-output/components/*.md)")
     parser.add_argument("--strict-warnings", action="store_true", help="Exit 2 on warnings")
     parser.add_argument("--docs-dir", default=str(DEFAULT_DOCS_DIR), help="Output dir to scan")
