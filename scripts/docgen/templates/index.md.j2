@@ -15,7 +15,7 @@ fleet_infra_commit: {{ fleet_commit }}
 generated_at: {{ generated_at }}
 ---
 
-# Fleet-Infra — Service Overview
+# Flux Infrastructure — Service Overview
 
 GitOps Kubernetes homelab managed with [Flux CD](https://fluxcd.io).
 **{{ services | selectattr("enabled") | list | length }} active services** across {{ layers | length }} dependency layers,
