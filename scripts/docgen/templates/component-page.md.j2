@@ -161,6 +161,8 @@ _No environment-specific configuration variables for this service._
 
 {% if insight and insight.operations %}
 {% set ops = insight.operations %}
+{% if ops is mapping %}
+{# Legacy dict format (redis-sentinel) #}
 {% if ops.verification %}
 ### Verification
 
@@ -200,6 +202,30 @@ _No environment-specific configuration variables for this service._
 
 {% if ts.adr_refs %}
 **See also:** {% for ref in ts.adr_refs %}[{{ ref }}]({{ github_base }}/blob/develop/docs/adr/){% if not loop.last %}, {% endif %}{% endfor %}
+
+{% endif %}
+---
+
+{% endfor %}
+{% endif %}
+{% else %}
+{# New list-of-scenarios format #}
+{% for scenario in ops %}
+### {{ scenario.scenario }}
+
+{% if scenario.symptoms %}
+**Symptoms:** {{ scenario.symptoms | replace('\n', ' ') | trim }}
+
+{% endif %}
+{% if scenario.steps %}
+```bash
+{% for step in scenario.steps %}
+{{ step }}
+{% endfor %}
+```
+{% endif %}
+{% if scenario.see_also %}
+**See also:** {% for ref in scenario.see_also %}{{ ref }}{% if not loop.last %}, {% endif %}{% endfor %}
 
 {% endif %}
 ---
