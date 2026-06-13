@@ -1,4 +1,4 @@
-PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft docs-draft-blog blog-draft blog-setup update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-draft-all insight-draft-ops
+PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-draft-all insight-draft-ops
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -36,12 +36,9 @@ help:
 	@echo "  insight-draft-all    - AI-draft all stubs that still have TODO placeholders"
 	@echo "  insight-draft-ops    - AI-draft operations runbooks for all services (review carefully)"
 	@echo "  docs-draft           - AI-draft README/ADR/CLAUDE updates for staged infra changes"
-	@echo "  docs-draft-blog      - AI-draft a blog post for the most recent commit(s)"
-	@echo "  blog-setup           - Show one-time setup instructions for blog-draft CI workflow"
 	@echo "  update-docs          - Sync docs to jiwool0920.github.io and open a PR (incremental)"
 	@echo "  update-docs MODE=all - Full reconcile: regenerate all component pages + rollups"
-	@echo "  docs-draft-blog      - Preview AI-drafted blog post to stdout (no PR)"
-	@echo "  blog-draft           - Draft blog post + open PR in jiwool0920.github.io"
+	@echo "  blog-draft           - Draft changelog-style blog post + open PR (local opencode + gh)"
 	@echo "                         Optional: make blog-draft RANGE=HEAD~3..HEAD"
 	@echo ""
 	@echo "Pre-commit Hooks:"
@@ -291,7 +288,7 @@ docs-draft:
 		exit 1; \
 	fi; \
 	TMPFILE=$$(mktemp /tmp/docs-draft-XXXX.txt); \
-	printf "Review this git diff from the fleet-infra GitOps repository.\n\nIdentify which services changed (paths under apps/base/ and base/services/).\nFor each changed service, propose concise updates for:\n- README.md (service list / dependency layer)\n- CLAUDE.md (if architecture changed)\n- A new or updated docs/adr/ entry if this is a significant decision\n\nOutput proposed changes as markdown diffs or file sections.\nDo NOT apply them — the human will review.\n\n---\n%s\n" "$$CONTEXT" > "$$TMPFILE"; \
+	printf "Review this git diff from the flux-infra GitOps repository.\n\nIdentify which services changed (paths under apps/base/ and base/services/).\nFor each changed service, propose concise updates for:\n- README.md (service list / dependency layer)\n- CLAUDE.md (if architecture changed)\n- A new or updated docs/adr/ entry if this is a significant decision\n\nOutput proposed changes as markdown diffs or file sections.\nDo NOT apply them — the human will review.\n\n---\n%s\n" "$$CONTEXT" > "$$TMPFILE"; \
 	opencode run "Review the diff in the attached file and propose documentation updates." \
 		-f "$$TMPFILE" \
 		--dangerously-skip-permissions \
@@ -300,23 +297,6 @@ docs-draft:
 	@echo ""
 	@echo "Review the suggestions above and apply manually or with Cursor/opencode."
 
-# Preview a blog post draft to stdout (no PR).
-# Useful for checking output before committing via 'make blog-draft'.
-docs-draft-blog:
-	@echo "Drafting blog post preview from recent commits..."
-	@TMPFILE=$$(mktemp /tmp/blog-prompt-XXXX.txt); \
-	TODAY=$$(date '+%Y-%m-%d'); \
-	LOG=$$(git log -1 --format="commit %H%nauthor: %an%ndate: %ai%nsubject: %s%n%nbody:%n%b" 2>/dev/null); \
-	PATCH=$$(git diff HEAD~1 HEAD -- 'apps/base/' 'base/services/' 'docs/adr/' 2>/dev/null | head -c 8192); \
-	printf "Write a MkDocs Material blog post for https://jiwool0920.github.io authored by Jiwoo Lee.\n\nCommit context:\n%s\n\nGit diff:\n%s\n\n---\nFrontmatter format:\n---\ndate: %s\ncategories:\n  - Infrastructure\n  - <Component>\ntags:\n  - <tags>\nauthors:\n  - jiwoo\n---\n\nRequirements:\n- 2-3 sentence intro then <!-- more --> fold\n- Mermaid diagrams where useful\n- Sections: Overview, Why This Change, Technical Details, Operational Impact\n- Tone: direct and practical\n- Output ONLY the markdown body\n" "$$LOG" "$$PATCH" "$$TODAY" > "$$TMPFILE"; \
-	opencode run "Write the blog post described in the attached file." \
-		-f "$$TMPFILE" \
-		--dangerously-skip-permissions \
-		< /dev/null; \
-	rm -f "$$TMPFILE"
-	@echo ""
-	@echo "Happy with the output? Run 'make blog-draft' to branch the blog repo and open a PR."
-
 # Draft a blog post and open a PR in jiwool0920.github.io (full automation).
 # Uses your local opencode config and gh authentication — no secrets needed.
 # Optional: override the git range with RANGE=HEAD~3..HEAD
@@ -324,7 +304,7 @@ blog-draft:
 	@./scripts/blog-draft.sh $(RANGE)
 
 # Sync docs/projects/flux-infra in jiwool0920.github.io with the current state of
-# fleet-infra services. Reads a watermark from the blog repo to determine what changed.
+# flux-infra services. Reads a watermark from the blog repo to determine what changed.
 # Opens a PR in jiwool0920.github.io for review before merging.
 #
 # Incremental (default): only services changed since last sync

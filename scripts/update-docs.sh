@@ -52,7 +52,7 @@ BLOG_FLUX_DOCS="${BLOG_REPO_DIR}/docs/projects/flux-infra"
 BLOG_COMPONENTS="${BLOG_FLUX_DOCS}/components"
 DOCS_STATE_FILE="${BLOG_FLUX_DOCS}/.docs-sync-state.json"
 BLOG_MKDOCS="${BLOG_REPO_DIR}/mkdocs.yml"
-INJECT_NAV_PY="${FLEET_ROOT}/scripts/docgen/inject_nav.py"
+APPLY_TO_BLOG_SH="${FLEET_ROOT}/scripts/docgen/apply_to_blog.sh"
 
 RENDER_OUTPUT="$(mktemp -d /tmp/flux-infra-docs-XXXX)"
 cleanup() { rm -rf "$RENDER_OUTPUT"; }
@@ -84,13 +84,6 @@ read_watermark() {
     if [[ -f "$DOCS_STATE_FILE" ]]; then
         jq -r '.last_synced_commit // ""' "$DOCS_STATE_FILE" 2>/dev/null || echo ""
     fi
-}
-
-write_watermark() {
-    local commit="$1"
-    mkdir -p "$(dirname "$DOCS_STATE_FILE")"
-    echo "{\"last_synced_commit\": \"$commit\", \"synced_at\": \"$TODAY\"}" > "$DOCS_STATE_FILE"
-    echo_info "Watermark updated → $commit"
 }
 
 # ── Changed services detection ─────────────────────────────────────────────────
@@ -159,51 +152,16 @@ sync_to_blog() {
     fi
     git -C "$BLOG_REPO_DIR" checkout -b "$branch" --quiet
 
-    # Ensure target directories exist
-    mkdir -p "$BLOG_COMPONENTS"
-
-    # ── Remove stale files from previous pipeline iterations ──────────────────
-    # Old pipeline generated files like "  - redis.yaml.md" (with spaces + .yaml.md).
-    # These must be deleted before adding clean files to avoid strict-mode warnings.
-    local stale_count=0
-    while IFS= read -r -d '' stale; do
-        rm -f "$stale"
-        stale_count=$((stale_count + 1))
-    done < <(find "$BLOG_COMPONENTS" -maxdepth 1 -name "*.yaml.md" -print0 2>/dev/null)
-    if [[ $stale_count -gt 0 ]]; then
-        echo_warn "Deleted $stale_count stale *.yaml.md files from $BLOG_COMPONENTS"
-    fi
-
-    # Copy rendered component pages
-    local copied=0
-    if [[ -d "${RENDER_OUTPUT}/components" ]]; then
-        for f in "${RENDER_OUTPUT}/components/"*.md; do
-            [[ -f "$f" ]] || continue
-            cp "$f" "$BLOG_COMPONENTS/"
-            copied=$((copied + 1))
-        done
-    fi
-
-    # Copy rollup pages (index.md, architecture.md) to flux-infra root
-    for rollup in index.md architecture.md; do
-        local src="${RENDER_OUTPUT}/${rollup}"
-        if [[ -f "$src" ]]; then
-            cp "$src" "${BLOG_FLUX_DOCS}/${rollup}"
-        fi
-    done
-
-    # Inject updated nav fragment into mkdocs.yml
-    local nav_fragment="${RENDER_OUTPUT}/nav.yml"
-    if [[ -f "$nav_fragment" && -f "$BLOG_MKDOCS" ]]; then
-        echo_step "Injecting flux-infra nav into mkdocs.yml..."
-        "$PYTHON" "$INJECT_NAV_PY" --nav-fragment "$nav_fragment" --mkdocs "$BLOG_MKDOCS"
-    else
-        echo_warn "Skipping nav injection: nav.yml=${nav_fragment} mkdocs=${BLOG_MKDOCS}"
-    fi
-
-    # Update watermark
-    write_watermark "$FLEET_COMMIT"
-    cp "$DOCS_STATE_FILE" "${BLOG_FLUX_DOCS}/.docs-sync-state.json"
+    echo_step "Applying rendered docs to blog tree..."
+    local copied
+    copied="$("$APPLY_TO_BLOG_SH" \
+        --blog-dir "$BLOG_REPO_DIR" \
+        --render-dir "$RENDER_OUTPUT" \
+        --watermark-commit "$FLEET_COMMIT" \
+        --sync-date "$TODAY" \
+        --python "$PYTHON" | tail -1)"
+    copied="${copied#COPIED_COMPONENT_MD_FILES=}"
+    echo_info "Copied $copied component markdown file(s) into blog repo"
 
     # Stage and commit
     git -C "$BLOG_REPO_DIR" add \
@@ -241,7 +199,7 @@ open_pr() {
     catalog_sha="$(jq -r '._meta.catalog_sha' "$CATALOG_JSON")"
     local pr_body
     pr_body="$(cat <<EOF
-## Fleet-Infra Docs Sync
+## Flux-Infra Docs Sync
 
 Deterministically rendered from [flux-infra](https://github.com/JiwooL0920/flux-infra) at commit \`${FLEET_COMMIT}\`.
 

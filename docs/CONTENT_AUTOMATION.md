@@ -1,24 +1,30 @@
 # Content Automation: Blog Posts and Homelab Docs
 
-This document covers the two local automation scripts that keep content in
-[jiwool0920.github.io](https://github.com/JiwooL0920/jiwool0920.github.io) in sync
-with changes in this repo. Both scripts use your local `opencode` installation and
-open cross-repo PRs via `gh` — no CI, no secrets, no auto-merge.
+This document covers how homelab component docs stay in sync with
+[jiwool0920.github.io](https://github.com/JiwooL0920/jiwool0920.github.io): local `make`
+targets, the **automated** `docs-sync` GitHub Action on `develop`, and optional local
+`opencode` flows for prose and changelog-style blog posts.
 
 ---
 
 ## Overview
 
-| Command | What it does | When to run |
-|---------|-------------|-------------|
+| Command / workflow | What it does | When it runs |
+|---------------------|-------------|--------------|
 | `make insight-draft SVC=<slug>` | AI-drafts prose fields of `service-insights/<slug>.yaml` | After adding a service or doing an architecture refactor |
 | `make insight-draft-all` | Drafts all stubs that still have TODO placeholders | One-time bootstrap after adding many services |
 | `make docs-gen` | Local preview: catalog → render → validate → `docs-output/` | Inspect rendered pages before publishing |
-| `make update-docs` | Full pipeline + sync to blog repo + open PR | After insight YAML is ready to publish |
-| `make blog-draft` | Generates a blog post from recent commits and opens a PR | After a notable infra change lands on develop |
+| `make update-docs` | Full pipeline + sync to blog clone + open PR (incremental or `MODE=all`) | Local alternative to CI; same file-apply logic as `docs-sync` |
+| **GitHub Action `docs-sync`** | On push to `develop` (filtered paths): catalog → render → validate → `mkdocs build --strict` on blog tree → PR on blog repo | Automatically after infra or insight changes land on `develop` |
+| `make blog-draft` | Generates a blog post from recent commits and opens a PR | After a notable infra change (optional; uses local `opencode` + `gh`) |
 
-**You always merge manually.** The workflow enforces the GitOps principle: AI drafts,
-human reviews, CI deploys on merge.
+**Secrets (flux-infra repo):** add **`BLOG_SYNC_TOKEN`** — a fine-grained PAT limited to `jiwool0920.github.io` with **Contents** and **Pull requests** read/write so the workflow can push the docs branch and open/update the PR.
+
+**Variable (flux-infra repo → Settings → Variables):** **`AUTO_MERGE_DOCS`**
+- Unset or `true` (default): after `docs-sync` opens or updates the PR, the workflow merges it with `--squash` once the strict MkDocs build passed in CI (blog `deploy.yml` then publishes `main`).
+- `false`: the PR stays open for you to review and merge manually.
+
+Insight drafting (`make insight-draft*`) stays **local only** — not run in CI.
 
 ---
 
@@ -28,7 +34,7 @@ human reviews, CI deploys on merge.
 
 ```mermaid
 flowchart TD
-    subgraph fleet["fleet-infra repo (source of truth)"]
+    subgraph fleet["flux-infra repo (source of truth)"]
         manifests["apps/base/&lt;svc&gt;/\nbase/services/&lt;svc&gt;.yaml\nclusters/stages/**/environment.env"]
         catalog_py["catalog.py"]
         catalog_json["service-catalog.json\n(chart, version, env vars,\ndependsOn, downstream)"]
@@ -37,7 +43,7 @@ flowchart TD
         render_py["render.py"]
         validate_py["validate.py"]
         docs_output["docs-output/\n(gitignored — local preview only)"]
-        tmp["&nbsp;/tmp/fleet-infra-docs-XXXX/\n(temp — discarded after sync)"]
+        tmp["&nbsp;/tmp/flux-infra-docs-XXXX/\n(temp — discarded after sync)"]
     end
 
     subgraph opencode_scope["opencode scope (AI — prose only)"]
@@ -223,10 +229,9 @@ make blog-draft
 
 # Draft from a wider range
 make blog-draft RANGE=HEAD~3..HEAD
-
-# Preview only (no PR, prints to stdout)
-make docs-draft-blog
 ```
+
+There is no separate Makefile target for a stdout-only blog preview; use `opencode` with the same prompt as `scripts/blog-draft.sh` if you need one.
 
 ### Prerequisites
 
@@ -248,17 +253,26 @@ Reference documentation (config values, port numbers, chart versions, dependency
 graphs) is always derived deterministically from the manifests. This prevents the
 hallucinated values and config drift that plagued earlier LLM-generated docs.
 
-### No auto-merge, no CI
+### CI vs local merge
 
-Both pipelines open PRs for human review. Same principle as the kagent `gitops-agent`:
-AI drafts, human reviews, Flux/GitHub Pages deploys on merge.
+- **Component docs:** `docs-sync` opens (or updates) a single long-lived branch `docs-sync/flux-infra` on the blog repo. Whether it auto-merges is controlled by **`AUTO_MERGE_DOCS`** (see table above). The blog PR workflow [`validate-docs-sync-pr.yml`](https://github.com/JiwooL0920/jiwool0920.github.io/blob/main/.github/workflows/validate-docs-sync-pr.yml) runs **`mkdocs build --strict`** on PRs that touch `docs/projects/flux-infra/**` or `mkdocs.yml`.
+- **Infra changes (Flux):** unchanged — still Git → PR → human merge → Flux (no cluster writes from automation here).
+- **Insight / blog prose:** `opencode` stays local; you review YAML and posts before commit.
 
 ### Why the watermark lives in the blog repo
 
 The watermark describes the *documentation's* state, not the source repo's state.
 Storing it in the blog repo means it travels in the same PR that updates the docs —
-when the PR merges, the watermark merges too, and the next incremental run correctly
-starts from that point.
+when the PR merges, the watermark merges too, and the next **local incremental** `make update-docs` run correctly
+starts from that point. The **`docs-sync` CI job always does a full render** and relies on `create-pull-request` idempotency instead of the watermark.
+
+---
+
+### Verifying `docs-sync` in GitHub
+
+1. Add **`BLOG_SYNC_TOKEN`** to flux-infra repository secrets (see overview table above).
+2. Actions → **docs-sync** → **Run workflow** (`workflow_dispatch`) on `develop` to confirm checkout, render, strict MkDocs build, and PR creation (or no-op when already in sync).
+3. Set repository variable **`AUTO_MERGE_DOCS`** to `false` if you want PR-only mode; delete the variable or set to `true` for auto-merge after CI green.
 
 ---
 
@@ -275,7 +289,7 @@ or remote API key valid).
 A docs-sync PR is already open. Merge or close it first, or delete the remote branch:
 
 ```bash
-gh api -X DELETE repos/JiwooL0920/jiwool0920.github.io/git/refs/heads/docs-sync/YYYY-MM-DD
+gh api -X DELETE repos/JiwooL0920/jiwool0920.github.io/git/refs/heads/docs-sync/flux-infra
 ```
 
 ### "Blog repo has uncommitted changes"

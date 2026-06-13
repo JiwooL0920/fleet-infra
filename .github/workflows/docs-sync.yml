@@ -1,0 +1,125 @@
+# Automated sync: render flux-infra component docs → PR on jiwool0920.github.io (optional auto-merge).
+#
+# Secrets (flux-infra repo → Settings → Secrets):
+#   BLOG_SYNC_TOKEN — fine-grained PAT with access to jiwool0920.github.io only:
+#     Contents: Read and write, Pull requests: Read and write
+#
+# Variables (flux-infra repo → Settings → Variables):
+#   AUTO_MERGE_DOCS — unset or "true" → merge PR after MkDocs strict build passes.
+#                     Set to "false" → open PR only; merge manually on the blog repo.
+
+name: docs-sync
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/base/**'
+      - 'base/services/**'
+      - 'clusters/stages/**/environment.env'
+      - 'service-insights/**'
+      - 'service-catalog.json'
+      - 'scripts/docgen/**'
+      - 'scripts/update-docs.sh'
+      - '.github/workflows/docs-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-sync-blog
+  cancel-in-progress: true
+
+jobs:
+  sync-to-blog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout flux-infra
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout blog repo
+        uses: actions/checkout@v4
+        with:
+          repository: JiwooL0920/jiwool0920.github.io
+          path: blog
+          token: ${{ secrets.BLOG_SYNC_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install docgen dependencies
+        run: pip install -r scripts/docgen/requirements.txt
+
+      - name: Generate and validate rendered docs
+        id: gen
+        run: |
+          set -euo pipefail
+          python3 scripts/docgen/catalog.py
+          python3 scripts/docgen/render.py --output-dir /tmp/docs-render
+          python3 scripts/docgen/validate.py --docs-dir /tmp/docs-render
+          echo "catalog_sha=$(jq -r '._meta.catalog_sha' service-catalog.json)" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Apply rendered tree to blog checkout
+        run: |
+          set -euo pipefail
+          chmod +x scripts/docgen/apply_to_blog.sh
+          TODAY=$(date -u +%Y-%m-%d)
+          scripts/docgen/apply_to_blog.sh \
+            --blog-dir "${GITHUB_WORKSPACE}/blog" \
+            --render-dir /tmp/docs-render \
+            --watermark-commit "${{ steps.gen.outputs.short_sha }}" \
+            --sync-date "$TODAY" \
+            --python python3
+
+      - name: Install blog MkDocs dependencies
+        run: pip install -r blog/requirements.txt
+
+      - name: MkDocs strict build (blog)
+        run: cd blog && mkdocs build --strict
+
+      - name: Create or update Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.BLOG_SYNC_TOKEN }}
+          path: blog
+          branch: docs-sync/flux-infra
+          base: main
+          commit-message: |
+            docs(flux-infra): sync from flux-infra@${{ steps.gen.outputs.short_sha }}
+
+            - catalog_sha: ${{ steps.gen.outputs.catalog_sha }}
+            - full render + nav injection + watermark
+          title: 'docs(flux-infra): sync from flux-infra @ ${{ steps.gen.outputs.short_sha }}'
+          body: |
+            Automated sync from [flux-infra](https://github.com/JiwooL0920/flux-infra) at `${{ steps.gen.outputs.short_sha }}` (full catalog render).
+
+            | Field | Value |
+            |---|---|
+            | **catalog_sha** | `${{ steps.gen.outputs.catalog_sha }}` |
+            | **Source** | [commit](https://github.com/JiwooL0920/flux-infra/commit/${{ github.sha }}) |
+            | **Workflow** | [docs-sync.yml](https://github.com/JiwooL0920/flux-infra/blob/develop/.github/workflows/docs-sync.yml) |
+
+            MkDocs `--strict` build passed in CI before this PR was opened or updated.
+
+            ### Review checklist
+            - [ ] Config tables look correct for dev and prod
+            - [ ] No unexpected TODO placeholders
+            - [ ] Mermaid diagrams render in preview
+
+      - name: Auto-merge Pull Request
+        if: ${{ steps.cpr.outputs.pull-request-number != '' && vars.AUTO_MERGE_DOCS != 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.BLOG_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr merge "${{ steps.cpr.outputs.pull-request-number }}" \
+            --repo JiwooL0920/jiwool0920.github.io \
+            --squash \
+            --delete-branch

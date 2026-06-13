@@ -9,6 +9,10 @@ on:
       - 'service-catalog.json'
       - 'service-insights/**'
       - 'scripts/docgen/**'
+      - 'scripts/update-docs.sh'
+      - 'scripts/docgen/apply_to_blog.sh'
+      - '.github/workflows/catalog-drift-check.yml'
+      - '.github/workflows/docs-sync.yml'
   pull_request:
     paths:
       - 'apps/base/**'
@@ -17,6 +21,10 @@ on:
       - 'service-catalog.json'
       - 'service-insights/**'
       - 'scripts/docgen/**'
+      - 'scripts/update-docs.sh'
+      - 'scripts/docgen/apply_to_blog.sh'
+      - '.github/workflows/catalog-drift-check.yml'
+      - '.github/workflows/docs-sync.yml'
 
 jobs:
   catalog-drift:

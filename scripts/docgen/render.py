@@ -328,7 +328,7 @@ def render_all(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Render fleet-infra documentation pages")
+    parser = argparse.ArgumentParser(description="Render flux-infra documentation pages")
     parser.add_argument("--output-dir", default=str(REPO_ROOT / "docs-output"), help="Output directory")
     parser.add_argument("--catalog", default=str(CATALOG_FILE), help="Path to service-catalog.json")
     parser.add_argument("--services", default="", help="Comma-separated service slugs to render (default: all enabled)")

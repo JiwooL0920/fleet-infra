@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-inject_nav.py — Merge the generated fleet-infra nav fragment into mkdocs.yml.
+inject_nav.py — Merge the generated flux-infra nav fragment into mkdocs.yml.
 
 Reads the nav.yml fragment produced by render.py (a single top-level list item
 whose key matches NAV_SECTION_KEY) and replaces the matching entry inside
@@ -104,7 +104,7 @@ def inject(nav_fragment_path: Path, mkdocs_path: Path) -> None:
 
     result_lines = lines[:fleet_line_idx] + replacement_lines + lines[fleet_end_idx:]
     mkdocs_path.write_text("".join(result_lines))
-    print(f"  Injected fleet-infra nav into {mkdocs_path}")
+    print(f"  Injected flux-infra nav into {mkdocs_path}")
 
 
 def main():
