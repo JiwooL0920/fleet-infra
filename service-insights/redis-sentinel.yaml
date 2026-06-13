@@ -31,7 +31,7 @@ consumers:
     notes: >
       Cache currently disabled in this cluster config. When enabled, must bypass Sentinel
       due to missing `SentinelPassword` in Loki's go-redis wrapper — see
-      [ADR-002](https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md)
+      [ADR-002](https://github.com/JiwooL0920/flux-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md)
 
 features:
   - feature: Replication topology
@@ -71,9 +71,9 @@ features:
   - feature: Authentication
     detail: >
       Disabled (`auth.enabled: false`). To re-enable, add
-      [`externalsecret.yaml`](https://github.com/JiwooL0920/fleet-infra/blob/develop/apps/base/redis-sentinel/externalsecret.yaml)
+      [`externalsecret.yaml`](https://github.com/JiwooL0920/flux-infra/blob/develop/apps/base/redis-sentinel/externalsecret.yaml)
       back to
-      [`apps/base/redis-sentinel/kustomization.yaml`](https://github.com/JiwooL0920/fleet-infra/blob/develop/apps/base/redis-sentinel/kustomization.yaml)
+      [`apps/base/redis-sentinel/kustomization.yaml`](https://github.com/JiwooL0920/flux-infra/blob/develop/apps/base/redis-sentinel/kustomization.yaml)
       and set `auth.enabled: true`
 
   - feature: Prometheus metrics
@@ -87,9 +87,9 @@ dependency_notes:
     - service: external-secrets-config
       status: >
         **Effectively inactive** — `auth.enabled: false` in the HelmRelease and
-        [`externalsecret.yaml`](https://github.com/JiwooL0920/fleet-infra/blob/develop/apps/base/redis-sentinel/externalsecret.yaml)
+        [`externalsecret.yaml`](https://github.com/JiwooL0920/flux-infra/blob/develop/apps/base/redis-sentinel/externalsecret.yaml)
         is excluded from
-        [`apps/base/redis-sentinel/kustomization.yaml`](https://github.com/JiwooL0920/fleet-infra/blob/develop/apps/base/redis-sentinel/kustomization.yaml),
+        [`apps/base/redis-sentinel/kustomization.yaml`](https://github.com/JiwooL0920/flux-infra/blob/develop/apps/base/redis-sentinel/kustomization.yaml),
         so no password is synced or used. The `redis-password` health check in the Flux Kustomization
         is a stale leftover and should be removed if auth remains disabled.
 
@@ -113,7 +113,7 @@ dependency_notes:
       type: Runtime (no Flux wire)
       reason: >
         Multi-layer query cache — currently disabled in this cluster config; see
-        [ADR-002](https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md)
+        [ADR-002](https://github.com/JiwooL0920/flux-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md)
         for connection constraints when re-enabled
 
   downstream_note: >
@@ -200,7 +200,7 @@ access: |
 
   > Use the `:26379` Sentinel port for any client that speaks the Redis Sentinel protocol.
   > Use `:6379` direct only when the client cannot authenticate to the Sentinel port
-  > (e.g. Loki — see [ADR-002](https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md)).
+  > (e.g. Loki — see [ADR-002](https://github.com/JiwooL0920/flux-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md)).
 
   ### RedisInsight UI
 
@@ -406,19 +406,19 @@ operations:
 
 related:
   - text: "RedisInsight — browser UI for Redis (http://redis.local)"
-    url: https://jiwool0920.github.io/projects/fleet-infra/components/redisinsight/
+    url: https://jiwool0920.github.io/projects/flux-infra/components/redisinsight/
 
   - text: "Loki — uses Redis as multi-layer cache; see direct-connection workaround"
-    url: https://jiwool0920.github.io/projects/fleet-infra/components/loki/
+    url: https://jiwool0920.github.io/projects/flux-infra/components/loki/
 
   - text: "ADR-002: Loki Redis Direct Connection"
-    url: https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md
+    url: https://github.com/JiwooL0920/flux-infra/blob/develop/docs/adr/002-loki-redis-direct-connection.md
 
   - text: apps/base/redis-sentinel/ — Kubernetes manifests
-    url: https://github.com/JiwooL0920/fleet-infra/tree/develop/apps/base/redis-sentinel
+    url: https://github.com/JiwooL0920/flux-infra/tree/develop/apps/base/redis-sentinel
 
   - text: base/services/redis-sentinel.yaml — Flux Kustomization with dependsOn
-    url: https://github.com/JiwooL0920/fleet-infra/blob/develop/base/services/redis-sentinel.yaml
+    url: https://github.com/JiwooL0920/flux-infra/blob/develop/base/services/redis-sentinel.yaml
 
   - text: "base/services/environment.env — all REDIS_* tuning variables"
-    url: https://github.com/JiwooL0920/fleet-infra/blob/develop/base/services/environment.env
+    url: https://github.com/JiwooL0920/flux-infra/blob/develop/base/services/environment.env

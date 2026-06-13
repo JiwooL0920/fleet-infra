@@ -3,14 +3,14 @@
      svc (dict)         — single entry from service-catalog.json["services"][slug]
      insight (dict|None)— loaded service-insights/<slug>.yaml, or None if missing
      catalog_sha (str)  — service-catalog.json _meta.catalog_sha
-     fleet_commit (str) — current fleet-infra HEAD commit SHA (short)
+     fleet_commit (str) — current flux-infra HEAD commit SHA (short)
      generated_at (str) — ISO date string
-     github_base (str)  — e.g. "https://github.com/JiwooL0920/fleet-infra"
-     blog_base (str)    — e.g. "https://jiwool0920.github.io/projects/fleet-infra"
+     github_base (str)  — e.g. "https://github.com/JiwooL0920/flux-infra"
+     blog_base (str)    — e.g. "https://jiwool0920.github.io/projects/flux-infra"
 #}
 ---
 catalog_sha: {{ catalog_sha }}
-fleet_infra_commit: {{ fleet_commit }}
+flux_infra_commit: {{ fleet_commit }}
 generated_at: {{ generated_at }}
 ---
 

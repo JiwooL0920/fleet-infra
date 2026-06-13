@@ -167,7 +167,7 @@ def check_rendering_artifacts(text: str, result: ValidationResult) -> None:
 
 
 def check_frontmatter(text: str, result: ValidationResult) -> None:
-    """Page must have YAML frontmatter with catalog_sha and fleet_infra_commit."""
+    """Page must have YAML frontmatter with catalog_sha and flux_infra_commit."""
     if not text.startswith("---"):
         result.error("Missing frontmatter (page must start with ---)")
         return
@@ -178,8 +178,8 @@ def check_frontmatter(text: str, result: ValidationResult) -> None:
     front = text[3:end]
     if "catalog_sha:" not in front:
         result.error("Frontmatter missing 'catalog_sha'")
-    if "fleet_infra_commit:" not in front:
-        result.error("Frontmatter missing 'fleet_infra_commit'")
+    if "flux_infra_commit:" not in front:
+        result.error("Frontmatter missing 'flux_infra_commit'")
 
 
 # ---------------------------------------------------------------------------

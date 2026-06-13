@@ -3,13 +3,13 @@
 #}
 ---
 catalog_sha: {{ catalog_sha }}
-fleet_infra_commit: {{ fleet_commit }}
+flux_infra_commit: {{ fleet_commit }}
 generated_at: {{ generated_at }}
 ---
 
 # Components Index
 
-All {{ services | length }} services in fleet-infra, including disabled ones.
+All {{ services | length }} services in flux-infra, including disabled ones.
 
 ## Enabled Services ({{ services.values() | selectattr("enabled") | list | length }})
 
