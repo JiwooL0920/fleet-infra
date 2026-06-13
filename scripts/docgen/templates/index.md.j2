@@ -18,7 +18,7 @@ generated_at: {{ generated_at }}
 # Flux Infrastructure — Service Overview
 
 GitOps Kubernetes homelab managed with [Flux CD](https://fluxcd.io).
-**{{ services | selectattr("enabled") | list | length }} active services** across {{ layers | length }} dependency layers,
+**{{ services.values() | selectattr("enabled") | list | length }} active services** across {{ layers | length }} dependency layers,
 enabling intelligent parallel deployment with precise `dependsOn` ordering.
 
 ## Service Layers
