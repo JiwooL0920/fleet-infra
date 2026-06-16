@@ -26,7 +26,7 @@ spec:
             - |
               set -eu
 
-              GRAFANA_URL="http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
+              GRAFANA_URL="http://monitoring-kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80"
               LOCALSTACK_URL="http://localstack.localstack.svc.cluster.local:4566"
 
               GRAFANA_USER="$(cat /var/secrets/grafana/admin-user)"

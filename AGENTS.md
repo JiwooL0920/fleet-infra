@@ -4,7 +4,7 @@ Context and rules for AI agents (Cursor, opencode) working in this repository.
 
 ## Repository at a Glance
 
-Kubernetes GitOps infrastructure using Flux CD. 25 active services deployed via fine-grained
+Kubernetes GitOps infrastructure using Flux CD. 26 active services deployed via fine-grained
 `dependsOn` dependency chains. See `CLAUDE.md` for the full architecture reference.
 
 **Key directories:**

@@ -1,0 +1,25 @@
+# Root Application: syncs metadata/dev-applications from argocd-applications (develop) into the dev-applications spoke.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-applications
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/JiwooL0920/argocd-applications.git
+    targetRevision: develop
+    path: metadata/dev-applications
+    directory:
+      recurse: true
+  destination:
+    name: dev-applications
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2

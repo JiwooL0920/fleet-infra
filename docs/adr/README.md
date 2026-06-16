@@ -16,6 +16,7 @@
 | 010 | [OpenTelemetry Collector as Unified Telemetry Pipeline](010-opentelemetry-collector.md) | Accepted |
 | 011 | [KEDA for Event-Driven Autoscaling](011-keda-autoscaling.md) | Accepted |
 | 012 | [Grafana Operator for Dashboard-as-Code](012-grafana-operator-dashboard-as-code.md) | Accepted |
+| 013 | [Argo CD Hub–Spoke for Application Workloads](013-argocd-hub-spoke-applications.md) | Accepted |
 
 ## Adding a New ADR
 

@@ -17,6 +17,7 @@ resources:
   - metrics-server.yaml
   - kube-prometheus-stack.yaml
   - weave-gitops.yaml
+  - argocd.yaml  # Hub Argo CD — syncs spoke workloads from argocd-applications repo
   - grafana-sa-setup.yaml  # One-time Job: creates Grafana SA token, stores in LocalStack for kagent
 
   # Node maintenance (no dependencies - runs on schedule)

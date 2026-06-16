@@ -53,14 +53,17 @@ yq --version
 - Run `colima start`
 - Check status with `colima list`
 
-### Create Kind Cluster
+### Create Kind clusters
 
-- Run `kind create cluster --config kind-config.yaml`
-- Verify creation with `kind get clusters` and `kubectl get nodes`
+**Option A — Terraform (recommended):** from [terraform-infra](https://github.com/JiwooL0920/terraform-infra), `terraform apply` provisions **`dev-services-amer`** (hub, 80/443) and **`dev-applications`** (spoke, 8081/8444). Bootstrap Cilium + Flux only on the hub per existing docs.
 
-### Bootstrap Flux on the Cluster
+**Option B — Manual hub only:** `kind create cluster --config kind-config.yaml` for the services cluster.
 
-- Install flux controllers on your cluster
+Verify with `kind get clusters` and `kubectl config get-contexts`.
+
+### Bootstrap Flux on the hub cluster
+
+- Install flux controllers on **`kind-dev-services-amer`** only (not the spoke).
 - Connect Flux to your GitHub repo
 - Track the `develop` branch
 - Deploy everything in `clusters/stages/dev/clusters/services-amer`
@@ -95,6 +98,7 @@ make setup-dns
 ```
 
 This adds `.local` domain entries to `/etc/hosts`, allowing you to access services at:
+- `http://argocd.local` - Argo CD (spoke app sync on hub)
 - `http://grafana.local` - Grafana
 - `http://prometheus.local` - Prometheus
 - `http://n8n.local` - N8N
@@ -109,6 +113,15 @@ This adds `.local` domain entries to `/etc/hosts`, allowing you to access servic
 If you prefer traditional port forwarding instead of DNS setup:
 
 - `make port-forward`
+
+### Argo CD spoke (optional path)
+
+When using the **dev-applications** Kind cluster from terraform-infra:
+
+1. Push the [argocd-applications](https://github.com/JiwooL0920/argocd-applications) repo (`develop` branch drives `metadata/dev-applications/`).
+2. After Flux has reconciled Argo CD on the hub, run **`make register-app-cluster`** once to register the spoke (writes token to LocalStack; ExternalSecret creates the Argo CD cluster secret).
+
+Hub Argo CD does **not** run a bundled Redis pod: it uses the shared **Redis Sentinel** stack via the Bitnami `redis-sentinel-master` service (Sentinel-tracked write master), same cluster as other workloads.
 
 ## Development Workflow
 

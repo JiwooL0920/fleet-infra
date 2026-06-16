@@ -56,6 +56,9 @@ start_port_forward "monitoring" "monitoring-loki" "3100" "3100" "Loki"
 # --- weave-gitops ---
 start_port_forward "weave-gitops" "weave-gitops" "9001" "9001" "Weave GitOps"
 
+# --- argocd (hub) ---
+start_port_forward "argocd" "argocd-server" "8080" "80" "Argo CD"
+
 # --- postgresql ---
 start_port_forward "cnpg-system" "postgresql-cluster-rw" "5432" "5432" "PostgreSQL"
 

@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - flux-system
   - ../../../../../base/services/
+  - argocd-cluster-config.yaml
 
 patchesStrategicMerge:
   - cluster-vars-patch.yaml

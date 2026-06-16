@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **25 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
+This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **26 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
 
 **Note**: 4 services are currently disabled (Crossplane suite, Scylla Manager) and can be re-enabled as needed.
 
@@ -17,6 +17,9 @@ make setup-dns
 
 # Push GitHub PAT into LocalStack for gitops-agent (one-time per fresh cluster)
 make setup-github-secret
+
+# Register dev-applications spoke with Argo CD on the hub (one-time after spoke cluster exists)
+make register-app-cluster
 
 # Alternative: Start port forwarding for all services
 make port-forward
@@ -48,6 +51,7 @@ make setup-dns
 # http://pgadmin.local - pgAdmin4
 # http://redis.local - RedisInsight
 # http://weave.local - Weave GitOps
+# http://argocd.local - Argo CD (spoke app sync)
 # http://localstack.local - LocalStack
 # http://scylla.local - ScyllaDB Alternator (DynamoDB API)
 # http://jaeger.local - Jaeger Tracing UI
@@ -135,7 +139,7 @@ curl http://scylla.local/
 - Different sync intervals: dev (1m), prod (10m)
 
 #### Fine-Grained Service Architecture
-**25 active services** organized in precise dependency layers enabling maximum parallel deployment:
+**26 active services** organized in precise dependency layers enabling maximum parallel deployment:
 
 **Foundation Services (8 - start immediately, no dependencies):**
 - **Traefik**: Ingress controller and load balancer
@@ -147,9 +151,10 @@ curl http://scylla.local/
 - **Traefik Config**: Ingress middleware and configuration
 - **Metrics Server**: Cluster resource metrics
 
-**Monitoring & Observability (2 - depend on foundation):**
+**Monitoring & Observability (3 - depend on foundation):**
 - **Kube-Prometheus-Stack**: Complete monitoring solution (Prometheus, Grafana, AlertManager)
 - **Weave GitOps**: GitOps dashboard and management
+- **Argo CD**: Hub-only controller; syncs workloads into a separate **dev-applications** Kind cluster from the `argocd-applications` Git repo (`develop` → `metadata/dev-applications/`). Uses **external Redis** pointing at `redis-sentinel-master` (Bitnami Sentinel masterService) instead of chart-managed Redis. See ADR-013.
 
 **Logging & Tracing (4 - depend on foundation/monitoring):**
 - **Loki**: Log aggregation system
@@ -260,6 +265,7 @@ clusters/stages/            # Environment-specific configurations
 scripts/                   # Automation and utilities
 ├── port-forward.sh        # Service port forwarding
 ├── setup-local-dns.sh     # Local DNS entries for Traefik ingress
+├── register-app-cluster.sh # Spoke kubeconfig token -> LocalStack for Argo CD cluster secret
 ├── fix-control-plane-ip.sh # Fix control plane IP after Colima restart
 ├── validate-kustomize.sh  # Validate Kustomize configurations
 └── validate-manifests.sh  # Validate Kubernetes manifests
@@ -276,6 +282,10 @@ scripts/                   # Automation and utilities
 - `develop` branch → Dev environment → Path: `./clusters/stages/dev/clusters/services-amer`
 - `main` branch → Prod environment → Path: `./clusters/stages/prod/clusters/services-amer`
 
+### Hub cluster and application spoke (local)
+- **Hub** (`dev-services-amer`, Flux): hosts platform services plus **Argo CD**. Application manifests for the spoke live in **`argocd-applications`** (not this repo): `develop` / `metadata/dev-applications/`, `main` / `metadata/prod-applications/`.
+- **Spoke** (`dev-applications`, no Flux): second Kind cluster from [terraform-infra](https://github.com/JiwooL0920/terraform-infra); Argo CD on the hub reaches its API at `https://dev-applications-control-plane:6443` over the Docker `kind` network. One-time: `make register-app-cluster` (token via LocalStack + ExternalSecret).
+
 ### Port Mappings (when port forwarding is active)
 - LocalStack: 4566
 - N8N: 5678
@@ -285,6 +295,7 @@ scripts/                   # Automation and utilities
 - Node Exporter: 9100
 - Loki: 3100 (service disabled by default)
 - Weave GitOps: 9001
+- Argo CD: 8080
 - Temporal UI: 8090
 - pgAdmin4: 8080
 - PostgreSQL: 5432
@@ -301,6 +312,7 @@ scripts/                   # Automation and utilities
 - pgAdmin4: http://pgadmin.local
 - RedisInsight: http://redis.local
 - Weave GitOps: http://weave.local
+- Argo CD: http://argocd.local
 - LocalStack: http://localstack.local
 - ScyllaDB Alternator: http://scylla.local
 - Jaeger Tracing UI: http://jaeger.local

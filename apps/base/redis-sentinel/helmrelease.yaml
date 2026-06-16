@@ -58,9 +58,9 @@ spec:
       maxmemory ${REDIS_MAXMEMORY}
       maxmemory-policy allkeys-lru
 
-    # RBAC configuration
+    # RBAC configuration (required for sentinel.masterService label controller)
     rbac:
-      create: false  # Not needed without master service tracking
+      create: true
 
     # Redis Sentinel configuration
     sentinel:
@@ -71,7 +71,7 @@ spec:
         tag: latest
       masterSet: "mymaster"
       masterService:
-        enabled: false  # Disabled to avoid kubectl sidecar dependency
+        enabled: true  # Stable ClusterIP to current master for non-Sentinel clients (e.g. Argo CD)
       downAfterMilliseconds: ${REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS}
       failoverTimeout: ${REDIS_SENTINEL_FAILOVER_TIMEOUT}
       parallelSyncs: ${REDIS_SENTINEL_PARALLEL_SYNCS}
@@ -102,7 +102,7 @@ spec:
       replicaCount: ${REDIS_REPLICA_COUNT}
       # Use soft anti-affinity for local dev (hard requires multiple nodes)
       podAntiAffinityPreset: soft
-      automountServiceAccountToken: false  # Not needed without master service
+      automountServiceAccountToken: false  # Chart RBAC handles masterService labeling
       persistence:
         enabled: true
         size: ${REDIS_STORAGE_SIZE}

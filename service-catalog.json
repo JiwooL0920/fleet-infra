@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "4d088b0b3a67b4c4"
+    "catalog_sha": "e8611a61080e81c8"
   },
   "services": {
     "cilium": {
@@ -246,6 +246,7 @@
       "downstream": [
         "traefik-config",
         "kube-prometheus-stack",
+        "argocd",
         "loki",
         "redis-sentinel",
         "n8n",
@@ -281,6 +282,7 @@
         "external-secrets-config"
       ],
       "downstream": [
+        "argocd",
         "jaeger",
         "scylla-cluster"
       ],
@@ -431,6 +433,56 @@
         "WEAVE_GITOPS_MEMORY_LIMIT": "512Mi",
         "WEAVE_GITOPS_CPU_REQUEST": "100m",
         "WEAVE_GITOPS_CPU_LIMIT": "500m"
+      }
+    },
+    "argocd": {
+      "name": "Argo CD",
+      "slug": "argocd",
+      "namespace": "argocd",
+      "layer": "Foundation services",
+      "type": "HelmRelease",
+      "chart": "argo-cd",
+      "chart_version": "7.7.16",
+      "repo_url": "https://argoproj.github.io/argo-helm",
+      "depends_on": [
+        "traefik-config",
+        "external-secrets-config",
+        "redis-sentinel"
+      ],
+      "downstream": [],
+      "timeout": "10m0s",
+      "health_checks": [],
+      "source": "apps/base/argocd/",
+      "enabled": true,
+      "dev": {
+        "ARGOCD_CHART_VERSION": "7.7.16",
+        "ARGOCD_SERVER_CPU_REQUEST": "100m",
+        "ARGOCD_SERVER_CPU_LIMIT": "500m",
+        "ARGOCD_SERVER_MEMORY_REQUEST": "256Mi",
+        "ARGOCD_SERVER_MEMORY_LIMIT": "512Mi",
+        "ARGOCD_CONTROLLER_CPU_REQUEST": "100m",
+        "ARGOCD_CONTROLLER_CPU_LIMIT": "500m",
+        "ARGOCD_CONTROLLER_MEMORY_REQUEST": "256Mi",
+        "ARGOCD_CONTROLLER_MEMORY_LIMIT": "512Mi",
+        "ARGOCD_REPOSERVER_CPU_REQUEST": "100m",
+        "ARGOCD_REPOSERVER_CPU_LIMIT": "500m",
+        "ARGOCD_REPOSERVER_MEMORY_REQUEST": "256Mi",
+        "ARGOCD_REPOSERVER_MEMORY_LIMIT": "512Mi"
+      },
+      "prod": {
+        "ARGOCD_CHART_VERSION": "7.7.16",
+        "ARGOCD_SERVER_CPU_REQUEST": "100m",
+        "ARGOCD_SERVER_CPU_LIMIT": "500m",
+        "ARGOCD_SERVER_MEMORY_REQUEST": "256Mi",
+        "ARGOCD_SERVER_MEMORY_LIMIT": "512Mi",
+        "ARGOCD_CONTROLLER_CPU_REQUEST": "100m",
+        "ARGOCD_CONTROLLER_CPU_LIMIT": "500m",
+        "ARGOCD_CONTROLLER_MEMORY_REQUEST": "256Mi",
+        "ARGOCD_CONTROLLER_MEMORY_LIMIT": "512Mi",
+        "ARGOCD_REPOSERVER_CPU_REQUEST": "100m",
+        "ARGOCD_REPOSERVER_CPU_LIMIT": "500m",
+        "ARGOCD_REPOSERVER_MEMORY_REQUEST": "256Mi",
+        "ARGOCD_REPOSERVER_MEMORY_LIMIT": "512Mi"
       }
     },
     "grafana-sa-setup": {
@@ -819,6 +871,7 @@
         "external-secrets-config"
       ],
       "downstream": [
+        "argocd",
         "redisinsight"
       ],
       "timeout": "5m  # Redis Sentinel needs time for initial setup",

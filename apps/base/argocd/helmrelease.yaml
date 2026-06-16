@@ -1,0 +1,80 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: argocd
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://argoproj.github.io/argo-helm
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: argocd
+  namespace: flux-system
+spec:
+  interval: 10m
+  releaseName: argocd
+  targetNamespace: argocd
+  chart:
+    spec:
+      chart: argo-cd
+      version: "${ARGOCD_CHART_VERSION}"
+      sourceRef:
+        kind: HelmRepository
+        name: argocd
+        namespace: flux-system
+      interval: 10m
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    global:
+      domain: argocd.local
+    configs:
+      params:
+        server.insecure: "true"
+    dex:
+      enabled: false
+    notifications:
+      enabled: false
+    server:
+      replicas: 1
+      resources:
+        requests:
+          cpu: "${ARGOCD_SERVER_CPU_REQUEST}"
+          memory: "${ARGOCD_SERVER_MEMORY_REQUEST}"
+        limits:
+          cpu: "${ARGOCD_SERVER_CPU_LIMIT}"
+          memory: "${ARGOCD_SERVER_MEMORY_LIMIT}"
+      extraArgs:
+        - --insecure
+    controller:
+      replicas: 1
+      resources:
+        requests:
+          cpu: "${ARGOCD_CONTROLLER_CPU_REQUEST}"
+          memory: "${ARGOCD_CONTROLLER_MEMORY_REQUEST}"
+        limits:
+          cpu: "${ARGOCD_CONTROLLER_CPU_LIMIT}"
+          memory: "${ARGOCD_CONTROLLER_MEMORY_LIMIT}"
+    repoServer:
+      replicas: 1
+      resources:
+        requests:
+          cpu: "${ARGOCD_REPOSERVER_CPU_REQUEST}"
+          memory: "${ARGOCD_REPOSERVER_MEMORY_REQUEST}"
+        limits:
+          cpu: "${ARGOCD_REPOSERVER_CPU_LIMIT}"
+          memory: "${ARGOCD_REPOSERVER_MEMORY_LIMIT}"
+    redis:
+      enabled: false
+
+    externalRedis:
+      host: redis-sentinel-master.redis-sentinel.svc.cluster.local
+      port: 6379

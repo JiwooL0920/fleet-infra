@@ -22,6 +22,7 @@ HOSTS_ENTRIES=(
   "127.0.0.1 pgadmin.local"
   "127.0.0.1 redis.local"
   "127.0.0.1 weave.local"
+  "127.0.0.1 argocd.local"
   "127.0.0.1 localstack.local"
   "127.0.0.1 scylla.local"
   "127.0.0.1 jaeger.local"
@@ -40,14 +41,14 @@ echo ""
 if grep -q "$MARKER" /etc/hosts 2>/dev/null; then
   echo -e "${YELLOW}DNS entries already exist in /etc/hosts${NC}"
   echo "Entries found:"
-  grep -A 15 "$MARKER" /etc/hosts
+  grep -A 20 "$MARKER" /etc/hosts
   echo ""
   read -p "Do you want to remove and re-add them? (y/n) " -n 1 -r
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Removing existing entries...${NC}"
     # Remove marker and next 14 lines (our entries)
-    sudo sed -i.bak "/$MARKER/,+15d" /etc/hosts
+    sudo sed -i.bak "/$MARKER/,+16d" /etc/hosts
     echo -e "${GREEN}Existing entries removed${NC}"
   else
     echo -e "${GREEN}Keeping existing entries. Exiting.${NC}"
@@ -78,6 +79,7 @@ echo -e "${YELLOW}  http://temporal.local${NC} - Temporal UI"
 echo -e "${YELLOW}  http://pgadmin.local${NC} - pgAdmin4"
 echo -e "${YELLOW}  http://redis.local${NC} - RedisInsight"
 echo -e "${YELLOW}  http://weave.local${NC} - Weave GitOps"
+echo -e "${YELLOW}  http://argocd.local${NC} - Argo CD (spoke app sync)"
 echo -e "${YELLOW}  http://localstack.local${NC} - LocalStack"
 echo -e "${YELLOW}  http://scylla.local${NC} - ScyllaDB Alternator (DynamoDB API)"
 echo -e "${YELLOW}  http://jaeger.local${NC} - Jaeger Tracing UI"
