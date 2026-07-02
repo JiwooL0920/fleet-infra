@@ -62,10 +62,6 @@ spec:
     rbac:
       create: true
 
-    # ServiceAccount configuration (required by chart validation when sentinel.masterService.enabled=true)
-    serviceAccount:
-      create: true
-
     # Redis Sentinel configuration
     sentinel:
       enabled: true
@@ -75,7 +71,7 @@ spec:
         tag: latest
       masterSet: "mymaster"
       masterService:
-        enabled: true  # Stable ClusterIP to current master for non-Sentinel clients (e.g. Argo CD)
+        enabled: false
       downAfterMilliseconds: ${REDIS_SENTINEL_DOWN_AFTER_MILLISECONDS}
       failoverTimeout: ${REDIS_SENTINEL_FAILOVER_TIMEOUT}
       parallelSyncs: ${REDIS_SENTINEL_PARALLEL_SYNCS}
@@ -106,9 +102,7 @@ spec:
       replicaCount: ${REDIS_REPLICA_COUNT}
       # Use soft anti-affinity for local dev (hard requires multiple nodes)
       podAntiAffinityPreset: soft
-      # Required by chart validation when sentinel.masterService.enabled=true — replicas
-      # need the SA token to relabel themselves as master/replica for the masterService selector
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       persistence:
         enabled: true
         size: ${REDIS_STORAGE_SIZE}

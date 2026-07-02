@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "e8611a61080e81c8"
+    "catalog_sha": "bbff61e079f91214"
   },
   "services": {
     "cilium": {
@@ -879,12 +879,7 @@
         {
           "apiVersion": "apps/v1",
           "kind": "StatefulSet",
-          "name": "redis-sentinel-master"
-        },
-        {
-          "apiVersion": "apps/v1",
-          "kind": "StatefulSet",
-          "name": "redis-sentinel-replicas"
+          "name": "redis-sentinel-node"
         },
         {
           "apiVersion": "v1",

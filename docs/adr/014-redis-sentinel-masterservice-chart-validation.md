@@ -1,6 +1,6 @@
 # ADR-014: Redis Sentinel `masterService` Chart Validation Requirements
 
-**Status:** Accepted
+**Status:** Superseded by ADR-015
 **Date:** 2026-07-02
 
 ## Context

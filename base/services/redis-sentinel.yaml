@@ -23,11 +23,7 @@ spec:
   healthChecks:
     - apiVersion: apps/v1
       kind: StatefulSet
-      name: redis-sentinel-master
-      namespace: redis-sentinel
-    - apiVersion: apps/v1
-      kind: StatefulSet
-      name: redis-sentinel-replicas
+      name: redis-sentinel-node
       namespace: redis-sentinel
     - apiVersion: v1
       kind: Secret

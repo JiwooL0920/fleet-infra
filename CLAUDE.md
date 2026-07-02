@@ -154,7 +154,7 @@ curl http://scylla.local/
 **Monitoring & Observability (3 - depend on foundation):**
 - **Kube-Prometheus-Stack**: Complete monitoring solution (Prometheus, Grafana, AlertManager)
 - **Weave GitOps**: GitOps dashboard and management
-- **Argo CD**: Hub-only controller; syncs workloads into a separate **dev-applications** Kind cluster from the `argocd-applications` Git repo (`develop` → `metadata/dev-applications/`). Uses **external Redis** pointing at `redis-sentinel-master` (Bitnami Sentinel masterService) instead of chart-managed Redis. See ADR-013.
+- **Argo CD**: Hub-only controller; syncs workloads into a separate **dev-applications** Kind cluster from the `argocd-applications` Git repo (`develop` → `metadata/dev-applications/`). Uses **external Redis** pointing at the shared Sentinel stack's standard ClusterIP (`redis-sentinel.redis-sentinel.svc.cluster.local:6379`) instead of chart-managed Redis. See ADR-013 and ADR-015.
 
 **Logging & Tracing (4 - depend on foundation/monitoring):**
 - **Loki**: Log aggregation system

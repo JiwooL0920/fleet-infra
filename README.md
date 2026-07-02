@@ -121,7 +121,7 @@ When using the **dev-applications** Kind cluster from terraform-infra:
 1. Push the [argocd-applications](https://github.com/JiwooL0920/argocd-applications) repo (`develop` branch drives `metadata/dev-applications/`).
 2. After Flux has reconciled Argo CD on the hub, run **`make register-app-cluster`** once to register the spoke (writes token to LocalStack; ExternalSecret creates the Argo CD cluster secret).
 
-Hub Argo CD does **not** run a bundled Redis pod: it uses the shared **Redis Sentinel** stack via the Bitnami `redis-sentinel-master` service (Sentinel-tracked write master), same cluster as other workloads.
+Hub Argo CD does **not** run a bundled Redis pod: it uses the shared **Redis Sentinel** stack via the standard `redis-sentinel` ClusterIP service (port 6379), same cluster as other workloads. See ADR-015.
 
 ## Development Workflow
 

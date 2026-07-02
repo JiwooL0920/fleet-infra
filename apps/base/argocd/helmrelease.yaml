@@ -76,5 +76,5 @@ spec:
       enabled: false
 
     externalRedis:
-      host: redis-sentinel-master.redis-sentinel.svc.cluster.local
+      host: redis-sentinel.redis-sentinel.svc.cluster.local
       port: 6379

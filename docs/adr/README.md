@@ -17,7 +17,8 @@
 | 011 | [KEDA for Event-Driven Autoscaling](011-keda-autoscaling.md) | Accepted |
 | 012 | [Grafana Operator for Dashboard-as-Code](012-grafana-operator-dashboard-as-code.md) | Accepted |
 | 013 | [Argo CD Hub–Spoke for Application Workloads](013-argocd-hub-spoke-applications.md) | Accepted |
-| 014 | [Redis Sentinel `masterService` Chart Validation Requirements](014-redis-sentinel-masterservice-chart-validation.md) | Accepted |
+| 014 | [Redis Sentinel `masterService` Chart Validation Requirements](014-redis-sentinel-masterservice-chart-validation.md) | Superseded by ADR-015 |
+| 015 | [Disable Redis Sentinel `masterService` — Clients Use Standard Service](015-disable-redis-sentinel-masterservice.md) | Accepted |
 
 ## Adding a New ADR
 
