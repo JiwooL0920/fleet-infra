@@ -62,6 +62,10 @@ spec:
     rbac:
       create: true
 
+    # ServiceAccount configuration (required by chart validation when sentinel.masterService.enabled=true)
+    serviceAccount:
+      create: true
+
     # Redis Sentinel configuration
     sentinel:
       enabled: true
@@ -102,7 +106,9 @@ spec:
       replicaCount: ${REDIS_REPLICA_COUNT}
       # Use soft anti-affinity for local dev (hard requires multiple nodes)
       podAntiAffinityPreset: soft
-      automountServiceAccountToken: false  # Chart RBAC handles masterService labeling
+      # Required by chart validation when sentinel.masterService.enabled=true — replicas
+      # need the SA token to relabel themselves as master/replica for the masterService selector
+      automountServiceAccountToken: true
       persistence:
         enabled: true
         size: ${REDIS_STORAGE_SIZE}
