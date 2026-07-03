@@ -18,6 +18,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
+  retryInterval: 1m
   sourceRef:
     kind: GitRepository
     name: flux-system

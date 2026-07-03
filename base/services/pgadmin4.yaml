@@ -6,7 +6,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m
-  retryInterval: 30s
+  retryInterval: 1m
   timeout: 3m  # Simple web UI for database management
   sourceRef:
     kind: GitRepository
