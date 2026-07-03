@@ -8,12 +8,10 @@ set -o pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo_info() { echo -e "${GREEN}INFO${NC} - $1"; }
 echo_error() { echo -e "${RED}ERROR${NC} - $1"; }
-echo_warn() { echo -e "${YELLOW}WARN${NC} - $1"; }
 
 # Collect all files changed since origin/HEAD (the commits being pushed)
 # When running as pre-push, git provides remote/local SHA pairs on stdin.
@@ -22,7 +20,7 @@ get_changed_files() {
     local changed_files=""
 
     # pre-push hook receives lines: <local_ref> <local_sha> <remote_ref> <remote_sha>
-    while read -r local_ref local_sha remote_ref remote_sha; do
+    while read -r _local_ref local_sha _remote_ref remote_sha; do
         if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
             # New branch being pushed — compare against default branch
             local base
@@ -62,7 +60,7 @@ main() {
         if [[ "$file" =~ ^apps/base/([^/]+)/ ]]; then
             local svc="${BASH_REMATCH[1]}"
             # Avoid duplicates
-            if [[ ! " ${services_changed[*]} " =~ " ${svc} " ]]; then
+            if [[ ! " ${services_changed[*]} " =~ ${svc} ]]; then
                 services_changed+=("$svc")
             fi
         fi
@@ -72,7 +70,7 @@ main() {
     while IFS= read -r file; do
         if [[ "$file" =~ ^base/services/([^/]+)\.ya?ml$ ]]; then
             local svc="${BASH_REMATCH[1]}"
-            if [[ ! " ${services_changed[*]} " =~ " ${svc} " ]]; then
+            if [[ ! " ${services_changed[*]} " =~ ${svc} ]]; then
                 services_changed+=("$svc")
             fi
         fi

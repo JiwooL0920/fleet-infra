@@ -19,7 +19,7 @@ kubectl annotate externalsecret pgadmin4-credentials          -n pgadmin4   forc
 kubectl annotate externalsecret traefik-dashboard-credentials -n traefik    force-sync="${TS}" --overwrite 2>/dev/null || true
 
 # Wait up to 15s for grafana-admin-credentials to be Ready (most critical)
-for i in $(seq 1 15); do
+for _ in $(seq 1 15); do
   STATUS=$(kubectl get externalsecret grafana-admin-credentials -n monitoring \
     -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null || echo "")
   [ "${STATUS}" = "True" ] && break

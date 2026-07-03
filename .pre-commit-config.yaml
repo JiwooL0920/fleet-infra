@@ -108,7 +108,7 @@ repos:
     rev: v0.10.0.1
     hooks:
       - id: shellcheck
-        args: [--severity=error]  # Only fail on errors, not warnings
+        args: [--severity=warning]  # Fail on warnings and errors
         exclude: '^scripts/(fix-control-plane-ip|port-forward|setup-local-dns)\.sh$'
 
   # Secret detection: prevent accidental credential commits
