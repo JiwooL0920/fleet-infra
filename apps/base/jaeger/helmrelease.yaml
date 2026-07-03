@@ -44,9 +44,6 @@ spec:
     allInOne:
       enabled: true
       replicas: 1
-      extraEnv:
-        - name: COLLECTOR_OTLP_ENABLED
-          value: "true"
       resources:
         limits:
           cpu: "${JAEGER_CPU_LIMIT}"
