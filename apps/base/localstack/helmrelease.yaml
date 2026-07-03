@@ -80,14 +80,13 @@ spec:
       enabled: true
       size: 1Gi
 
-    # Enable persistence mode in LocalStack runtime.
     # GITHUB_PAT is injected from the github-pat-bootstrap Secret (optional).
     # Create this Secret once during cluster bootstrap:
     #   make setup-github-secret
     # The startup script below reads it and creates github/mcp/token in LocalStack.
+    # (PERSISTENCE env var is auto-set by chart when persistence.enabled: true;
+    #  do NOT duplicate it here — Flux driftDetection rejects duplicate env keys.)
     extraEnvVars:
-      - name: PERSISTENCE
-        value: "1"
       - name: GITHUB_PAT
         valueFrom:
           secretKeyRef:
