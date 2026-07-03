@@ -53,6 +53,13 @@ check_prerequisites() {
         echo "  https://github.com/yannh/kubeconform"
         exit 1
     fi
+
+    if command -v flux &> /dev/null; then
+        FLUX_AVAILABLE=true
+    else
+        FLUX_AVAILABLE=false
+        echo_warn "flux CLI not found; skipping flux build kustomization --dry-run checks"
+    fi
 }
 
 # Download Flux CRD schemas
@@ -117,6 +124,63 @@ validate_cluster_manifests() {
     echo_info "All cluster manifests are valid"
 }
 
+# Validate base app manifests
+validate_apps_base_manifests() {
+    echo_info "Validating apps/base manifests"
+    local kubeconform_flags=("-skip" "Secret")
+    local kubeconform_config=("-strict" "-ignore-missing-schemas" "-schema-location" "default" "-schema-location" "/tmp/flux-crd-schemas" "-verbose")
+    local error_count=0
+
+    while IFS= read -r -d $'\0' file; do
+        echo_info "Validating $file"
+        if ! kubeconform "${kubeconform_flags[@]}" "${kubeconform_config[@]}" "${file}"; then
+            ((error_count++))
+        fi
+    done < <(find ./apps/base -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+
+    if [ $error_count -gt 0 ]; then
+        echo_error "Found $error_count invalid apps/base manifests"
+        exit 1
+    fi
+
+    echo_info "All apps/base manifests are valid"
+}
+
+# Validate Flux Kustomization rendering when flux CLI is available
+validate_flux_kustomizations() {
+    if [ "${FLUX_AVAILABLE:-false}" != true ]; then
+        return 0
+    fi
+
+    echo_info "Validating Flux kustomizations with flux build --dry-run"
+    local error_count=0
+
+    while IFS= read -r -d $'\0' file; do
+        local name
+        name=$(yq e 'select(.kind == "Kustomization") | .metadata.name' "$file" 2>/dev/null || echo "")
+        local path
+        path=$(yq e 'select(.kind == "Kustomization") | .spec.path' "$file" 2>/dev/null || echo "")
+
+        if [ -z "$name" ] || [ -z "$path" ] || [ "$name" = "null" ] || [ "$path" = "null" ]; then
+            echo_warn "Skipping invalid kustomization file (missing metadata.name/spec.path): $file"
+            continue
+        fi
+
+        echo_info "flux build kustomization --dry-run ${name} (${path})"
+        if ! flux build kustomization "$name" --path clusters/stages/dev/clusters/services-amer --kustomization-file "$file" --dry-run >/dev/null; then
+            echo_error "flux build failed for $file"
+            ((error_count++))
+        fi
+    done < <(find ./base/services -maxdepth 1 -type f -name '*.yaml' -print0)
+
+    if [ $error_count -gt 0 ]; then
+        echo_error "Found $error_count flux kustomization build failures"
+        exit 1
+    fi
+
+    echo_info "All Flux kustomizations build successfully"
+}
+
 # Main execution
 main() {
     echo_info "Starting Flux manifest validation"
@@ -125,6 +189,8 @@ main() {
     download_flux_schemas
     validate_yaml_syntax
     validate_cluster_manifests
+    validate_apps_base_manifests
+    validate_flux_kustomizations
 
     echo_info "✓ All manifest validations passed"
 }
