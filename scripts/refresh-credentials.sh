@@ -39,6 +39,29 @@ secret_value() {
   kubectl get secret "${name}" -n "${ns}" -o jsonpath="{.data.${key}}" 2>/dev/null | base64 -d 2>/dev/null
 }
 
+# Put a secret into LocalStack Secrets Manager without exposing the value in
+# process argv. Reads secret payload from stdin, materializes to an in-pod
+# temp file with mode 600, calls awslocal (put-secret-value with
+# create-secret fallback), then deletes the temp file. See ADR-016.
+put_secret_stdin() {
+  local pod="$1" secret_id="$2"
+  kubectl exec -i -n localstack "$pod" -- sh -c '
+    TMP=$(mktemp) || exit 1
+    trap "rm -f \"$TMP\"" EXIT
+    chmod 600 "$TMP"
+    cat > "$TMP"
+    if ! awslocal secretsmanager put-secret-value \
+         --secret-id "'"$secret_id"'" \
+         --secret-string "file://$TMP" \
+         --region us-east-1 >/dev/null 2>&1; then
+      awslocal secretsmanager create-secret \
+         --name "'"$secret_id"'" \
+         --secret-string "file://$TMP" \
+         --region us-east-1 >/dev/null 2>&1
+    fi
+  '
+}
+
 # ---------------------------------------------------------------------------
 # Pre-flight
 # ---------------------------------------------------------------------------
@@ -89,20 +112,11 @@ else
     fi
 
     # grafana/database/password is NOT managed by PushSecret — sync directly
-    if ! kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
-        awslocal secretsmanager put-secret-value \
-        --secret-id "grafana/database/password" \
-        --secret-string "${CNPG_PASSWORD}" \
-        --region us-east-1 >/dev/null 2>&1; then
-      kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
-        awslocal secretsmanager create-secret \
-        --name "grafana/database/password" \
-        --secret-string "${CNPG_PASSWORD}" \
-        --region us-east-1 >/dev/null 2>&1 && \
-        echo "  created grafana/database/password" || \
-        warn "  failed to sync grafana/database/password"
+    # via put_secret_stdin so CNPG_PASSWORD does not appear in process argv.
+    if printf '%s' "${CNPG_PASSWORD}" | put_secret_stdin "${LOCALSTACK_POD}" "grafana/database/password"; then
+      echo "  synced grafana/database/password"
     else
-      echo "  updated grafana/database/password"
+      warn "  failed to sync grafana/database/password"
     fi
 
     success "CNPG credential sync complete"
@@ -112,20 +126,12 @@ fi
 # Sync GitHub PAT into LocalStack (from the bootstrap K8s secret)
 GITHUB_PAT_TOKEN=$(secret_value localstack github-pat-bootstrap token)
 if [[ -n "${GITHUB_PAT_TOKEN}" && -n "${LOCALSTACK_POD:-}" ]]; then
-  if ! kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
-      awslocal secretsmanager put-secret-value \
-      --secret-id "github/mcp/token" \
-      --secret-string "{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"${GITHUB_PAT_TOKEN}\"}" \
-      --region us-east-1 >/dev/null 2>&1; then
-    kubectl exec -n localstack "${LOCALSTACK_POD}" -- \
-      awslocal secretsmanager create-secret \
-      --name "github/mcp/token" \
-      --secret-string "{\"GITHUB_PERSONAL_ACCESS_TOKEN\":\"${GITHUB_PAT_TOKEN}\"}" \
-      --region us-east-1 >/dev/null 2>&1 && \
-      echo "  created github/mcp/token" || \
-      warn "  failed to sync github/mcp/token"
+  # Use put_secret_stdin so the PAT does not appear in argv. JSON payload built
+  # on stdin via printf; awslocal reads the JSON blob from the in-pod temp file.
+  if printf '{"GITHUB_PERSONAL_ACCESS_TOKEN":"%s"}' "${GITHUB_PAT_TOKEN}" | put_secret_stdin "${LOCALSTACK_POD}" "github/mcp/token"; then
+    echo "  synced github/mcp/token"
   else
-    echo "  updated github/mcp/token"
+    warn "  failed to sync github/mcp/token"
   fi
 fi
 

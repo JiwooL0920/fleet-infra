@@ -86,10 +86,14 @@ kubectl create namespace localstack --dry-run=client -o yaml | kubectl apply -f 
 # ---------------------------------------------------------------------------
 info "Creating github-pat-bootstrap Secret in localstack namespace..."
 
-kubectl create secret generic github-pat-bootstrap \
+# Pipe token via stdin (--from-file=token=/dev/stdin) so it never appears in
+# process argv. `ps auxww` would otherwise expose the token from the earlier
+# create-secret CLI flag approach (see git blame for pre-Wave-2C history).
+printf '%s' "${TOKEN}" | kubectl create secret generic github-pat-bootstrap \
     --namespace localstack \
-    --from-literal=token="${TOKEN}" \
-    --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+    --from-file=token=/dev/stdin \
+    --dry-run=client -o yaml \
+    | kubectl apply -f - >/dev/null
 
 success "github-pat-bootstrap Secret created/updated in localstack namespace"
 

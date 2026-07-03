@@ -1,38 +1,58 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 echo "Starting port forwards..."
 
+# Track background PIDs so the EXIT trap can clean them up on Ctrl+C / script exit.
+# Without this, orphaned `kubectl port-forward` processes hold ports across runs.
+PF_PIDS=()
+cleanup() {
+    if [ ${#PF_PIDS[@]} -gt 0 ]; then
+        echo ""
+        echo "Stopping port forwards..."
+        for pid in "${PF_PIDS[@]}"; do
+            kill "$pid" 2>/dev/null || true
+        done
+        sleep 1
+        for pid in "${PF_PIDS[@]}"; do
+            kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+        done
+    fi
+}
+trap cleanup EXIT INT TERM
+
 # Function to check if a service exists
 check_service() {
-    local namespace=$1
-    local service=$2
+    local namespace="$1"
+    local service="$2"
     kubectl get svc -n "$namespace" "$service" &>/dev/null
 }
 
-# Function to kill processes using a specific port
+# Function to kill processes using a specific port (gentle-then-hard, quoted)
 kill_port() {
-    local port=$1
-    local pids=$(lsof -ti:$port 2>/dev/null)
-    if [ ! -z "$pids" ]; then
+    local port="$1"
+    local pids
+    pids=$(lsof -ti:"$port" 2>/dev/null || true)
+    if [ -n "$pids" ]; then
         echo "Killing existing processes on port $port..."
-        echo $pids | xargs kill -9 2>/dev/null
+        echo "$pids" | xargs -r -n1 sh -c 'kill "$1" 2>/dev/null || kill -9 "$1" 2>/dev/null || true' _
         sleep 1
     fi
 }
 
-# Function to start port forward with error handling
+# Function to start port forward with error handling; records PID in PF_PIDS
 start_port_forward() {
-    local namespace=$1
-    local service=$2
-    local local_port=$3
-    local remote_port=$4
-    local description=$5
+    local namespace="$1"
+    local service="$2"
+    local local_port="$3"
+    local remote_port="$4"
+    local description="$5"
 
     if check_service "$namespace" "$service"; then
-        # Kill any existing processes on this port
         kill_port "$local_port"
         echo "Port forwarding $description on port $local_port..."
-        kubectl port-forward -n "$namespace" "svc/$service" "$local_port:$remote_port" &
+        kubectl port-forward -n "$namespace" "svc/$service" "$local_port:$remote_port" >/dev/null 2>&1 &
+        PF_PIDS+=("$!")
     else
         echo "Skipping $description - service $service not found in namespace $namespace"
     fi
