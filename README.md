@@ -119,7 +119,7 @@ If you prefer traditional port forwarding instead of DNS setup:
 When using the **dev-applications** Kind cluster from terraform-infra:
 
 1. Push the [argocd-applications](https://github.com/JiwooL0920/argocd-applications) repo (`develop` branch drives `metadata/dev-applications/`).
-2. After Flux has reconciled Argo CD on the hub, run **`make register-app-cluster`** once to register the spoke (writes token to LocalStack; ExternalSecret creates the Argo CD cluster secret).
+2. Cluster registration is fully automated by `terraform-infra`: after `terraform apply` creates both Kind clusters, Terraform also mints a spoke ServiceAccount token via `kubernetes_token_request_v1` and writes the Argo CD Cluster Secret (`dev-applications`, labelled `argocd.argoproj.io/secret-type=cluster`) directly onto the hub. Argo CD picks it up automatically. See [ADR-018](docs/adr/018-terraform-provisioned-argocd-cluster-secret.md) for the full rationale.
 
 Hub Argo CD does **not** run a bundled Redis pod: it uses the shared **Redis Sentinel** stack via the standard `redis-sentinel` ClusterIP service (port 6379), same cluster as other workloads. See ADR-015.
 

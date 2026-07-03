@@ -193,7 +193,6 @@ clusters/stages/            # Environment-specific configurations
 scripts/                   # Automation and utilities
 ├── port-forward.sh        # Service port forwarding
 ├── setup-local-dns.sh     # Local DNS entries for Traefik ingress
-├── register-app-cluster.sh # Spoke kubeconfig token -> LocalStack for Argo CD cluster secret
 ├── fix-control-plane-ip.sh # Fix control plane IP after Colima restart
 ├── validate-kustomize.sh  # Validate Kustomize configurations
 └── validate-manifests.sh  # Validate Kubernetes manifests
@@ -212,7 +211,8 @@ scripts/                   # Automation and utilities
 
 ### Hub cluster and application spoke (local)
 - **Hub** (`dev-services-amer`, Flux): hosts platform services plus **Argo CD**. Application manifests for the spoke live in **`argocd-applications`** (not this repo): `develop` / `metadata/dev-applications/`, `main` / `metadata/prod-applications/`.
-- **Spoke** (`dev-applications`, no Flux): second Kind cluster from [terraform-infra](https://github.com/JiwooL0920/terraform-infra); Argo CD on the hub reaches its API at `https://dev-applications-control-plane:6443` over the Docker `kind` network. One-time: `make register-app-cluster` (token via LocalStack + ExternalSecret).
+- **Spoke** (`dev-applications`, no Flux): second Kind cluster from [terraform-infra](https://github.com/JiwooL0920/terraform-infra); Argo CD on the hub reaches its API at `https://dev-applications-control-plane:6443` over the Docker `kind` network.
+- **Cluster registration is Terraform-owned** (ADR-018): after `terraform apply` provisions both Kind clusters, Terraform also mints a spoke ServiceAccount token via `kubernetes_token_request_v1` and writes the Argo CD Cluster Secret (`dev-applications` in the `argocd` namespace, labelled `argocd.argoproj.io/secret-type=cluster`) directly onto the hub. No manual bootstrap step or ExternalSecret is required in fleet-infra for this credential.
 
 ### Local Access
 
