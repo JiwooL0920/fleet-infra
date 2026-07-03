@@ -19,6 +19,7 @@
 | 013 | [Argo CD Hub–Spoke for Application Workloads](013-argocd-hub-spoke-applications.md) | Accepted |
 | 014 | [Redis Sentinel `masterService` Chart Validation Requirements](014-redis-sentinel-masterservice-chart-validation.md) | Superseded by ADR-015 |
 | 015 | [Disable Redis Sentinel `masterService` — Clients Use Standard Service](015-disable-redis-sentinel-masterservice.md) | Accepted |
+| 016 | [Migrate Hardcoded Credentials to ExternalSecrets](016-externalsecrets-migration-hardcoded-credentials.md) | Accepted |
 
 ## Adding a New ADR
 
