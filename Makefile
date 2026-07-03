@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret register-app-cluster setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-draft-all insight-draft-ops
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret register-app-cluster setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-accept insight-draft-all insight-draft-ops
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -34,6 +34,7 @@ help:
 	@echo "  docs-validate        - Validate rendered pages (headings, tables, ADR refs)"
 	@echo "  docs-gen             - Full local pipeline: catalog → render → validate"
 	@echo "  insight-draft SVC=X  - AI-draft prose fields for service-insights/<X>.yaml"
+	@echo "  insight-accept SVC=X - Validate and promote service-insights/<X>.suggested.yaml"
 	@echo "  insight-draft-all    - AI-draft all stubs that still have TODO placeholders"
 	@echo "  insight-draft-ops    - AI-draft operations runbooks for all services (review carefully)"
 	@echo "  docs-draft           - AI-draft README/ADR/CLAUDE updates for staged infra changes"
@@ -118,7 +119,7 @@ fix-control-plane:
 
 # Complete post-restart setup (recommended after Colima restart)
 # Handles: IP fix, credential sync, failed job cleanup, Flux reconciliation, Ollama check
-post-colima-restart: fix-control-plane refresh-credentials
+post-colima-restart:
 	@echo ""
 	@echo "🧹 Cleaning up failed jobs from restart window..."
 	@kubectl delete job create-grafana-sa-token -n monitoring --ignore-not-found=true 2>/dev/null; true
@@ -250,9 +251,21 @@ insight-draft:
 		$(if $(FORCE),--force,) \
 		$(if $(FIELDS),--fields $(FIELDS),)
 	@echo ""
-	@scripts/docgen/.venv/bin/python3 scripts/docgen/insight_schema.py service-insights/$(firstword $(SVC)).yaml
-	@echo ""
-	@for svc in $(SVC); do echo "  insight → $$(pwd)/service-insights/$$svc.yaml"; done
+	@for svc in $(SVC); do echo "  suggestion → $$(pwd)/service-insights/$$svc.suggested.yaml"; done
+
+insight-accept:
+	@if [ -z "$(SVC)" ]; then echo "Usage: make insight-accept SVC=<slug>"; exit 1; fi
+	@for svc in $(SVC); do \
+		suggested="service-insights/$$svc.suggested.yaml"; \
+		primary="service-insights/$$svc.yaml"; \
+		if [ ! -f "$$suggested" ]; then \
+			echo "ERROR: $$suggested not found"; \
+			exit 1; \
+		fi; \
+		scripts/docgen/.venv/bin/python3 scripts/docgen/insight_schema.py "$$suggested"; \
+		mv "$$suggested" "$$primary"; \
+		echo "  accepted → $$(pwd)/$$primary"; \
+	done
 
 # Draft insights for ALL enabled services that still have TODO placeholders.
 insight-draft-all:
