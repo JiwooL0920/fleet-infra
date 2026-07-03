@@ -158,12 +158,14 @@ spec:
           "n8n data encryption key"
 
       # Weave GitOps emergency user (cluster-user-auth Secret).
-      # Chart's adminUser.create=true currently generates this; ADR-015 migrates ownership
-      # to ExternalSecrets. bcrypt hash uses cost 10 per chart docs.
-      WEAVE_PWD=$(gen_password)
-      WEAVE_HASH=$(htpasswd -bnBC 10 "" "$WEAVE_PWD" | tr -d ':\n' | sed 's/$2y/$2a/')
+      # Chart's adminUser.create=true currently generates this; ADR-016 migrates ownership
+      # to ExternalSecrets. Pre-computed bcrypt cost 10 hash of password "admin" used
+      # because the LocalStack container does not include htpasswd/apr-util or python-bcrypt.
+      # This is acceptable for dev-only convention; the credentials are never used in prod.
+      # To rotate: htpasswd -bnBC 10 "" "<new-password>" | tr -d ':\n' | sed 's/$2y/$2a/'
+      # and replace both cleartext and passwordHash below.
       create_secret "weave-gitops/admin/credentials" \
-          "{\"username\":\"admin\",\"passwordHash\":\"$WEAVE_HASH\",\"cleartext\":\"$WEAVE_PWD\"}" \
+          "{\"username\":\"admin\",\"passwordHash\":\"$$2a$$10$$MGOa6jAkrdZyrZP2r9GoBOYxVPz2VjPPdRd9d0i/WINe65BWhyD1e\",\"cleartext\":\"admin\"}" \
           "Weave GitOps admin credentials (bcrypt-hashed passwordHash + cleartext for local dev)"
 
       # Grafana
