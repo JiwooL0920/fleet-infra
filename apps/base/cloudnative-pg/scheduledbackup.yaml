@@ -1,0 +1,16 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: postgresql-cluster-nightly
+  namespace: cnpg-system
+spec:
+  # 6-field cron format: second minute hour day month day-of-week
+  # Daily at 03:00 UTC
+  schedule: "0 0 3 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: postgresql-cluster
+  immediate: true
+  method: barmanObjectStore
+  target: prefer-standby

@@ -256,8 +256,10 @@ This file remains the deep reference for architecture and operations/troubleshoo
 - Network policies and pod security standards
 
 ### Backup Strategy
-- CNPG backup configuration (`barmanObjectStore` + `ScheduledBackup`) is deferred for the current POC cluster.
-- If backup/recovery objectives become required, add CNPG backup manifests and update this section/ADR accordingly.
+- CNPG backup enabled: `barmanObjectStore` ships WAL continuously to LocalStack S3 (`s3://cnpg-backups/postgresql-cluster`, endpoint `http://localstack.localstack.svc.cluster.local:4566`). Credentials via ExternalSecret `cnpg-backup-s3` (localstack-secretstore).
+- `ScheduledBackup` CR runs nightly at 03:00 UTC (`0 0 3 * * *` 6-field CNPG cron). 7-day retention policy.
+- LocalStack S3 bucket `cnpg-backups` bootstrapped via LocalStack startup script (idempotent `awslocal s3 mb`).
+- For WAL recovery failures on a replica, see `docs/runbooks/cnpg-wal-recovery.md`.
 
 ## Important Notes
 

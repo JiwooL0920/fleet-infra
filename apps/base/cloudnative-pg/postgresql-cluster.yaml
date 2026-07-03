@@ -11,6 +11,25 @@ spec:
   # PostgreSQL image
   imageName: ghcr.io/cloudnative-pg/postgresql:16
 
+  backup:
+    retentionPolicy: "7d"
+    barmanObjectStore:
+      destinationPath: s3://cnpg-backups/postgresql-cluster
+      endpointURL: http://localstack.localstack.svc.cluster.local:4566
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-backup-s3
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-backup-s3
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+        maxParallel: 8
+      data:
+        compression: gzip
+        jobs: 2
+
 
   # Storage configuration
   storage:

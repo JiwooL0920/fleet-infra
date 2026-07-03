@@ -4,4 +4,6 @@ kind: Kustomization
 resources:
   - postgresql-cluster.yaml
   - push-secret.yaml
+  - backup-externalsecret.yaml
+  - scheduledbackup.yaml
   - databases/
