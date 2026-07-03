@@ -165,7 +165,7 @@ spec:
       # To rotate: htpasswd -bnBC 10 "" "<new-password>" | tr -d ':\n' | sed 's/$2y/$2a/'
       # and replace both cleartext and passwordHash below.
       create_secret "weave-gitops/admin/credentials" \
-          "{\"username\":\"admin\",\"passwordHash\":\"$$2a$$10$$MGOa6jAkrdZyrZP2r9GoBOYxVPz2VjPPdRd9d0i/WINe65BWhyD1e\",\"cleartext\":\"admin\"}" \
+          '{"username":"admin","passwordHash":"$$2a$$10$$MGOa6jAkrdZyrZP2r9GoBOYxVPz2VjPPdRd9d0i/WINe65BWhyD1e","cleartext":"admin"}' \
           "Weave GitOps admin credentials (bcrypt-hashed passwordHash + cleartext for local dev)"
 
       # Grafana
