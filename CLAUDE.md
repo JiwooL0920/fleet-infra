@@ -170,7 +170,7 @@ curl http://scylla.local/
 - **Scylla Manager**: ScyllaDB backup and repair automation
 
 **Database Services (3 - depend on operators):**
-- **PostgreSQL Cluster**: HA cluster with automated backups (1 instance in dev, 3 in prod)
+- **PostgreSQL Cluster**: HA cluster (1 instance in dev, 3 in prod)
 - **Redis Sentinel**: In-memory data store with authentication and HA
 - **ScyllaDB Cluster**: NoSQL database with Alternator (DynamoDB API) for chat history
 
@@ -223,7 +223,6 @@ ExternalSecrets syncs it to `github-mcp-credentials` in kagent namespace.
 #### Database Architecture
 - PostgreSQL 16 with CloudNative PG operator
 - High availability: 1 instance in dev, 3 instances in production
-- Automated backups to LocalStack S3
 - Pre-configured databases: `appdb`, `n8n`, `temporal`, `temporal_visibility`
 - Auto-generated secure credentials stored in Kubernetes secrets
 - Redis Sentinel HA with master-replica configuration
@@ -413,9 +412,8 @@ To enable a disabled service, uncomment it in `base/services/kustomization.yaml`
 - Network policies and pod security standards
 
 ### Backup Strategy
-- Automated PostgreSQL backups to LocalStack S3
-- Daily backup schedule at 2:00 AM UTC
-- 30-day retention policy
+- CNPG backup configuration (`barmanObjectStore` + `ScheduledBackup`) is deferred for the current POC cluster.
+- If backup/recovery objectives become required, add CNPG backup manifests and update this section/ADR accordingly.
 
 ## Important Notes
 

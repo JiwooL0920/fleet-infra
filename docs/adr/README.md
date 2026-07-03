@@ -20,6 +20,7 @@
 | 014 | [Redis Sentinel `masterService` Chart Validation Requirements](014-redis-sentinel-masterservice-chart-validation.md) | Superseded by ADR-015 |
 | 015 | [Disable Redis Sentinel `masterService` — Clients Use Standard Service](015-disable-redis-sentinel-masterservice.md) | Accepted |
 | 016 | [Migrate Hardcoded Credentials to ExternalSecrets](016-externalsecrets-migration-hardcoded-credentials.md) | Accepted |
+| 017 | [Defer CNPG Backup Configuration for POC Cluster](017-cnpg-backup-deferred-for-poc.md) | Accepted |
 
 ## Adding a New ADR
 
