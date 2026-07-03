@@ -111,6 +111,14 @@ repos:
         args: [--severity=error]  # Only fail on errors, not warnings
         exclude: '^scripts/(fix-control-plane-ip|port-forward|setup-local-dns)\.sh$'
 
+  # Secret detection: prevent accidental credential commits
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '\.secrets\.baseline$'
+
   # Catalog drift: regenerate service-catalog.json and fail if it changed
   - repo: local
     hooks:
@@ -120,6 +128,14 @@ repos:
         language: script
         files: '^(apps/base/|base/services/|clusters/stages/.*/environment\.env|service-insights/).*'
         pass_filenames: false
+
+      # After catalog drift: stubs + optional opencode insight-draft for touched services
+      - id: sync-changed-service-insights
+        name: Sync service-insights for changed services
+        entry: scripts/pre-commit/sync-changed-service-insights.sh
+        language: script
+        files: '^(apps/base/[^/]+/.*|base/services/[^/]+\.ya?ml)$'
+        pass_filenames: true
 
       - id: insight-schema
         name: Service insight YAML schema

@@ -40,3 +40,6 @@ Thumbs.db
 docs-output/
 scripts/docgen/.venv/
 scripts/docgen/__pycache__/
+
+# Node
+.opencode/node_modules/

@@ -1,4 +1,4 @@
-PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret register-app-cluster setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-draft-all insight-draft-ops
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret register-app-cluster setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-draft-all insight-draft-ops
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b

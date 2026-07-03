@@ -1,0 +1,42 @@
+# service-insights/argocd.yaml
+# Auto-generated stub. Fill in the sections below to enrich the rendered component page.
+# Config values (chart version, resource limits, replica counts) come from service-catalog.json — do NOT copy them here.
+# Reference: scripts/docgen/insight_schema.py for full schema.
+
+intro: |
+  <!-- TODO: Write a 1-2 paragraph intro explaining what Argo CD is and why it exists in this platform. -->
+
+purpose: |
+  <!-- TODO: Explain what Argo CD does for the platform and why it was chosen over alternatives. -->
+
+# Uncomment and fill in as needed:
+#
+# purpose_rationale: |
+#   Why Argo CD over a managed alternative.
+#
+# features:
+#   - feature: Feature name
+#     detail: What it does and why it matters.
+#
+# architecture_diagrams:
+#   - title: Component diagram
+#     mermaid: |
+#       graph TD
+#           A[Argo CD] --> B[...]
+#
+# access: |
+#   How to reach this service in-cluster and from a browser.
+#
+# operations:
+#   verification: |
+#     ```bash
+#     kubectl get pods -n argocd
+#     ```
+#   troubleshooting:
+#     - symptom: Something is broken
+#       cause: Why it breaks
+#       resolution: How to fix it
+#
+# related:
+#   - text: Official docs
+#     url: https://...
