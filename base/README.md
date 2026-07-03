@@ -4,7 +4,7 @@ Fine-grained service-level deployment configurations for the fleet infrastructur
 
 ## Architecture
 
-Orchestrates **16 active services** (21 total, 5 disabled) using precise service-level dependencies for optimal parallel deployment, eliminating the need for coarse wave-based waiting.
+Orchestrates service-level deployments using precise dependencies for optimal parallel deployment, eliminating the need for coarse wave-based waiting. See `../service-catalog.json` and `services/kustomization.yaml` for current enabled/disabled counts.
 
 ## Structure
 
@@ -16,7 +16,7 @@ Orchestrates **16 active services** (21 total, 5 disabled) using precise service
 
 ## Services Directory
 
-Contains individual `.yaml` files for each of the 21 services (16 active by default):
+Contains individual `.yaml` files for service-level Flux Kustomizations (current enablement is managed in `services/kustomization.yaml`):
 
 ### Active Services
 

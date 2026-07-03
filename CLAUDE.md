@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **26 active services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment.
+This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-grained dependency management**. It manages **several dozen services** across multi-environment deployment with service-level dependencies enabling **8-12 minute deployments** (down from 30-45 minutes) through intelligent parallel deployment. See `service-catalog.json` for the current enabled/disabled inventory.
 
 **Note**: 4 services are currently disabled (Crossplane suite, Scylla Manager) and can be re-enabled as needed.
 
@@ -139,7 +139,7 @@ curl http://scylla.local/
 - Different sync intervals: dev (1m), prod (10m)
 
 #### Fine-Grained Service Architecture
-**26 active services** organized in precise dependency layers enabling maximum parallel deployment:
+**Several dozen services** organized in precise dependency layers enabling maximum parallel deployment (see `service-catalog.json` for current counts):
 
 **Foundation Services (8 - start immediately, no dependencies):**
 - **Traefik**: Ingress controller and load balancer
@@ -236,7 +236,7 @@ ExternalSecrets syncs it to `github-mcp-credentials` in kagent namespace.
 
 ```
 base/services/              # Fine-grained service kustomizations (DEPLOYED SYSTEM)
-├── kustomization.yaml      # 19 active services with dependency orchestration
+├── kustomization.yaml      # Service list with dependency orchestration
 ├── environment.env         # Base environment variables for ConfigMap generation
 ├── traefik.yaml           # Foundation services (8 - no dependencies)
 ├── scylla-operator.yaml   # ScyllaDB operator (foundation)

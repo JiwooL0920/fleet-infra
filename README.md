@@ -1,4 +1,4 @@
-GitOps infrastructure platform to manage 10+ services across multi-environment Kubernetes clusters with automated deployment, monitoring, and high availability. Used to host personal projects on local machine and quick POCs
+GitOps infrastructure platform to manage several dozen services across multi-environment Kubernetes clusters with automated deployment, monitoring, and high availability. Used to host personal projects on local machine and quick POCs. See `service-catalog.json` for the current service inventory.
 
 # Prerequisites
 

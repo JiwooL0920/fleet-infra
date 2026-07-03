@@ -1,8 +1,8 @@
 # Services Directory - Fine-Grained Kustomizations
 
-Fine-grained service-level kustomizations for **16 active services** in the GitOps platform.
+Fine-grained service-level kustomizations for the GitOps platform.
 
-**Note:** 5 services are available but disabled by default (Crossplane suite, Loki, Promtail).
+**Note:** Service enablement is controlled in `kustomization.yaml`; see `../../service-catalog.json` for the current enabled/disabled inventory.
 
 ## Architecture
 
