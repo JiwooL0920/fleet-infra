@@ -16,7 +16,6 @@ spec:
   wait: true
   dependsOn:
     - name: traefik-config
-    - name: external-secrets-config
     - name: redis-sentinel
   postBuild:
     substituteFrom:

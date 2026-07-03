@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "d34fd29d8c92c579"
+    "catalog_sha": "9be0573fcf582c2a"
   },
   "services": {
     "cilium": {
@@ -246,7 +246,6 @@
       "downstream": [
         "traefik-config",
         "kube-prometheus-stack",
-        "argocd",
         "loki",
         "redis-sentinel",
         "n8n",
@@ -357,7 +356,7 @@
         "kubescape",
         "opencost"
       ],
-      "timeout": "5m  # Prometheus stack deployment time",
+      "timeout": "10m  # Prometheus stack deployment time",
       "health_checks": [
         {
           "apiVersion": "apps/v1",
@@ -452,7 +451,6 @@
       "repo_url": "https://argoproj.github.io/argo-helm",
       "depends_on": [
         "traefik-config",
-        "external-secrets-config",
         "redis-sentinel"
       ],
       "downstream": [],
