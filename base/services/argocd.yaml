@@ -22,3 +22,12 @@ spec:
     substituteFrom:
       - kind: ConfigMap
         name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: argocd-server
+      namespace: argocd
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: argocd-application-controller
+      namespace: argocd

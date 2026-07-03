@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "bbff61e079f91214"
+    "catalog_sha": "3ae810da5633a72b"
   },
   "services": {
     "cilium": {
@@ -287,7 +287,13 @@
         "scylla-cluster"
       ],
       "timeout": "5m0s",
-      "health_checks": [],
+      "health_checks": [
+        {
+          "apiVersion": "traefik.io/v1alpha1",
+          "kind": "IngressRoute",
+          "name": "traefik-dashboard"
+        }
+      ],
       "source": "apps/base/traefik-config/",
       "enabled": true,
       "dev": {},
@@ -451,7 +457,18 @@
       ],
       "downstream": [],
       "timeout": "10m0s",
-      "health_checks": [],
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "argocd-server"
+        },
+        {
+          "apiVersion": "apps/v1",
+          "kind": "StatefulSet",
+          "name": "argocd-application-controller"
+        }
+      ],
       "source": "apps/base/argocd/",
       "enabled": true,
       "dev": {
@@ -1018,7 +1035,13 @@
       ],
       "downstream": [],
       "timeout": "5m0s",
-      "health_checks": [],
+      "health_checks": [
+        {
+          "apiVersion": "helm.toolkit.fluxcd.io/v2",
+          "kind": "HelmRelease",
+          "name": "n8n"
+        }
+      ],
       "source": "apps/base/n8n/",
       "enabled": true,
       "dev": {
@@ -1057,7 +1080,13 @@
       ],
       "downstream": [],
       "timeout": "10m0s",
-      "health_checks": [],
+      "health_checks": [
+        {
+          "apiVersion": "helm.toolkit.fluxcd.io/v2",
+          "kind": "HelmRelease",
+          "name": "temporal-server"
+        }
+      ],
       "source": "apps/base/temporal/",
       "enabled": true,
       "dev": {
