@@ -5,3 +5,6 @@ metadata:
   labels:
     app.kubernetes.io/name: opentelemetry
     app.kubernetes.io/component: observability
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline

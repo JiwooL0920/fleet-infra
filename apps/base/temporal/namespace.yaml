@@ -6,3 +6,6 @@ metadata:
     app.kubernetes.io/name: temporal
     app.kubernetes.io/instance: temporal
     app.kubernetes.io/part-of: temporal
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline

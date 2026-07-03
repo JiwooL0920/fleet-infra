@@ -5,3 +5,6 @@ metadata:
   labels:
     name: n8n
     goldilocks.fairwinds.com/enabled: "true"
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline

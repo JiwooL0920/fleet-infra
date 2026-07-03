@@ -4,3 +4,6 @@ metadata:
   name: agentgateway-system
   labels:
     name: agentgateway-system
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline
+    pod-security.kubernetes.io/audit: baseline
