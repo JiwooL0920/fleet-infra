@@ -10,62 +10,9 @@ This is a Kubernetes GitOps infrastructure repository using Flux CD with **fine-
 
 ## Common Commands
 
-### Local Development Setup
-```bash
-# Setup local DNS entries for Traefik ingress (RECOMMENDED)
-make setup-dns
+For prerequisites, local bootstrap, Flux bootstrap, and local service access quickstart, see `README.md`.
 
-# Push GitHub PAT into LocalStack for gitops-agent (one-time per fresh cluster)
-make setup-github-secret
-
-# Register dev-applications spoke with Argo CD on the hub (one-time after spoke cluster exists)
-make register-app-cluster
-
-# Alternative: Start port forwarding for all services
-make port-forward
-
-# Fix control plane IP after Colima restart
-make fix-control-plane
-
-# Complete post-restart setup
-make post-colima-restart
-```
-
-**Note:** Secrets are automatically initialized by LocalStack startup hooks. No manual initialization needed.
-**Exception:** Run `make setup-github-secret` once to enable the gitops-agent (requires GitHub PAT).
-
-### Accessing Services
-
-**Option 1: Local DNS (Recommended)**
-```bash
-# One-time setup: Add .local domain entries to /etc/hosts
-make setup-dns
-
-# Access services via Traefik at .local domains:
-# http://traefik.local - Traefik Dashboard
-# http://grafana.local - Grafana
-# http://prometheus.local - Prometheus
-# http://alertmanager.local - AlertManager
-# http://n8n.local - N8N
-# http://temporal.local - Temporal UI
-# http://pgadmin.local - pgAdmin4
-# http://redis.local - RedisInsight
-# http://weave.local - Weave GitOps
-# http://argocd.local - Argo CD (spoke app sync)
-# http://localstack.local - LocalStack
-# http://scylla.local - ScyllaDB Alternator (DynamoDB API)
-# http://jaeger.local - Jaeger Tracing UI
-# http://kagent.local - kagent AI Agent Dashboard
-# http://opencost.local - OpenCost Cost Monitoring
-```
-
-**Option 2: Port Forwarding**
-```bash
-# Start port forwarding for all services
-make port-forward
-# OR
-./scripts/port-forward.sh
-```
+Use this file for architecture context and operations runbook details.
 
 ### Flux Operations
 ```bash
@@ -103,24 +50,6 @@ kubectl get pods -n scylla-manager
 
 # Test ScyllaDB Alternator endpoint (DynamoDB API)
 curl http://scylla.local/
-```
-
-### Available Scripts
-```bash
-# Setup local DNS entries for Traefik ingress
-./scripts/setup-local-dns.sh
-
-# Start port forwarding for all services
-./scripts/port-forward.sh
-
-# Fix control plane IP after Colima restart
-./scripts/fix-control-plane-ip.sh
-
-# Validate Kustomize configurations
-./scripts/validate-kustomize.sh
-
-# Validate Kubernetes manifests
-./scripts/validate-manifests.sh
 ```
 
 ## Architecture and Structure
@@ -318,86 +247,9 @@ scripts/                   # Automation and utilities
 
 ## Key Development Workflows
 
-### Accessing Services Locally
+For onboarding workflows (local access options, infra change flow, adding new applications, enabling/disabling services), see `README.md`.
 
-**Recommended: Traefik Ingress with Local DNS**
-1. One-time setup: `make setup-dns` (adds .local domains to /etc/hosts)
-2. Access all services via friendly domain names (e.g., http://grafana.local)
-3. Traefik handles routing automatically
-4. No need to remember port numbers
-
-**Alternative: Port Forwarding**
-1. Run `make port-forward` to start forwarding all service ports
-2. Access services at localhost with specific ports
-3. Requires keeping port-forward process running
-
-### Making Infrastructure Changes
-1. Create feature branch from `develop`
-2. Make changes to application configurations
-3. Test with Flux dry-run commands:
-   ```bash
-   flux diff kustomization apps --path ./base
-   ```
-4. Commit and push to feature branch
-5. Create PR to `develop`
-6. After merge, changes auto-deploy to dev environment
-7. Validate in dev, then merge `develop` to `main` for production
-
-### Adding New Applications
-1. Create base configuration in `apps/base/<app-name>/`
-2. Include namespace, kustomization, and helmrelease files
-3. Create service kustomization in `base/services/<app-name>.yaml` with proper dependencies
-4. Add to `base/services/kustomization.yaml` resources list
-5. Test in development environment first
-
-**Service Kustomization Template:**
-```yaml
-# base/services/<app-name>.yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: <app-name>
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./apps/base/<app-name>
-  prune: true
-  wait: true
-  timeout: 10m0s
-  dependsOn:    # Define precise service dependencies
-    - name: <dependency-service>
-  postBuild:
-    substituteFrom:
-      - kind: ConfigMap
-        name: cluster-vars
-```
-
-### Enabling/Disabling Services
-To disable a service, comment it out in `base/services/kustomization.yaml`:
-```yaml
-resources:
-  # - crossplane.yaml  # Disabled - uncomment to enable
-```
-
-To enable a disabled service, uncomment it in `base/services/kustomization.yaml` and commit the change. The service will deploy automatically after Flux reconciliation.
-
-### Environment Configuration Differences
-- Use cluster-vars-patch.yaml and environment.env files for environment-specific overrides
-- Base configurations in `apps/base/` should be environment-agnostic
-- Environment-specific values in `clusters/stages/*/clusters/services-amer/`
-- **Development**: Cost-optimized (single replicas, reduced resources, shorter retention)
-  - PostgreSQL: 1 instance, 10Gi storage, 7-day backup retention
-  - Redis: 1 replica, 8Gi storage
-  - Prometheus: 20Gi storage, 7-day retention
-  - Traefik: 1 replica
-- **Production**: High availability (multiple replicas, full resources, extended retention)
-  - PostgreSQL: 3 instances, 20Gi storage, 30-day backup retention
-  - Redis: 2+ replicas, larger storage
-  - Prometheus: 50Gi storage, 30-day retention
-  - Traefik: 3 replicas
+This file remains the deep reference for architecture and operations/troubleshooting.
 
 ## Security and Operations
 
@@ -463,14 +315,7 @@ When restarting Colima, services start automatically in proper dependency order:
 - No shared resources between environments
 
 ### Makefile Targets
-```bash
-# Available make targets
-make help                # Show available targets
-make setup-dns           # Setup local DNS entries for Traefik ingress (recommended)
-make port-forward        # Start port forwarding for all services (alternative to DNS)
-make fix-control-plane   # Fix control plane IP after Colima restart
-make post-colima-restart # Complete post-restart setup (fix IP only)
-```
+For day-1/day-2 command usage, see `README.md`. Keep this section focused on architecture and runbook context.
 
 ## External Secrets Integration
 
