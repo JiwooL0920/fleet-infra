@@ -55,11 +55,14 @@ yq --version
 
 ### Create Kind clusters
 
-**Option A — Terraform (recommended):** from [terraform-infra](https://github.com/JiwooL0920/terraform-infra), `terraform apply` provisions **`dev-services-amer`** (hub, 80/443) and **`dev-applications`** (spoke, 8081/8444). Bootstrap Cilium + Flux only on the hub per existing docs.
+Use [terraform-infra](https://github.com/JiwooL0920/terraform-infra) to provision both clusters and register the spoke with Argo CD in one workflow:
 
-**Option B — Manual hub only:** `kind create cluster --config kind-config.yaml` for the services cluster.
+- **`dev-services-amer`** (hub, 80/443) — where Flux runs and the platform services (including Argo CD) are deployed
+- **`dev-applications`** (spoke, 8081/8444) — Argo CD-managed workload target; runs alongside the hub on distinct host ports
 
-Verify with `kind get clusters` and `kubectl config get-contexts`.
+First-time apply is two-phase (see terraform-infra README) because the Kubernetes provider needs the spoke context to exist at plan time. Subsequent applies are single-phase.
+
+Verify with `kind get clusters` and `kubectl config get-contexts` — you should see both `kind-dev-services-amer` and `kind-dev-applications`.
 
 ### Bootstrap Flux on the hub cluster
 
@@ -114,14 +117,19 @@ If you prefer traditional port forwarding instead of DNS setup:
 
 - `make port-forward`
 
-### Argo CD spoke (optional path)
+### Argo CD spoke (fully automated by terraform-infra)
 
-When using the **dev-applications** Kind cluster from terraform-infra:
+When `terraform apply` in terraform-infra runs, it also:
 
-1. Push the [argocd-applications](https://github.com/JiwooL0920/argocd-applications) repo (`develop` branch drives `metadata/dev-applications/`).
-2. Cluster registration is fully automated by `terraform-infra`: after `terraform apply` creates both Kind clusters, Terraform also mints a spoke ServiceAccount token via `kubernetes_token_request_v1` and writes the Argo CD Cluster Secret (`dev-applications`, labelled `argocd.argoproj.io/secret-type=cluster`) directly onto the hub. Argo CD picks it up automatically. See [ADR-018](docs/adr/018-terraform-provisioned-argocd-cluster-secret.md) for the full rationale.
+1. Creates an `argocd-manager` ServiceAccount + `cluster-admin` ClusterRoleBinding on the spoke
+2. Provisions a `kubernetes.io/service-account-token` Secret on the spoke (the K8s controller auto-populates the token)
+3. Reads the token back and writes an Argo CD Cluster Secret (`dev-applications`, labelled `argocd.argoproj.io/secret-type=cluster`) directly onto the hub
 
-Hub Argo CD does **not** run a bundled Redis pod: it uses the shared **Redis Sentinel** stack via the standard `redis-sentinel` ClusterIP service (port 6379), same cluster as other workloads. See ADR-015.
+Argo CD picks up the labelled Secret and registers the spoke automatically. Application manifests for the spoke live in [argocd-applications](https://github.com/JiwooL0920/argocd-applications) (`develop` → `metadata/dev-applications/`).
+
+**No manual bootstrap step in fleet-infra** — the previous `make register-app-cluster` was removed. See [ADR-018](docs/adr/018-terraform-provisioned-argocd-cluster-secret.md) for the full rationale and the trade-offs versus the enterprise workload-identity pattern.
+
+Hub Argo CD does **not** run a bundled Redis pod: it uses the shared **Redis Sentinel** stack via the standard `redis-sentinel` ClusterIP service (port 6379), same cluster as other workloads. See [ADR-015](docs/adr/015-disable-redis-sentinel-masterservice.md).
 
 ## Development Workflow
 
@@ -163,12 +171,14 @@ make precommit-clean
 
 **What gets checked:**
 - YAML syntax and formatting
-- Kubernetes/Flux manifest validation
+- Kubernetes/Flux manifest validation (kubeconform + `flux build kustomization` for `apps/base/`)
 - Kustomize overlay validation
-- Flux API version compatibility
-- Secret detection (AWS keys, private keys, etc.)
-- Markdown and shell script linting
-- File formatting (trailing whitespace, EOF)
+- Flux API version compatibility (no `v1beta2`/`v2beta2` drift)
+- Secret detection via `detect-secrets` (AWS keys, private keys, high-entropy strings)
+- Markdown and shell script linting (shellcheck at `warning` severity)
+- File formatting (trailing whitespace, EOF newline, YAML syntax)
+- Service catalog freshness (regenerates `service-catalog.json` and fails if stale)
+- ADR index freshness (regenerates `docs/adr/README.md` when ADRs change)
 
 **Validation only (without pre-commit):**
 
@@ -183,3 +193,16 @@ make validate-kustomize  # Kustomize overlay build
 ```
 
 For detailed documentation, see [Pre-commit Hooks Guide](docs/PRE_COMMIT_HOOKS.md).
+
+## Architecture Decisions
+
+Significant architecture choices live in [`docs/adr/`](docs/adr/) as append-only ADRs. Notable recent ones:
+
+- **[ADR-005](docs/adr/005-localstack-external-secrets.md)** — LocalStack + ExternalSecrets as the canonical dev-secret pattern
+- **[ADR-013](docs/adr/013-argocd-hub-spoke-applications.md)** — Argo CD hub-spoke topology for application workloads
+- **[ADR-015](docs/adr/015-disable-redis-sentinel-masterservice.md)** — Argo CD reuses shared Redis Sentinel (no bundled Redis)
+- **[ADR-016](docs/adr/016-externalsecrets-migration-hardcoded-credentials.md)** — Migrated n8n / weave-gitops / pgadmin4 committed credentials to ExternalSecrets
+- **[ADR-017](docs/adr/017-cnpg-backup-deferred-for-poc.md)** — CloudNative-PG backups deferred for POC (rollback path documented)
+- **[ADR-018](docs/adr/018-terraform-provisioned-argocd-cluster-secret.md)** — Argo CD spoke registration moved to Terraform (replaces the removed `make register-app-cluster` bootstrap)
+
+See [`docs/adr/README.md`](docs/adr/README.md) for the full auto-generated index.
