@@ -13,7 +13,7 @@ spec:
     name: flux-system
   path: ./apps/base/redisinsight
   prune: true
-  wait: true
+  wait: false
   dependsOn:
     - name: redis-sentinel  # Only needs Redis Sentinel, not PostgreSQL
   postBuild:

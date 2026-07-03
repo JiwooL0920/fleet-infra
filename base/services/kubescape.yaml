@@ -18,7 +18,7 @@ spec:
     name: flux-system
   path: ./apps/base/kubescape
   prune: true
-  wait: true
+  wait: false
   timeout: 10m0s
   dependsOn:
     - name: metrics-server

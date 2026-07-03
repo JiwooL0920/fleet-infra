@@ -26,7 +26,7 @@ spec:
     name: grafana-dashboards
   path: ./infra
   prune: true
-  wait: true
+  wait: false
   dependsOn:
     - name: grafana-config
   healthChecks:

@@ -13,7 +13,7 @@ spec:
     name: flux-system
   path: ./apps/base/pgadmin4
   prune: true
-  wait: true
+  wait: false
   dependsOn:
     - name: external-secrets-config  # Needs ClusterSecretStore for admin credentials
     - name: postgresql-cluster  # Needs PostgreSQL database
