@@ -37,11 +37,11 @@ spec:
       retries: 3
   values:
     # Weave GitOps configuration
+    # adminUser credentials migrated to ExternalSecret (ADR-016).
+    # Chart's cluster-user-auth Secret now owned by ExternalSecret cluster-user-auth
+    # in apps/base/weave-gitops/externalsecret.yaml.
     adminUser:
-      create: true
-      username: admin
-      # Default password hash for 'admin' - you should change this
-      passwordHash: "$2y$05$o/2x.PmGVS6L0OpLwk3XmOqyMaFpzh2J2FqtsGbarWv95oR0luQFK"
+      create: false
 
     # Service configuration
     service:
