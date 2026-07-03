@@ -17,6 +17,15 @@ metadata:
 spec:
   driftDetection:
     mode: enabled
+  install:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+      strategy: rollback
   targetNamespace: redis-sentinel
   interval: 30m
   chart:

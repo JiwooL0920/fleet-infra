@@ -20,6 +20,14 @@ spec:
   targetNamespace: traefik
   install:
     createNamespace: true
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+  upgrade:
+    remediation:
+      retries: 3
+      remediateLastFailure: true
+      strategy: rollback
   chart:
     spec:
       chart: traefik
