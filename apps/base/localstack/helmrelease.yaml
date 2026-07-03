@@ -151,6 +151,21 @@ spec:
           "$PGADMIN_PWD" \
           "pgAdmin4 admin password"
 
+      # n8n data encryption key (used to encrypt credentials stored in DB).
+      # Rotating this invalidates all stored credentials. See ADR-015.
+      create_secret "n8n/credentials/encryption-key" \
+          "$(gen_password)" \
+          "n8n data encryption key"
+
+      # Weave GitOps emergency user (cluster-user-auth Secret).
+      # Chart's adminUser.create=true currently generates this; ADR-015 migrates ownership
+      # to ExternalSecrets. bcrypt hash uses cost 10 per chart docs.
+      WEAVE_PWD=$(gen_password)
+      WEAVE_HASH=$(htpasswd -bnBC 10 "" "$WEAVE_PWD" | tr -d ':\n' | sed 's/$2y/$2a/')
+      create_secret "weave-gitops/admin/credentials" \
+          "{\"username\":\"admin\",\"passwordHash\":\"$WEAVE_HASH\",\"cleartext\":\"$WEAVE_PWD\"}" \
+          "Weave GitOps admin credentials (bcrypt-hashed passwordHash + cleartext for local dev)"
+
       # Grafana
       create_secret "grafana/admin/credentials/username" \
           "admin" \
