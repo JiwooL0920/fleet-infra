@@ -20,3 +20,8 @@ spec:
     substituteFrom:
       - kind: ConfigMap
         name: cluster-vars
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: grafana-operator-controller-manager
+      namespace: grafana-operator

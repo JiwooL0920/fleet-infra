@@ -29,3 +29,8 @@ spec:
   wait: true
   dependsOn:
     - name: grafana-config
+  healthChecks:
+    - apiVersion: grafana.integreatly.org/v1beta1
+      kind: GrafanaDashboard
+      name: llm-metrics
+      namespace: monitoring

@@ -20,3 +20,8 @@ spec:
     substituteFrom:
       - kind: ConfigMap
         name: cluster-vars
+  healthChecks:
+    - apiVersion: grafana.integreatly.org/v1beta1
+      kind: Grafana
+      name: grafana
+      namespace: monitoring

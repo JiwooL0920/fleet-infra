@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "3ae810da5633a72b"
+    "catalog_sha": "d34fd29d8c92c579"
   },
   "services": {
     "cilium": {
@@ -770,7 +770,13 @@
         "grafana-config"
       ],
       "timeout": "5m",
-      "health_checks": [],
+      "health_checks": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "grafana-operator-controller-manager"
+        }
+      ],
       "source": "apps/base/grafana-operator/",
       "enabled": true,
       "dev": {},
@@ -792,7 +798,13 @@
         "grafana-dashboards"
       ],
       "timeout": "5m",
-      "health_checks": [],
+      "health_checks": [
+        {
+          "apiVersion": "grafana.integreatly.org/v1beta1",
+          "kind": "Grafana",
+          "name": "grafana"
+        }
+      ],
       "source": "apps/base/grafana-config/",
       "enabled": true,
       "dev": {},
@@ -812,7 +824,13 @@
       ],
       "downstream": [],
       "timeout": "2m",
-      "health_checks": [],
+      "health_checks": [
+        {
+          "apiVersion": "grafana.integreatly.org/v1beta1",
+          "kind": "GrafanaDashboard",
+          "name": "llm-metrics"
+        }
+      ],
       "source": "infra/",
       "enabled": true,
       "dev": {},
