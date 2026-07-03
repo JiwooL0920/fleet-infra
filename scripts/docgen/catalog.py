@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from lib.parse import get_nested, load_yaml_documents, load_yaml_documents_with_source
+
 # ---------------------------------------------------------------------------
 # Paths (relative to repo root)
 # ---------------------------------------------------------------------------
@@ -154,7 +156,11 @@ def merge_envs(*envs: dict[str, str]) -> dict[str, str]:
 def resolve_var(value: str, env: dict[str, str]) -> str:
     """Expand ${VAR} references using the given env dict."""
     def replacer(m: re.Match) -> str:
-        return env.get(m.group(1), m.group(0))
+        original = m.group(0) or ""
+        key = m.group(1)
+        if key is None:
+            return original
+        return env.get(key, original)
     return re.sub(r"\$\{([^}]+)\}", replacer, value)
 
 
@@ -226,57 +232,11 @@ def parse_services_kustomization(path: Path) -> tuple[list[str], list[str], dict
 
     return enabled, disabled, layers
 
-# ---------------------------------------------------------------------------
-# HelmRelease / Kustomization YAML parsing
-# ---------------------------------------------------------------------------
-
-_YAML_DOCS_RE = re.compile(r"^---", re.MULTILINE)
-
-
-def _split_yaml_docs(text: str) -> list[str]:
-    parts = _YAML_DOCS_RE.split(text)
-    return [p.strip() for p in parts if p.strip()]
-
-
-def _simple_get(text: str, *keys: str) -> str | None:
-    """
-    Extremely lightweight YAML value extractor.
-    Walks through keys as indented levels and returns the scalar value of the last key.
-    Not a full YAML parser — only handles simple scalars.
-    """
-    lines = text.splitlines()
-    depth = 0
-    for key_idx, key in enumerate(keys):
-        is_last = key_idx == len(keys) - 1
-        pattern = re.compile(r"^(\s*)" + re.escape(key) + r"\s*:\s*(.*)")
-        found = False
-        for i, line in enumerate(lines[depth:], depth):
-            m = pattern.match(line)
-            if m:
-                val = m.group(2).strip().strip('"').strip("'")
-                if val:
-                    if is_last:
-                        return val
-                    # Descend into block
-                    depth = i + 1
-                    found = True
-                    break
-                else:
-                    if is_last:
-                        return None
-                    depth = i + 1
-                    found = True
-                    break
-        if not found:
-            return None
-    return None
-
-
-def _extract_depends_on(text: str) -> list[str]:
-    """Extract dependsOn names from a Flux Kustomization YAML doc."""
+def _extract_depends_on(source: str) -> list[str]:
+    """Extract dependsOn names from Flux Kustomization source text."""
     deps: list[str] = []
     in_depends = False
-    for line in text.splitlines():
+    for line in source.splitlines():
         if re.match(r"\s+dependsOn\s*:", line):
             in_depends = True
             continue
@@ -289,12 +249,12 @@ def _extract_depends_on(text: str) -> list[str]:
     return deps
 
 
-def _extract_health_checks(text: str) -> list[dict[str, str]]:
-    """Extract healthChecks from a Flux Kustomization YAML doc."""
+def _extract_health_checks(source: str) -> list[dict[str, str]]:
+    """Extract healthChecks from Flux Kustomization source text."""
     checks: list[dict[str, str]] = []
     in_checks = False
     current: dict[str, str] = {}
-    for line in text.splitlines():
+    for line in source.splitlines():
         if re.match(r"\s+healthChecks\s*:", line):
             in_checks = True
             continue
@@ -321,6 +281,30 @@ def _extract_health_checks(text: str) -> list[dict[str, str]]:
     return checks
 
 
+def _extract_timeout(source: str) -> str | None:
+    """Extract spec.timeout scalar from source preserving inline comments."""
+    in_spec = False
+    spec_indent = 0
+    for line in source.splitlines():
+        spec_match = re.match(r"^(\s*)spec\s*:\s*$", line)
+        if spec_match:
+            in_spec = True
+            spec_indent = len(spec_match.group(1))
+            continue
+
+        if in_spec:
+            current_indent = len(line) - len(line.lstrip(" "))
+            if line.strip() and current_indent <= spec_indent:
+                in_spec = False
+                continue
+
+            timeout_match = re.match(r"^\s*timeout\s*:\s*(.*)$", line)
+            if timeout_match:
+                value = timeout_match.group(1).strip().strip('"').strip("'")
+                return value or None
+    return None
+
+
 def parse_flux_kustomization(svc: str) -> dict[str, Any]:
     """Read base/services/<svc>.yaml and extract Flux Kustomization fields."""
     svc_yaml = SERVICES_DIR / f"{svc}.yaml"
@@ -335,18 +319,19 @@ def parse_flux_kustomization(svc: str) -> dict[str, Any]:
         return result
 
     text = svc_yaml.read_text()
-    for doc in _split_yaml_docs(text):
-        kind = _simple_get(doc, "kind")
+    docs = load_yaml_documents_with_source(text)
+    for source, doc in docs:
+        kind = get_nested(doc, "kind")
         if kind == "Kustomization":
-            path = _simple_get(doc, "spec", "path")
+            path = get_nested(doc, "spec", "path")
             if path:
                 result["path"] = path.lstrip("./")
                 result["source"] = path.lstrip("./") + "/"
-            timeout = _simple_get(doc, "spec", "timeout")
+            timeout = _extract_timeout(source)
             if timeout:
                 result["timeout"] = timeout
-            result["depends_on"] = _extract_depends_on(doc)
-            result["health_checks"] = _extract_health_checks(doc)
+            result["depends_on"] = _extract_depends_on(source)
+            result["health_checks"] = _extract_health_checks(source)
             break
     return result
 
@@ -367,26 +352,27 @@ def find_helmrelease_in_dir(app_dir: Path, env: dict[str, str]) -> dict[str, Any
         if not path.is_file():
             continue
         text = path.read_text()
-        for doc in _split_yaml_docs(text):
-            kind = _simple_get(doc, "kind")
+        docs = load_yaml_documents_with_source(text)
+        for _, doc in docs:
+            kind = get_nested(doc, "kind")
             if kind != "HelmRelease":
                 continue
-            chart_name = _simple_get(doc, "spec", "chart", "spec", "chart")
-            chart_ver = _simple_get(doc, "spec", "chart", "spec", "version")
+            chart_name = get_nested(doc, "spec", "chart", "spec", "chart")
+            chart_ver = get_nested(doc, "spec", "chart", "spec", "version")
             target_ns = (
-                _simple_get(doc, "spec", "targetNamespace")
-                or _simple_get(doc, "spec", "chart", "spec", "sourceRef", "namespace")
+                get_nested(doc, "spec", "targetNamespace")
+                or get_nested(doc, "spec", "chart", "spec", "sourceRef", "namespace")
             )
             # Get namespace from metadata
-            meta_ns = _simple_get(doc, "metadata", "namespace")
+            meta_ns = get_nested(doc, "metadata", "namespace")
             # Resolve version vars
             if chart_ver:
                 chart_ver = resolve_var(chart_ver, env)
             # Find repo URL from the companion HelmRepository in the same file
             repo_url = None
-            for d2 in _split_yaml_docs(text):
-                if _simple_get(d2, "kind") == "HelmRepository":
-                    repo_url = _simple_get(d2, "spec", "url") or _simple_get(d2, "spec", "url")
+            for _, d2 in docs:
+                if get_nested(d2, "kind") == "HelmRepository":
+                    repo_url = get_nested(d2, "spec", "url")
                     break
             return {
                 "type": "HelmRelease",
@@ -404,8 +390,8 @@ def detect_app_type(app_dir: Path) -> str:
         return "Kustomization"
     for fname in app_dir.glob("*.yaml"):
         text = fname.read_text()
-        for doc in _split_yaml_docs(text):
-            kind = _simple_get(doc, "kind")
+        for doc in load_yaml_documents(text):
+            kind = get_nested(doc, "kind")
             if kind in {"HelmRelease", "Deployment", "StatefulSet", "DaemonSet", "CronJob", "Job"}:
                 return kind
     return "Kustomization"
@@ -416,9 +402,9 @@ def get_namespace_from_app(app_dir: Path) -> str | None:
     ns_file = app_dir / "namespace.yaml"
     if ns_file.exists():
         text = ns_file.read_text()
-        for doc in _split_yaml_docs(text):
-            if _simple_get(doc, "kind") == "Namespace":
-                return _simple_get(doc, "metadata", "name")
+        for doc in load_yaml_documents(text):
+            if get_nested(doc, "kind") == "Namespace":
+                return get_nested(doc, "metadata", "name")
     return None
 
 # ---------------------------------------------------------------------------
