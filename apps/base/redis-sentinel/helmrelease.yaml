@@ -33,7 +33,11 @@ spec:
     image:
       registry: docker.io
       repository: bitnami/redis
-      tag: 7.4.1-debian-12-r0  # pinned per ADR-016 addendum (was :latest)
+      # Pinned by digest per ADR-016 addendum. Bitnami removed semver tags from
+      # docker.io in 2024-2025; digest pinning is the only reproducible option
+      # without switching to bitnamilegacy/bitnamisecure repos.
+      tag: latest
+      digest: sha256:f3d94ad232c4ace445696beef70e8ebd798fbe1a338b56698db3185fbd68c573
 
     # Enable Redis Sentinel architecture for high availability
     architecture: replication
@@ -68,7 +72,8 @@ spec:
       image:
         registry: docker.io
         repository: bitnami/redis-sentinel
-        tag: 7.4.1-debian-12-r0  # pinned per ADR-016 addendum (was :latest)
+        tag: latest
+        digest: sha256:bbfa30811b4df9050d08a1ba4daaa329e1b562213f655ab2d040396275bc7cf9
       masterSet: "mymaster"
       masterService:
         enabled: false
