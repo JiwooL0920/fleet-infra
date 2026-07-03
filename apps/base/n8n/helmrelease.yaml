@@ -40,10 +40,9 @@ spec:
 
     # N8N main application configuration
     main:
-      # N8N configuration converted to environment variables
+      # N8N configuration converted to environment variables.
+      # encryption_key was migrated to ExternalSecret (ADR-016) — see extraEnv below.
       config:
-        n8n:
-          encryption_key: "n8n-encryption-key-change-me"
         db:
           type: postgresdb
 
@@ -51,6 +50,11 @@ spec:
       extraEnv:
         N8N_PORT:
           value: "5678"
+        N8N_ENCRYPTION_KEY:
+          valueFrom:
+            secretKeyRef:
+              name: n8n-encryption-key
+              key: encryption_key
         DB_POSTGRESDB_HOST:
           valueFrom:
             secretKeyRef:
