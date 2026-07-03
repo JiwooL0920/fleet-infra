@@ -1,0 +1,77 @@
+---
+# PrometheusRule: Flux stuck resources alerting.
+#
+# Monitors Flux Kustomizations and HelmReleases for prolonged not-Ready state:
+# - Warning tier: fires after 15 minutes of not-Ready
+# - Critical tier: fires after 30 minutes of not-Ready
+#
+# Metric source: gotk_reconcile_condition exposed by Flux controllers.
+# Requires Flux controller ServiceMonitors to be scraped by Prometheus.
+# Flux monitoring is typically set up via gotk-components which include ServiceMonitor resources.
+#
+# Note: ollama Kustomization is excluded from alerts as it's intentionally suspended.
+#
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flux-stuck-resources
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: flux-stuck-resources
+    app.kubernetes.io/instance: flux
+    app.kubernetes.io/managed-by: kustomize
+    # Required by kube-prometheus-stack to pick up this rule
+    release: monitoring-kube-prometheus-stack
+    team: platform
+spec:
+  groups:
+    - name: flux.rules
+      interval: 30s
+      rules:
+        - alert: FluxKustomizationNotReadyWarn
+          expr: |
+            gotk_reconcile_condition{type="Ready",status="False",kind="Kustomization",name!="ollama"} == 1
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Flux Kustomization {{ $labels.name }} has been not-Ready for 15 minutes"
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.namespace }} has status=False for over 15m. Check: flux get kustomizations -A | awk 'NR==1 || $5!=\"True\"'"
+            runbook_url: "https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/runbooks/flux-stuck-resources.md"
+
+        - alert: FluxKustomizationNotReadyCrit
+          expr: |
+            gotk_reconcile_condition{type="Ready",status="False",kind="Kustomization",name!="ollama"} == 1
+          for: 30m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Flux Kustomization {{ $labels.name }} has been not-Ready for 30 minutes"
+            description: "Kustomization {{ $labels.name }} in namespace {{ $labels.namespace }} has been stuck not-Ready for 30m. GitOps recovery needed. Run: helm history <release> -n flux-system && helm rollback <release> 1 -n flux-system --force --no-hooks"
+            runbook_url: "https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/runbooks/flux-stuck-resources.md"
+
+        - alert: FluxHelmReleaseNotReadyWarn
+          expr: |
+            gotk_reconcile_condition{type="Ready",status="False",kind="HelmRelease"} == 1
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Flux HelmRelease {{ $labels.name }} has been not-Ready for 15 minutes"
+            description: "HelmRelease {{ $labels.name }} in namespace {{ $labels.namespace }} has status=False for over 15m. Check: flux get helmreleases -A | awk 'NR==1 || $4!=\"True\"'"
+            runbook_url: "https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/runbooks/flux-stuck-resources.md"
+
+        - alert: FluxHelmReleaseNotReadyCrit
+          expr: |
+            gotk_reconcile_condition{type="Ready",status="False",kind="HelmRelease"} == 1
+          for: 30m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Flux HelmRelease {{ $labels.name }} has been not-Ready for 30 minutes"
+            description: "HelmRelease {{ $labels.name }} stuck not-Ready for 30m. Run: flux suspend helmrelease <name> -n flux-system && helm rollback <release> 1 -n flux-system --force --no-hooks && flux resume helmrelease <name> -n flux-system"
+            runbook_url: "https://github.com/JiwooL0920/fleet-infra/blob/develop/docs/runbooks/flux-stuck-resources.md"

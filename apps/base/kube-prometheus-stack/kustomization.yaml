@@ -9,3 +9,4 @@ resources:
   - servicemonitor-agentic-ai.yaml
   - grafana-dashboard-kagent.yaml
   - alertmanager-config.yaml
+  - prometheusrule-flux.yaml
