@@ -214,21 +214,13 @@ scripts/                   # Automation and utilities
 - **Hub** (`dev-services-amer`, Flux): hosts platform services plus **Argo CD**. Application manifests for the spoke live in **`argocd-applications`** (not this repo): `develop` / `metadata/dev-applications/`, `main` / `metadata/prod-applications/`.
 - **Spoke** (`dev-applications`, no Flux): second Kind cluster from [terraform-infra](https://github.com/JiwooL0920/terraform-infra); Argo CD on the hub reaches its API at `https://dev-applications-control-plane:6443` over the Docker `kind` network. One-time: `make register-app-cluster` (token via LocalStack + ExternalSecret).
 
-### Port Mappings (when port forwarding is active)
-- LocalStack: 4566
-- N8N: 5678
-- Grafana: 3030
-- Prometheus: 9090
-- Alertmanager: 9093
-- Node Exporter: 9100
-- Loki: 3100 (service disabled by default)
-- Weave GitOps: 9001
-- Argo CD: 8080
-- Temporal UI: 8090
-- pgAdmin4: 8080
-- PostgreSQL: 5432
-- Redis Sentinel: 6379
-- RedisInsight: 8001
+### Local Access
+
+For local access to services, use:
+- `make setup-dns` (Traefik ingress, .local domains)
+- `make port-forward` (traditional port-forward)
+
+See `scripts/port-forward.sh` for canonical port assignments.
 
 ### Domain Mappings (when using local DNS - recommended)
 - Traefik Dashboard: http://traefik.local
