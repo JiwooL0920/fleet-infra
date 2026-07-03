@@ -18,19 +18,7 @@
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Colors
-# ---------------------------------------------------------------------------
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-info()    { echo -e "${BLUE}ℹ  $*${NC}"; }
-success() { echo -e "${GREEN}✅ $*${NC}"; }
-warn()    { echo -e "${YELLOW}⚠️  $*${NC}"; }
-fail()    { echo -e "${RED}❌ $*${NC}"; }
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
 # ---------------------------------------------------------------------------
 # Resolve GitHub token
@@ -105,9 +93,11 @@ if kubectl get deployment localstack -n localstack &>/dev/null 2>&1; then
     info "Restarting LocalStack to pick up the new secret..."
     kubectl rollout restart deployment/localstack -n localstack >/dev/null
     info "Waiting for LocalStack to be ready (up to 90s)..."
-    kubectl rollout status deployment/localstack -n localstack --timeout=90s >/dev/null && \
-        success "LocalStack restarted and ready" || \
+    if kubectl rollout status deployment/localstack -n localstack --timeout=90s >/dev/null; then
+        success "LocalStack restarted and ready"
+    else
         warn "LocalStack rollout timed out — check: kubectl get pods -n localstack"
+    fi
 else
     info "LocalStack not yet deployed — the secret will be available when it starts."
     info "Flux will deploy LocalStack and read GITHUB_PAT automatically."

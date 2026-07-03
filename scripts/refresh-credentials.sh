@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+
 # refresh-credentials.sh
 # Force-syncs ExternalSecrets from LocalStack and restarts all pods that
 # consume those secrets via environment variables so the running workloads
@@ -9,22 +11,6 @@ set -euo pipefail
 # Grafana is special: it persists the admin password inside grafana.db on its
 # PVC. When the PVC password diverges from the K8s secret, a simple restart is
 # not enough — we must reset the password via grafana cli after the pod starts.
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-info()    { echo -e "${BLUE}ℹ  $*${NC}"; }
-success() { echo -e "${GREEN}✅ $*${NC}"; }
-warn()    { echo -e "${YELLOW}⚠️  $*${NC}"; }
-fail()    { echo -e "${RED}❌ $*${NC}"; }
 
 wait_for_rollout() {
   local ns="$1" deploy="$2" timeout="${3:-120s}"
@@ -45,21 +31,24 @@ secret_value() {
 # create-secret fallback), then deletes the temp file. See ADR-016.
 put_secret_stdin() {
   local pod="$1" secret_id="$2"
-  kubectl exec -i -n localstack "$pod" -- sh -c '
-    TMP=$(mktemp) || exit 1
-    trap "rm -f \"$TMP\"" EXIT
-    chmod 600 "$TMP"
-    cat > "$TMP"
-    if ! awslocal secretsmanager put-secret-value \
-         --secret-id "'"$secret_id"'" \
-         --secret-string "file://$TMP" \
-         --region us-east-1 >/dev/null 2>&1; then
-      awslocal secretsmanager create-secret \
-         --name "'"$secret_id"'" \
-         --secret-string "file://$TMP" \
-         --region us-east-1 >/dev/null 2>&1
-    fi
-  '
+  local inpod_cmd
+  inpod_cmd=$(cat <<EOF
+TMP=\$(mktemp) || exit 1
+trap 'rm -f "\$TMP"' EXIT
+chmod 600 "\$TMP"
+cat > "\$TMP"
+if ! awslocal secretsmanager put-secret-value \
+     --secret-id "$secret_id" \
+     --secret-string "file://\$TMP" \
+     --region us-east-1 >/dev/null 2>&1; then
+  awslocal secretsmanager create-secret \
+     --name "$secret_id" \
+     --secret-string "file://\$TMP" \
+     --region us-east-1 >/dev/null 2>&1
+fi
+EOF
+)
+  kubectl exec -i -n localstack "$pod" -- sh -c "$inpod_cmd"
 }
 
 # ---------------------------------------------------------------------------
@@ -151,10 +140,12 @@ else
   while IFS= read -r line; do
     ns=$(echo "${line}" | awk '{print $1}')
     name=$(echo "${line}" | awk '{print $2}')
-    kubectl annotate externalsecret "${name}" -n "${ns}" \
-      force-sync="$(date +%s)" --overwrite >/dev/null 2>&1 && \
-      echo "  synced ${ns}/${name}" || \
+    if kubectl annotate externalsecret "${name}" -n "${ns}" \
+      force-sync="$(date +%s)" --overwrite >/dev/null 2>&1; then
+      echo "  synced ${ns}/${name}"
+    else
       warn "  failed to annotate ${ns}/${name}"
+    fi
   done <<< "${NAMESPACES}"
 
   # Give ESO a moment to reconcile
@@ -219,22 +210,25 @@ info "Waiting for rollouts to complete..."
 for ns in "${!SECRET_CONSUMERS[@]}"; do
   deploy="${SECRET_CONSUMERS[$ns]}"
   if kubectl get deployment "${deploy}" -n "${ns}" &>/dev/null; then
-    wait_for_rollout "${ns}" "${deploy}" "180s" && \
-      echo "  ${ns}/${deploy} ready" || true
+    if wait_for_rollout "${ns}" "${deploy}" "180s"; then
+      echo "  ${ns}/${deploy} ready"
+    fi
   fi
 done
 
 if [[ -n "${TEMPORAL_DEPLOYS}" ]]; then
   while IFS= read -r deploy; do
     [[ -z "${deploy}" ]] && continue
-    wait_for_rollout "temporal" "${deploy}" "180s" && \
-      echo "  temporal/${deploy} ready" || true
+    if wait_for_rollout "temporal" "${deploy}" "180s"; then
+      echo "  temporal/${deploy} ready"
+    fi
   done <<< "${TEMPORAL_DEPLOYS}"
 fi
 
 if kubectl get deployment kagent -n kagent &>/dev/null; then
-  wait_for_rollout "kagent" "kagent" "180s" && \
-    echo "  kagent/kagent ready" || true
+  if wait_for_rollout "kagent" "kagent" "180s"; then
+    echo "  kagent/kagent ready"
+  fi
 fi
 
 echo ""
@@ -310,9 +304,11 @@ if kubectl get deployment "${PGADMIN_DEPLOY}" -n "${PGADMIN_NS}" &>/dev/null; th
       kubectl exec -n "${PGADMIN_NS}" "${PGADMIN_POD_NAME}" -- \
         rm -f /var/lib/pgadmin/pgadmin4.db 2>/dev/null || true
       kubectl delete pod -n "${PGADMIN_NS}" "${PGADMIN_POD_NAME}" --grace-period=5 >/dev/null 2>&1
-      wait_for_rollout "${PGADMIN_NS}" "${PGADMIN_DEPLOY}" "60s" && \
-        success "pgAdmin4 re-initialized with current credentials" || \
+      if wait_for_rollout "${PGADMIN_NS}" "${PGADMIN_DEPLOY}" "60s"; then
+        success "pgAdmin4 re-initialized with current credentials"
+      else
         warn "pgAdmin4 rollout timed out"
+      fi
     else
       warn "pgAdmin4 pod not found — skipping reset"
     fi
