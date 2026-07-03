@@ -24,6 +24,8 @@ metadata:
   name: kubescape
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 10m
   releaseName: kubescape
   targetNamespace: kubescape

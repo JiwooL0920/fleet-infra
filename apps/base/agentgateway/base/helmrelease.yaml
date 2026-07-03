@@ -15,6 +15,12 @@ metadata:
   name: agentgateway
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
+    ignore:
+      - paths: ["/spec/replicas"]
+        target:
+          kind: Deployment
   interval: 10m
   releaseName: agentgateway
   targetNamespace: agentgateway-system

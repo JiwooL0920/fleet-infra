@@ -4,6 +4,8 @@ metadata:
   name: keda
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   releaseName: keda
   targetNamespace: keda
   interval: 10m

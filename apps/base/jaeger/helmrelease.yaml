@@ -13,6 +13,8 @@ metadata:
   name: jaeger
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 10m
   releaseName: jaeger
   targetNamespace: jaeger

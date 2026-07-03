@@ -13,6 +13,8 @@ metadata:
   name: pgadmin4
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 10m
   releaseName: pgadmin4
   targetNamespace: pgadmin4

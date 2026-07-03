@@ -15,6 +15,8 @@ metadata:
   name: n8n
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 5m
   targetNamespace: n8n
   chart:

@@ -13,6 +13,8 @@ metadata:
   name: localstack
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   targetNamespace: localstack
   interval: 1m
   chart:

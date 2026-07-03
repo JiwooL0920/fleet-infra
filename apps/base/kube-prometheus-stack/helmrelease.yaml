@@ -13,6 +13,8 @@ metadata:
   name: kube-prometheus-stack
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 1m
   targetNamespace: monitoring
   chart:

@@ -4,6 +4,8 @@ metadata:
   name: cilium
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   releaseName: cilium
   targetNamespace: kube-system
   interval: 10m

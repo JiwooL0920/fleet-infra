@@ -5,6 +5,8 @@ metadata:
   name: scylla
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 10m
   releaseName: scylla
   targetNamespace: scylla

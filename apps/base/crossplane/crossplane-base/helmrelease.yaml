@@ -14,6 +14,8 @@ metadata:
   name: crossplane
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 5m
   releaseName: crossplane
   targetNamespace: crossplane-system

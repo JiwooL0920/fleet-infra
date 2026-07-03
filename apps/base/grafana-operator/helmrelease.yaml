@@ -14,6 +14,8 @@ metadata:
   name: grafana-operator
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 1h
   targetNamespace: grafana-operator
   chart:

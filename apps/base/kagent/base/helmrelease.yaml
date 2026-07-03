@@ -11,6 +11,12 @@ metadata:
   name: kagent
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
+    ignore:
+      - paths: ["/spec/replicas"]
+        target:
+          kind: Deployment
   interval: 10m
   releaseName: kagent
   targetNamespace: kagent

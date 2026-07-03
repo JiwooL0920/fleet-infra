@@ -13,6 +13,8 @@ metadata:
   name: opentelemetry-collector
   namespace: flux-system
 spec:
+  driftDetection:
+    mode: enabled
   interval: 10m
   releaseName: opentelemetry-collector
   targetNamespace: opentelemetry
