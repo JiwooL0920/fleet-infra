@@ -202,7 +202,7 @@ Significant architecture choices live in [`docs/adr/`](docs/adr/) as append-only
 - **[ADR-013](docs/adr/013-argocd-hub-spoke-applications.md)** — Argo CD hub-spoke topology for application workloads
 - **[ADR-015](docs/adr/015-disable-redis-sentinel-masterservice.md)** — Argo CD reuses shared Redis Sentinel (no bundled Redis)
 - **[ADR-016](docs/adr/016-externalsecrets-migration-hardcoded-credentials.md)** — Migrated n8n / weave-gitops / pgadmin4 committed credentials to ExternalSecrets
-- **[ADR-017](docs/adr/017-cnpg-backup-deferred-for-poc.md)** — CloudNative-PG backups deferred for POC (rollback path documented)
 - **[ADR-018](docs/adr/018-terraform-provisioned-argocd-cluster-secret.md)** — Argo CD spoke registration moved to Terraform (replaces the removed `make register-app-cluster` bootstrap)
+- **[ADR-019](docs/adr/019-cnpg-backups-reenabled-localstack-init-secret.md)** — CloudNative-PG backups re-enabled; every LocalStack-backed ExternalSecret must be seeded by the LocalStack startup script (supersedes ADR-017)
 
 See [`docs/adr/README.md`](docs/adr/README.md) for the full auto-generated index.
