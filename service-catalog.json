@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "9be0573fcf582c2a"
+    "catalog_sha": "13ff1d9ca5d91ec4"
   },
   "services": {
     "cilium": {
@@ -247,6 +247,7 @@
         "traefik-config",
         "kube-prometheus-stack",
         "loki",
+        "postgresql-cluster",
         "redis-sentinel",
         "n8n",
         "temporal",
@@ -844,7 +845,8 @@
       "chart_version": null,
       "repo_url": null,
       "depends_on": [
-        "cnpg-operator"
+        "cnpg-operator",
+        "external-secrets-config"
       ],
       "downstream": [
         "n8n",

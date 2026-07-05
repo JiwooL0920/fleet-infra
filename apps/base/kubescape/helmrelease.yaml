@@ -55,7 +55,7 @@ spec:
     capabilities:
       continuousScan: enable
       nodeScan: enable
-      vulnerabilityScan: enable
+      vulnerabilityScan: disable  # kubevuln OOMs on dev cluster (needs 5Gi+ per upstream); no consumer of VulnerabilityManifest CRs in this repo.
       configurationScan: enable
 
     # Resource limits - tuned for dev (single-node kind cluster)

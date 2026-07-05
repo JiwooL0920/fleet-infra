@@ -35,6 +35,7 @@ spec:
     you know about Z", "fetch URL", "write a script that...".
   declarative:
     modelConfig: fast-model-config
+    runtime: go  # ~2s startup vs Python default (~15s); Python default SIGILLs on arm64 (Colima on Apple Silicon). Python code execution happens in the code-tools-mcp-server pod, not this agent.
     context:
       compaction:
         tokenThreshold: 8000

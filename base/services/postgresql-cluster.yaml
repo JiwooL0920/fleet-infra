@@ -15,7 +15,8 @@ spec:
   prune: true
   wait: true
   dependsOn:
-    - name: cnpg-operator  # Only needs CNPG operator ready
+    - name: cnpg-operator  # CNPG controller must be running to manage the Cluster CR
+    - name: external-secrets-config  # ExternalSecret cnpg-backup-s3 needs localstack-secretstore ClusterSecretStore
   postBuild:
     substituteFrom:
       - kind: ConfigMap
