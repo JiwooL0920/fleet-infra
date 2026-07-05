@@ -1,6 +1,6 @@
 # ADR-017: Defer CNPG Backup Configuration for POC Cluster
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-019](019-cnpg-backups-reenabled-localstack-init-secret.md)
 **Date:** 2026-07-03
 
 ## Context

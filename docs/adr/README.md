@@ -20,7 +20,7 @@
 | 014 | [Redis Sentinel `masterService` Chart Validation Requirements](014-redis-sentinel-masterservice-chart-validation.md) | Superseded by ADR-015 |
 | 015 | [Disable Redis Sentinel `masterService` — Clients Use Standard Service](015-disable-redis-sentinel-masterservice.md) | Accepted |
 | 016 | [Migrate Hardcoded Credentials to ExternalSecrets](016-externalsecrets-migration-hardcoded-credentials.md) | Accepted |
-| 017 | [Defer CNPG Backup Configuration for POC Cluster](017-cnpg-backup-deferred-for-poc.md) | Accepted |
+| 017 | [Defer CNPG Backup Configuration for POC Cluster](017-cnpg-backup-deferred-for-poc.md) | Superseded by [ADR-019](019-cnpg-backups-reenabled-localstack-init-secret.md) |
 | 018 | [Terraform-Provisioned Argo CD Cluster Secret for Local Spoke](018-terraform-provisioned-argocd-cluster-secret.md) | Accepted |
 | 019 | [Re-enable CNPG Backups with LocalStack-Initialized S3 Credentials](019-cnpg-backups-reenabled-localstack-init-secret.md) | Accepted |
 

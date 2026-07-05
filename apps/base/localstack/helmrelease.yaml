@@ -215,6 +215,17 @@ spec:
 
       awslocal s3 mb s3://cnpg-backups 2>/dev/null || true
 
+      # CNPG barmanObjectStore S3 credentials (see ADR-019).
+      # LocalStack accepts any credentials for its mock S3; we use "test"/"test"
+      # by convention. Without this secret, ExternalSecret cnpg-system/cnpg-backup-s3
+      # stays in SecretSyncedError, which blocks the postgresql-cluster Kustomization
+      # (wait: true) from becoming Ready, cascading to n8n / pgadmin4 / temporal.
+      # Idempotent via create_secret guard — safe across LocalStack pod restarts
+      # (colima restart, persistence loss, fresh cluster).
+      create_secret "cnpg/backup/s3" \
+          "{\"access_key_id\":\"test\",\"secret_access_key\":\"test\"}" \
+          "S3 credentials for CNPG barmanObjectStore backups to LocalStack"
+
       create_secret "kagent/ollama/api-key" \
           "{\"api-key\":\"ollama-no-auth-required\"}" \
           "Ollama API key placeholder (Ollama does not require auth; satisfies kagent OpenAI provider schema)"
