@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-accept insight-draft-all insight-draft-ops
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-accept insight-draft-all insight-draft-ops cluster-health restart-test seed-cnpg-backup-secret
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -16,6 +16,9 @@ help:
 	@echo "  verify-startup       - Verify service startup order and health"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
 	@echo "  post-colima-restart  - Full recovery after Colima/Mac restart (single command)"
+	@echo "  cluster-health       - Show Flux kustomization/HelmRelease health (read-only)"
+	@echo "  restart-test         - Full colima stop → start → wait for Flux recovery (destructive)"
+	@echo "  seed-cnpg-backup-secret - Seed cnpg/backup/s3 credentials in LocalStack (one-time)"
 	@echo "  get-ui-credentials   - Show login credentials for all UI services"
 	@echo "  refresh-credentials  - Force-sync secrets from LocalStack and restart pods"
 	@echo ""
@@ -122,6 +125,29 @@ fix-control-plane:
 # Handles: IP fix, credential sync, failed job cleanup, Flux reconciliation, Ollama check
 post-colima-restart:
 	@./scripts/post-colima-restart.sh
+
+# Show Flux kustomization and HelmRelease health (read-only, safe to run anytime)
+cluster-health:
+	@./scripts/test-restart-recovery.sh
+
+# Full colima stop → start → wait for Flux to self-heal. Destructive — prompts before stopping.
+restart-test:
+	@./scripts/test-restart-recovery.sh --yes
+
+# Seed CNPG backup S3 credentials in LocalStack Secrets Manager (one-time per cluster)
+# Required for the cnpg-backup-s3 ExternalSecret to hydrate.
+seed-cnpg-backup-secret:
+	@echo "Seeding cnpg/backup/s3 in LocalStack Secrets Manager..."
+	@kubectl exec -n localstack deployment/localstack-localstack -- \
+		awslocal secretsmanager create-secret \
+			--name cnpg/backup/s3 \
+			--secret-string '{"access_key_id":"test","secret_access_key":"test"}' \
+		2>/dev/null || \
+		kubectl exec -n localstack deployment/localstack-localstack -- \
+		awslocal secretsmanager update-secret \
+			--secret-id cnpg/backup/s3 \
+			--secret-string '{"access_key_id":"test","secret_access_key":"test"}'
+	@echo "Done. ExternalSecret will sync within 1h (or: kubectl annotate externalsecret cnpg-backup-s3 -n cnpg-system force-sync=$(date +%s))"
 
 get-ui-credentials:
 	@./scripts/get-ui-credentials.sh
