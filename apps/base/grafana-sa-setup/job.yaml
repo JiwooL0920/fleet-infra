@@ -19,6 +19,42 @@ spec:
       serviceAccountName: grafana-sa-setup
       restartPolicy: OnFailure
       initContainers:
+        # Step 0 — resync Grafana's admin password with the K8s Secret.
+        # LocalStack regenerates random passwords on any pod recreation (no
+        # persistence for its secret DB), which flows through the ExternalSecret
+        # into grafana-admin-credentials. But Grafana's persistent DB retains
+        # the old password from its first init, so all API calls 401.
+        # Running grafana-cli reset-admin-password on every setup reconcile
+        # makes the K8s Secret the single source of truth.
+        - name: reset-admin-password
+          image: bitnami/kubectl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              NEW_PASS="$(cat /var/secrets/grafana/admin-password)"
+              GRAFANA_POD=$(kubectl -n monitoring get pods \
+                -l app.kubernetes.io/name=grafana \
+                -o jsonpath='{.items[0].metadata.name}')
+              if [ -z "${GRAFANA_POD}" ]; then
+                echo "ERROR: no Grafana pod found"
+                exit 1
+              fi
+              echo "Resetting admin password on ${GRAFANA_POD}..."
+              kubectl -n monitoring exec "${GRAFANA_POD}" -c grafana -- \
+                grafana cli admin reset-admin-password "${NEW_PASS}"
+              echo "Admin password synced with K8s Secret."
+          volumeMounts:
+            - name: grafana-admin-creds
+              mountPath: /var/secrets/grafana
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
         - name: create-token
           image: curlimages/curl:8.11.1
           command: ["/bin/sh", "-c"]

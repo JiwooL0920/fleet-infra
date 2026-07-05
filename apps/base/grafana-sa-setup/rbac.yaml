@@ -6,7 +6,10 @@ metadata:
   name: grafana-sa-setup
   namespace: monitoring
 ---
-# Role to read the Grafana admin credentials Secret
+# Role to read the Grafana admin credentials Secret and reset admin password
+# via grafana-cli in the Grafana pod (needed when LocalStack regenerates the
+# password on a fresh pod restart — Grafana's persistent DB otherwise keeps
+# the old value, causing 401 on all subsequent auth attempts).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -17,6 +20,12 @@ rules:
     resources: ["secrets"]
     resourceNames: ["grafana-admin-credentials"]
     verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
