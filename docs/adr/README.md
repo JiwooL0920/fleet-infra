@@ -23,6 +23,7 @@
 | 017 | [Defer CNPG Backup Configuration for POC Cluster](017-cnpg-backup-deferred-for-poc.md) | Superseded by [ADR-019](019-cnpg-backups-reenabled-localstack-init-secret.md) |
 | 018 | [Terraform-Provisioned Argo CD Cluster Secret for Local Spoke](018-terraform-provisioned-argocd-cluster-secret.md) | Accepted |
 | 019 | [Re-enable CNPG Backups with LocalStack-Initialized S3 Credentials](019-cnpg-backups-reenabled-localstack-init-secret.md) | Accepted |
+| 020 | [Grafana DB Password Sourced from CNPG PushSecret (Not LocalStack Init)](020-grafana-db-password-via-pushsecret.md) | Accepted |
 
 ## Adding a New ADR
 

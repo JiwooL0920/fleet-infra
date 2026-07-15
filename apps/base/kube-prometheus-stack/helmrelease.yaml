@@ -91,8 +91,9 @@ spec:
           cpu: "${GRAFANA_CPU_REQUEST}"
 
       # PostgreSQL database backend (replaces default SQLite)
-      # Password synced from LocalStack via ExternalSecret grafana-db-credentials
-      # Bootstrap: make setup-grafana-db (one-time, reads PG password and stores in LocalStack)
+      # Password synced from LocalStack via ExternalSecret grafana-db-credentials,
+      # which sources cnpg/postgresql-cluster-app/password (push-synced from the
+      # CNPG-generated postgresql-cluster-app Secret — see ADR-020).
       env:
         GF_DATABASE_TYPE: postgres
         GF_DATABASE_HOST: postgresql-cluster-rw.cnpg-system:5432

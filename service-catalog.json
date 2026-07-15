@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "13ff1d9ca5d91ec4"
+    "catalog_sha": "131d1c2acc629d5d"
   },
   "services": {
     "cilium": {
@@ -347,7 +347,8 @@
       "chart_version": "65.8.1",
       "repo_url": "https://prometheus-community.github.io/helm-charts",
       "depends_on": [
-        "external-secrets-config"
+        "external-secrets-config",
+        "postgresql-cluster"
       ],
       "downstream": [
         "grafana-sa-setup",
@@ -367,7 +368,7 @@
         {
           "apiVersion": "apps/v1",
           "kind": "Deployment",
-          "name": "kube-prometheus-stack-grafana"
+          "name": "monitoring-kube-prometheus-stack-grafana"
         }
       ],
       "source": "apps/base/kube-prometheus-stack/",
@@ -849,6 +850,7 @@
         "external-secrets-config"
       ],
       "downstream": [
+        "kube-prometheus-stack",
         "n8n",
         "temporal",
         "pgadmin4"

@@ -100,13 +100,9 @@ else
       warn "  PushSecret push-cnpg-app-secret not found — skipping CNPG sync"
     fi
 
-    # grafana/database/password is NOT managed by PushSecret — sync directly
-    # via put_secret_stdin so CNPG_PASSWORD does not appear in process argv.
-    if printf '%s' "${CNPG_PASSWORD}" | put_secret_stdin "${LOCALSTACK_POD}" "grafana/database/password"; then
-      echo "  synced grafana/database/password"
-    else
-      warn "  failed to sync grafana/database/password"
-    fi
+    # grafana/database/password removed: Grafana DB creds now source directly
+    # from cnpg/postgresql-cluster-app/password (push-synced above), so this
+    # separate sync path is obsolete. See ADR-020.
 
     success "CNPG credential sync complete"
   fi

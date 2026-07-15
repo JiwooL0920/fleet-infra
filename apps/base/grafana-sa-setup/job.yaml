@@ -33,13 +33,31 @@ spec:
             - |
               set -eu
               NEW_PASS="$(cat /var/secrets/grafana/admin-password)"
-              GRAFANA_POD=$(kubectl -n monitoring get pods \
-                -l app.kubernetes.io/name=grafana \
-                -o jsonpath='{.items[0].metadata.name}')
+
+              # Poll for a Ready Grafana pod (up to ~4 min, within the 5-min
+              # Job timeout). Prevents "container not found" fail-fast when
+              # Grafana is still starting or briefly restarting on a cold
+              # cluster boot (colima restart etc.). Selects only pods whose
+              # grafana container is Ready — a crash-looping pod exists but
+              # its container is not Ready, so it is (correctly) skipped.
+              GRAFANA_POD=""
+              for i in $(seq 1 48); do
+                GRAFANA_POD=$(kubectl -n monitoring get pods \
+                  -l app.kubernetes.io/name=grafana \
+                  -o jsonpath='{range .items[*]}{range .status.containerStatuses[?(@.name=="grafana")]}{.ready}{"|"}{end}{.metadata.name}{"\n"}{end}' \
+                  2>/dev/null | awk -F'|' '$1=="true"{print $2; exit}')
+                if [ -n "${GRAFANA_POD}" ]; then
+                  break
+                fi
+                echo "[reset-admin-password] Waiting for Grafana pod Ready ($i/48)..."
+                sleep 5
+              done
+
               if [ -z "${GRAFANA_POD}" ]; then
-                echo "ERROR: no Grafana pod found"
+                echo "ERROR: no Ready Grafana pod after 4 min. Grafana likely cannot connect to its DB; check monitoring/grafana-db-credentials matches the actual CNPG app password."
                 exit 1
               fi
+
               echo "Resetting admin password on ${GRAFANA_POD}..."
               kubectl -n monitoring exec "${GRAFANA_POD}" -c grafana -- \
                 grafana cli admin reset-admin-password "${NEW_PASS}"

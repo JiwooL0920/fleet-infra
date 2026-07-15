@@ -1,4 +1,4 @@
-.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret setup-grafana-db get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-accept insight-draft-all insight-draft-ops cluster-health restart-test
+.PHONY: port-forward verify-startup init-aws-secrets fix-control-plane post-colima-restart setup-dns setup-github-secret get-ui-credentials refresh-credentials help precommit-install precommit-run precommit-update precommit-clean serve-ollama pull-ollama setup-ollama bootstrap-cilium docs-draft blog-draft update-docs docs-setup catalog validate-insights docs-render docs-validate docs-gen insight-draft insight-accept insight-draft-all insight-draft-ops cluster-health restart-test
 
 # Ollama model to use - override with: make pull-ollama OLLAMA_MODEL=llama3.2
 OLLAMA_MODEL ?= qwen2.5:72b
@@ -11,7 +11,7 @@ help:
 	@echo "  bootstrap-cilium     - Bootstrap Cilium CNI (run BEFORE flux bootstrap after cluster recreation)"
 	@echo "  setup-dns            - Setup local DNS entries for Traefik ingress (recommended)"
 	@echo "  setup-github-secret  - Push GitHub PAT from env into LocalStack (needed for gitops-agent)"
-	@echo "  setup-grafana-db     - Store PG password in LocalStack for Grafana PostgreSQL backend"
+	@echo "  refresh-credentials  - Force-sync ExternalSecrets and restart secret-consuming pods"
 	@echo "  port-forward         - Start port forwarding for all services (alternative to DNS)"
 	@echo "  verify-startup       - Verify service startup order and health"
 	@echo "  fix-control-plane    - Fix control plane IP after Colima restart"
@@ -19,7 +19,6 @@ help:
 	@echo "  cluster-health       - Show Flux kustomization/HelmRelease health (read-only)"
 	@echo "  restart-test         - Full colima stop → start → wait for Flux recovery (destructive)"
 	@echo "  get-ui-credentials   - Show login credentials for all UI services"
-	@echo "  refresh-credentials  - Force-sync secrets from LocalStack and restart pods"
 	@echo ""
 	@echo "Ollama (Local LLM for kagent):"
 	@echo "  serve-ollama         - Start native Ollama bound to all interfaces (required for kagent in dev)"
@@ -86,12 +85,6 @@ setup-github-secret:
 # now provisioned by Terraform (terraform-infra) directly on the hub via
 # kubernetes_secret_v1. No fleet-infra manifest or Makefile step is needed.
 # See docs/adr/018-terraform-provisioned-argocd-cluster-secret.md.
-
-# Store PG app password in LocalStack for Grafana's PostgreSQL backend.
-# Run once per fresh cluster (or after PG cluster recreation).
-setup-grafana-db:
-	@echo "Storing PostgreSQL password in LocalStack for Grafana..."
-	@./scripts/init-grafana-db-secret.sh
 
 # Port forward target
 port-forward:

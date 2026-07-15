@@ -16,6 +16,7 @@ spec:
   wait: true
   dependsOn:
     - name: external-secrets-config  # Needs ClusterSecretStore for Grafana admin credentials
+    - name: postgresql-cluster       # Grafana DB backend + grafana-db-credentials ExternalSecret depends on cnpg/postgresql-cluster-app/password (pushed by push-cnpg-app-secret)
   postBuild:
     substituteFrom:
       - kind: ConfigMap
@@ -27,5 +28,5 @@ spec:
       namespace: monitoring
     - apiVersion: apps/v1
       kind: Deployment
-      name: kube-prometheus-stack-grafana
+      name: monitoring-kube-prometheus-stack-grafana  # fullname is release-prefixed; wrong name here silently no-ops so a crashed Grafana never blocks reconcile
       namespace: monitoring

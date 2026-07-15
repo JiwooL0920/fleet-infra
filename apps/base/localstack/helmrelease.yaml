@@ -191,10 +191,13 @@ spec:
           "$HTPASSWD" \
           "Traefik dashboard htpasswd"
 
-      # Grafana database password (for PostgreSQL backend)
-      create_secret "grafana/database/password" \
-          "$(gen_password)" \
-          "Grafana PostgreSQL database password"
+      # Grafana database password is intentionally NOT initialized here.
+      # It is sourced from cnpg/postgresql-cluster-app/password (push-synced
+      # from the CNPG-generated postgresql-cluster-app Secret by
+      # apps/base/cloudnative-pg/push-secret.yaml). Historically this was a
+      # random value generated here on every fresh boot, which drifted from
+      # the actual PG app password and crashed Grafana on colima restart.
+      # See ADR-020.
 
       # kagent Grafana SA token (populated by grafana-sa-setup Job after Grafana is healthy)
       create_secret "kagent/grafana/api-key" \
