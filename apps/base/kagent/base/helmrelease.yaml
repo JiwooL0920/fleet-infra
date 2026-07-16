@@ -101,6 +101,18 @@ spec:
 
     controller:
       replicas: "${KAGENT_CONTROLLER_REPLICAS}"
+      # ---------------------------------------------------------
+      # Agent runtime image registry override.
+      # kagent 0.9.11's controller composes agent Deployment images as
+      # ${IMAGE_REGISTRY}/kagent-dev/kagent/{app|golang-adk}@sha256:<digest>.
+      # The chart default registry `cr.kagent.dev` does NOT host the
+      # `golang-adk` repo (returns 404 for all tags and digests), causing
+      # ImagePullBackOff for every Go-runtime Agent CR pod after 0.9.11 upgrade.
+      # `ghcr.io` (the upstream source of truth) DOES host both `app` and
+      # `golang-adk` at the digests baked into 0.9.11's controller.
+      # See: https://github.com/kagent-dev/kagent (upstream registry propagation gap)
+      agentImage:
+        registry: ghcr.io
       resources:
         requests:
           cpu: "${KAGENT_CONTROLLER_CPU_REQUEST}"
