@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "131d1c2acc629d5d"
+    "catalog_sha": "afcf27119728b917"
   },
   "services": {
     "cilium": {
@@ -1245,7 +1245,7 @@
       "source": "apps/base/kagent/",
       "enabled": true,
       "dev": {
-        "KAGENT_CHART_VERSION": "0.9.5",
+        "KAGENT_CHART_VERSION": "0.9.11",
         "KAGENT_CONTROLLER_REPLICAS": "1",
         "KAGENT_CONTROLLER_MEMORY_REQUEST": "256Mi",
         "KAGENT_CONTROLLER_MEMORY_LIMIT": "2Gi",
@@ -1258,7 +1258,7 @@
         "KAGENT_UI_CPU_LIMIT": "250m"
       },
       "prod": {
-        "KAGENT_CHART_VERSION": "0.9.5",
+        "KAGENT_CHART_VERSION": "0.9.11",
         "KAGENT_CONTROLLER_REPLICAS": "1",
         "KAGENT_CONTROLLER_MEMORY_REQUEST": "128Mi",
         "KAGENT_CONTROLLER_MEMORY_LIMIT": "512Mi",
