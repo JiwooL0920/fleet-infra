@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "afcf27119728b917"
+    "catalog_sha": "7281dbc0340b7559"
   },
   "services": {
     "cilium": {
@@ -1298,7 +1298,7 @@
       "layer": "AI agent platform",
       "type": "HelmRelease",
       "chart": "agentgateway",
-      "chart_version": "v1.3.0-alpha.1",
+      "chart_version": "v1.3.1",
       "repo_url": null,
       "depends_on": [
         "gateway-api-crds",
@@ -1325,7 +1325,7 @@
       "source": "apps/base/agentgateway/base/",
       "enabled": true,
       "dev": {
-        "AGENTGATEWAY_CHART_VERSION": "v1.3.0-alpha.1",
+        "AGENTGATEWAY_CHART_VERSION": "v1.3.1",
         "AGENTGATEWAY_REPLICAS": "1",
         "AGENTGATEWAY_CPU_REQUEST": "100m",
         "AGENTGATEWAY_MEMORY_REQUEST": "256Mi",
@@ -1333,7 +1333,7 @@
         "AGENTGATEWAY_MEMORY_LIMIT": "512Mi"
       },
       "prod": {
-        "AGENTGATEWAY_CHART_VERSION": "v1.3.0-alpha.1",
+        "AGENTGATEWAY_CHART_VERSION": "v1.3.1",
         "AGENTGATEWAY_REPLICAS": "1",
         "AGENTGATEWAY_CPU_REQUEST": "100m",
         "AGENTGATEWAY_MEMORY_REQUEST": "256Mi",
