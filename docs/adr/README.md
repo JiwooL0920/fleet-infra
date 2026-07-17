@@ -24,6 +24,7 @@
 | 018 | [Terraform-Provisioned Argo CD Cluster Secret for Local Spoke](018-terraform-provisioned-argocd-cluster-secret.md) | Accepted |
 | 019 | [Re-enable CNPG Backups with LocalStack-Initialized S3 Credentials](019-cnpg-backups-reenabled-localstack-init-secret.md) | Accepted |
 | 020 | [Grafana DB Password Sourced from CNPG PushSecret (Not LocalStack Init)](020-grafana-db-password-via-pushsecret.md) | Accepted |
+| 021 | [Exclude Kubescape Aggregated APIService from Argo CD Discovery](021-argocd-exclude-kubescape-softwarecomposition.md) | Accepted |
 
 ## Adding a New ADR
 

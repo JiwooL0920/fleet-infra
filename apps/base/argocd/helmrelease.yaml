@@ -41,6 +41,19 @@ spec:
     configs:
       params:
         server.insecure: "true"
+      cm:
+        # Exclude kubescape's aggregated APIService group from ArgoCD's
+        # cluster cache. Its OpenAPI schema is broken ($ref points to
+        # a non-existent ApplicationProfileSpec model) and poisons the
+        # entire OpenAPI cache, blocking every Application from syncing.
+        # See: https://github.com/argoproj/argo-cd/issues/9944
+        resource.exclusions: |
+          - apiGroups:
+              - spdx.softwarecomposition.kubescape.io
+            kinds:
+              - "*"
+            clusters:
+              - "*"
     dex:
       enabled: false
     notifications:
