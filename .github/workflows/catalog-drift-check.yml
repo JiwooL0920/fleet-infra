@@ -48,11 +48,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install docgen deps
-        run: pip install -r scripts/docgen/requirements.txt
-
-      - name: Regenerate service-catalog.json
-        run: python3 scripts/docgen/catalog.py
+      - name: Install docgen deps into the venv Makefile expects
+        run: |
+          python3 -m venv scripts/docgen/.venv
+          scripts/docgen/.venv/bin/pip install -r scripts/docgen/requirements.txt
 
       - name: Check for catalog drift
         run: |
@@ -67,13 +66,13 @@ jobs:
       - name: Validate insight YAML files
         run: |
           if ls service-insights/*.yaml 2>/dev/null | grep -q .; then
-            python3 scripts/docgen/insight_schema.py
+            scripts/docgen/.venv/bin/python3 scripts/docgen/insight_schema.py
           else
             echo "No insight files to validate."
           fi
 
       - name: Render all pages (smoke test)
-        run: python3 scripts/docgen/render.py --output-dir /tmp/docs-output
+        run: scripts/docgen/.venv/bin/python3 scripts/docgen/render.py --output-dir /tmp/docs-output
 
       - name: Validate rendered pages
-        run: python3 scripts/docgen/validate.py --docs-dir /tmp/docs-output
+        run: scripts/docgen/.venv/bin/python3 scripts/docgen/validate.py --docs-dir /tmp/docs-output
