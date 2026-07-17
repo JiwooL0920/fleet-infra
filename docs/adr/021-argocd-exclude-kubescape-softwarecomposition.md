@@ -1,7 +1,9 @@
 # ADR-021: Exclude Kubescape Aggregated APIService from Argo CD Discovery
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-022](022-kubescape-chart-upgrade-storage-schema.md)
 **Date:** 2026-07
+
+> **Note:** The `resource.exclusions` config added by this ADR is retained as a defensive measure (it prevents Argo CD from attempting to track kubescape scan results, which we never manage via GitOps), but it does **not** fix the underlying block. Argo CD's OpenAPI cache warmup happens in `client-go` below the layer where `resource.exclusions` applies, so a broken aggregated APIService schema still poisons cluster-wide discovery. See ADR-022 for the actual remediation.
 
 ## Context
 

@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "catalog_sha": "7281dbc0340b7559"
+    "catalog_sha": "c57d485ae12bc679"
   },
   "services": {
     "cilium": {
@@ -1375,7 +1375,7 @@
       "layer": "Security and cost observability",
       "type": "HelmRelease",
       "chart": "kubescape-operator",
-      "chart_version": "1.30.4",
+      "chart_version": "1.30.7",
       "repo_url": "https://kubescape.github.io/helm-charts/",
       "depends_on": [
         "metrics-server",
@@ -1387,7 +1387,7 @@
       "source": "apps/base/kubescape/",
       "enabled": true,
       "dev": {
-        "KUBESCAPE_CHART_VERSION": "1.30.4",
+        "KUBESCAPE_CHART_VERSION": "1.30.7",
         "KUBESCAPE_MEMORY_REQUEST": "128Mi",
         "KUBESCAPE_MEMORY_LIMIT": "512Mi",
         "KUBESCAPE_CPU_REQUEST": "100m",
@@ -1395,7 +1395,7 @@
         "KUBEVULN_MEMORY_LIMIT": "1Gi"
       },
       "prod": {
-        "KUBESCAPE_CHART_VERSION": "1.30.4",
+        "KUBESCAPE_CHART_VERSION": "1.30.7",
         "KUBESCAPE_MEMORY_REQUEST": "128Mi",
         "KUBESCAPE_MEMORY_LIMIT": "512Mi",
         "KUBESCAPE_CPU_REQUEST": "100m",
