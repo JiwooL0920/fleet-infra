@@ -1,19 +1,21 @@
-# Root Application: syncs metadata/dev-applications from argocd-applications (develop) into the dev-applications spoke.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dev-applications
+  name: dev-services-amer-platform
   namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
     repoURL: https://github.com/JiwooL0920/argocd-applications.git
-    targetRevision: develop
-    path: metadata/dev-applications
+    targetRevision: main
+    path: clusters-services/dev-services-amer
     directory:
       recurse: true
   destination:
-    name: dev-applications
+    server: https://kubernetes.default.svc
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
@@ -23,3 +25,5 @@ spec:
       backoff:
         duration: 10s
         factor: 2
+    syncOptions:
+      - ServerSideApply=true

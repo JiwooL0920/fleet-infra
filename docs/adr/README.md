@@ -26,6 +26,7 @@
 | 020 | [Grafana DB Password Sourced from CNPG PushSecret (Not LocalStack Init)](020-grafana-db-password-via-pushsecret.md) | Accepted |
 | 021 | [Exclude Kubescape Aggregated APIService from Argo CD Discovery](021-argocd-exclude-kubescape-softwarecomposition.md) | Superseded by [ADR-022](022-kubescape-chart-upgrade-storage-schema.md) |
 | 022 | [Upgrade Kubescape Chart 1.30.4 → 1.30.7 to Fix Broken Storage OpenAPI Schema](022-kubescape-chart-upgrade-storage-schema.md) | Accepted |
+| 023 | [App-of-Apps Root Applications Replace the Orphaned `dev-applications` Bootstrap](023-argocd-app-of-apps-dev-services-amer.md) | Accepted |
 
 ## Adding a New ADR
 
